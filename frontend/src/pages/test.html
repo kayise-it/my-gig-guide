@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discover Rotating Text</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f5f5f5;
+            margin: 0;
+        }
+        
+        .rotating-text {
+            font-size: 3rem;
+            font-weight: bold;
+            text-align: center;
+            color: #333;
+        }
+        
+        .static-text {
+            display: inline;
+        }
+        
+        .dynamic-text {
+            display: inline-block;
+            position: relative;
+            height: 3.5rem;
+            width: 12rem;
+            vertical-align: bottom;
+            overflow: hidden;
+        }
+        
+        .dynamic-text span {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            color: #ff6b6b;
+            animation: rotateWords 9s linear infinite 0s;
+        }
+        
+        .dynamic-text span:nth-child(2) {
+            animation-delay: 3s;
+        }
+        
+        .dynamic-text span:nth-child(3) {
+            animation-delay: 6s;
+        }
+        
+        @keyframes rotateWords {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            5% {
+                opacity: 1;
+                transform: translateY(0px);
+            }
+            25% {
+                opacity: 1;
+                transform: translateY(0px);
+            }
+            30% {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            100% {
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="rotating-text">
+        <span class="static-text">Discover</span>
+        <div class="dynamic-text">
+            <span>Live Music</span>
+            <span>Poetry</span>
+            <span>Screen Writers</span>
+        </div>
+        <span class="static-text">Near You</span>
+    </div>
+</body>
+</html>
