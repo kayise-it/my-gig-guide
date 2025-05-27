@@ -10,18 +10,14 @@ import API_BASE_URL from '../../api/config';
 import { useAuth } from '../../context/AuthContext';
 import { Link } from 'react-router-dom';
 import VenueCard from '@/components/Venue/VenueCard';
-import VenueModal from '../../components/Venue/VenueModal.jsx';
-import { VenueModalProvider } from '@/components/Venue/VenueModalContext';
-import { useVenueModal } from '@/components/Venue/VenueModalContext';
-
-
+import { useVenueModal } from "@/components/Venue/VenueModalContext";
 
 
 const CreateEvent = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser } = useAuth();
-const { openVenueModal } = useVenueModal();
+  const { openVenueModal } = useVenueModal();
   const artistId = currentUser.artist_id || location.state?.artistId; // Get artist ID from state if it exists
   const organiserId = currentUser.organiser_id || location.state?.organiserId; // Get organiser ID from state if it exists
   const { id } = useParams(); // Get event ID from URL if it exists
@@ -196,9 +192,7 @@ const { openVenueModal } = useVenueModal();
             Back to Events
           </button>
         </div>
-<button onClick={() => openVenueModal({ id: 1, name: 'Example Venue' })}>
-      Open Venue Modal
-    </button>
+
         <form onSubmit={handleSubmit} className="space-y-8 divide-y divide-gray-200">
           <div className="space-y-6">
             {/* Basic Information */}
@@ -287,9 +281,10 @@ const { openVenueModal } = useVenueModal();
                 ) : (
                   <div className="text-center text-gray-500 my-4">
                     No venues found. <br />
-                    <button onClick={() => setShowVenueModal(true)} className="mt-2">
+                    <button onClick={() => openVenueModal(true)} className="mt-2">
                       + Add a Venue
                     </button>
+                    
                   </div>
                 )}
               </div>
@@ -519,9 +514,6 @@ const { openVenueModal } = useVenueModal();
           </div>
         </form>
       </div>
-       <VenueModalProvider>
-
-       </VenueModalProvider>
     </div>
   );
 };

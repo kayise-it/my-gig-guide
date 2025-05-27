@@ -1,6 +1,8 @@
-import { useVenueModal } from '@/components/Venue/VenueModalContext';
+//File location: frontend/src/components/Venue/VenueModal.jsx
+import React from 'react';
+import { useVenueModal } from './VenueModalContext'; // ✅ Add this
 
-export const VenueModal = () => {
+const VenueModal = () => {
   const { isVenueModalOpen, currentVenue, closeVenueModal } = useVenueModal();
 
   if (!isVenueModalOpen) return null;
@@ -15,3 +17,5 @@ export const VenueModal = () => {
     </div>
   );
 };
+
+export default VenueModal;

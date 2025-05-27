@@ -1,39 +1,32 @@
+// frontend/src/context/VenueModalContext.jsx
 import { createContext, useContext, useState } from 'react';
 
 const VenueModalContext = createContext();
 
 export const VenueModalProvider = ({ children }) => {
-  const [isVenueModalOpen, setIsVenueModalOpen] = useState(false);
+  const [isVenueModalOpen, setVenueModalOpen] = useState(false);
   const [currentVenue, setCurrentVenue] = useState(null);
 
-  const openVenueModal = (venue) => {
+  const openVenueModal = (venue = null) => {
     setCurrentVenue(venue);
-    setIsVenueModalOpen(true);
+    setVenueModalOpen(true);
   };
 
   const closeVenueModal = () => {
-    setIsVenueModalOpen(false);
+    setVenueModalOpen(false);
     setCurrentVenue(null);
   };
 
   return (
-    <VenueModalContext.Provider
-      value={{
-        isVenueModalOpen,
-        currentVenue,
-        openVenueModal,
-        closeVenueModal
-      }}
-    >
+    <VenueModalContext.Provider value={{
+      isVenueModalOpen,
+      currentVenue,
+      openVenueModal,
+      closeVenueModal,
+    }}>
       {children}
     </VenueModalContext.Provider>
   );
 };
 
-export const useVenueModal = () => {
-  const context = useContext(VenueModalContext);
-  if (!context) {
-    throw new Error('useVenueModal must be used within a VenueModalProvider');
-  }
-  return context;
-};
+export const useVenueModal = () => useContext(VenueModalContext);
