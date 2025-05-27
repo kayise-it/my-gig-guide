@@ -5,8 +5,6 @@ import { ArrowLeftIcon, PhotoIcon, PencilIcon, MusicalNoteIcon, LinkIcon, UserIc
 import axios from 'axios';
 import PageHeader from '../../components/Includes/PageHeader';
 import DashboardBreadCrumb from '../../components/Includes/DashboardBreadCrumb';
-import ProfilePictureModal from '../../components/Artist/ProfilePictureModal';
-import EventCard from '../../components/Events/EventCard';
 import { Link } from 'react-router-dom';
 import ArtistProfileCard from '../../components/Artist/ArtistProfileCard';
 import ArtistQuickActions from '../../components/Artist/ArtistQuickActions';
@@ -15,10 +13,12 @@ import ArtistVenuesSection from '../../components/Artist/ArtistVenuesSection';
 import ArtistPreviousEvents from '../../components/Artist/ArtistPreviousEvents';
 import ArtistViewProfile from '../../components/Artist/ArtistViewProfile';
 import ArtistEditForm from '../../components/Artist/ArtistEditForm';
+import API_BASE_URL from '../../api/config';
 
 export default function ArtistDashboard() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const token = localStorage.getItem('token'); // or wherever your token is stored
+  const [tempImage, setTempImage] = useState(null);
+  const [artistSettings, setArtistSettings] = useState({});
   const [state, setState] = useState({
     isProfileModalOpen: false,
     artistData: null,
@@ -50,92 +50,58 @@ export default function ArtistDashboard() {
   const [editMode, setEditMode] = useState(false);
   const navigate = useNavigate();
 
+  const handleSaveModalProfilePicture = async (file) => {
+    try {
+      await handleProfilePicUpload(file);
+      setIsProfileModalOpen(false); // Close modal on successful upload
+    } catch (error) {
+      // Error is already logged by handleProfilePicUpload
+      // You might want to show a notification to the user here
+      console.error("Failed to upload from modal:", error);
+    }
+  };
+
   useEffect(() => {
-    const fetchArtistData = async () => {
+    const fetchAllData = async () => {
       try {
-        const userId = JSON.parse(localStorage.getItem('user')).id;
-        const response = await axios.get(`http://localhost:8000/api/artists/${userId}`);
+        const token = localStorage.getItem('token'); // or wherever your token is stored
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user || !user.id) throw new Error('User not found');
 
-        if (response.status === 200) {
-          setArtistData({
-            id: response.data.id || 'Not set',
-            userId: response.data.userId || 'Not set',
-            stage_name: response.data.stage_name || 'Not set',
-            real_name: response.data.real_name || 'Not set',
-            genre: response.data.genre || 'Not set',
-            bio: response.data.bio || 'No bio available',
-            phone_number: response.data.phone_number || 'Not provided',
-            instagram: response.data.instagram || '',
-            facebook: response.data.facebook || '',
-            twitter: response.data.twitter || '',
-            profile_picture: response.data.profile_picture || null
-          });
+        const [artistRes, eventsRes, activeEventsRes, venuesRes] = await Promise.all([
+          axios.get(`${API_BASE_URL}/api/artists/${user.id}`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API_BASE_URL}/api/artists/events_by_artist/${user.id}`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API_BASE_URL}/api/artists/events_active_by_artist/${user.id}`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API_BASE_URL}/api/artists/venues_by_artist/${user.id}`, { headers: { Authorization: `Bearer ${token}` } })
+        ]);
+        const { artist } = artistRes.data;
+        if (artist.settings) {
+          try {
+            const parsedSettings = typeof artist.settings === 'string'
+              ? JSON.parse(artist.settings)
+              : artist.settings;
 
+            setArtistSettings(parsedSettings);
+          } catch (error) {
+            console.error("Failed to parse artist settings:", error);
+          }
         }
+
+        setArtistData(artist);
+        setArtistEvents(eventsRes.data);
+        setArtistActiveEvents(activeEventsRes.data);
+        setArtistVenues(venuesRes.data);
       } catch (error) {
-        console.error('Error fetching artist data:', error);
-        setError('Failed to load artist data');
+        console.error('Error fetching data:', error);
+        setError('Failed to load data');
       } finally {
         setLoading(false);
       }
     };
 
-    const fetchArtistEvents = async () => {
-      try {
-        const userId = JSON.parse(localStorage.getItem('user')).id;
-        const response = await axios.get(`http://localhost:8000/api/artists/events_by_artist/${userId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}` // Pass the token here
-          }
-        });
-        if (response.status === 200) {
-          setArtistEvents(response.data);
-        }
-      } catch (error) {
-        console.error('Error fetching artist events:', error);
-        setError('Failed to load artist events');
-      }
-    };
-
-
-    const fetchActiveArtistEvents = async () => {
-      try {
-        const userId = JSON.parse(localStorage.getItem('user')).id;
-        const response = await axios.get(`http://localhost:8000/api/artists/events_active_by_artist/${userId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}` // Pass the token here
-          }
-        });
-        if (response.status === 200) {
-          setArtistActiveEvents(response.data);
-        }
-      } catch (error) {
-        console.error('Error fetching artist events:', error);
-        setError('Failed to load artist events');
-      }
-    };
-
-    const fetchArtistVenues = async () => {
-      try {
-        const userId = JSON.parse(localStorage.getItem('user')).id;
-        const response = await axios.get(`http://localhost:8000/api/artists/venues_by_artist/${userId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}` // Pass the token here
-          }
-        });
-        if (response.status === 200) {
-          setArtistVenues(response.data);
-        }
-      } catch (error) {
-        console.error('Error fetching artist events:', error);
-        setError('Failed to load artist events');
-      }
-    };
-    fetchArtistEvents();
-    fetchArtistData();
-    fetchActiveArtistEvents();
-    fetchArtistVenues();
+    fetchAllData();
   }, []);
+
 
   function formatDateToDDMMYYYY(dateInput) {
     const date = new Date(dateInput);
@@ -146,26 +112,40 @@ export default function ArtistDashboard() {
   }
 
   //uploadProfilePic We have set up a directory structure for uploading profile pictures. The folder path is “uploads/artist/{id}_{name}”, where {id} is the artist’s unique ID, and {name} is the artist’s name. Uploaded images are stored in this directory.
-  const handleProfilePicUpload = async (image) => {
-    try {
-      const formData = new FormData();
-      formData.append("profile_picture", image); // EXACT name should match
+  const handleProfilePicUpload = async (imageFile) => {
+  try {
+    const formData = new FormData();
 
-      const response = await axios.put(
-        `http://localhost:8000/api/artists/uploadprofilepicture/${artistData.userId}`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+    formData.append("profile_picture", imageFile); // ✅ Use the actual file object
+    formData.append("setting_name", artistSettings.setting_name);
+    formData.append("path", artistSettings.path);
+    formData.append("folder_name", artistSettings.folder_name);
+    formData.append("propic", artistSettings.setting_name);
+
+    const response = await axios.put(
+      `${API_BASE_URL}/api/artists/uploadprofilepicture/${artistData.userId}`,
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
         }
-      );
+      }
+    );
 
-      console.log("Profile picture uploaded:", response.data);
-    } catch (error) {
-      console.error("Error saving profile picture:", error);
+        console.log("Upload response:", response.data);
+
+        // ✅ Update artistData with new profile picture (this triggers re-render)
+    if (response.status === 200) {
+      setArtistData((prev) => ({
+        ...prev,
+        profile_picture: response.data.path
+      }));
     }
-  };
+  } catch (error) {
+    console.error("Error uploading profile picture:", error);
+  }
+};
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setArtistData(prev => ({
@@ -177,7 +157,7 @@ export default function ArtistDashboard() {
     e.preventDefault();
     try {
       const userId = JSON.parse(localStorage.getItem('user')).id;
-      const response = await axios.put(`http://localhost:8000/api/artists/edit/${userId}`, artistData, {
+      const response = await axios.put(`${API_BASE_URL}/api/artists/edit/${userId}`, artistData, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`
         }
@@ -238,37 +218,39 @@ export default function ArtistDashboard() {
       <PageHeader HeaderName="Artist Dashboard" />
       <div className="max-w-7xl mx-auto">
         <DashboardBreadCrumb breadcrumbs={breadcrumbs} />
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column */}
           <div className="lg:col-span-2 space-y-6">
-            <ArtistProfileCard 
+            <ArtistProfileCard
               artistData={artistData}
               editMode={editMode}
-              onEditToggle={() => setState(prev => ({...prev, editMode: !prev.editMode}))}
+              onEditToggle={() => setEditMode(!editMode)}
               isProfileModalOpen={isProfileModalOpen}
-              onProfileModalClose={() => setState(prev => ({...prev, isProfileModalOpen: false}))}
+              onProfileModalClose={() => setIsProfileModalOpen(false)}
+              onProfileModalOpen={() => setIsProfileModalOpen(true)}
+              artistSettings={artistSettings}
+              onSaveProfilePicture={handleSaveModalProfilePicture}
             />
-            
+
             {/* Profile Details Section */}
             {editMode ? (
-              <ArtistEditForm 
+              <ArtistEditForm
                 artistData={artistData}
                 onInputChange={handleInputChange}
                 onSubmit={handleSubmit}
-                onCancel={() => setState(prev => ({...prev, editMode: false}))}
+                onCancel={() => setState(prev => ({ ...prev, editMode: false }))}
               />
             ) : (
               <ArtistViewProfile artistData={artistData} />
             )}
-          <ArtistVenuesSection venues={artistVenues} />
+            <ArtistVenuesSection venues={artistVenues} />
           </div>
 
           {/* Right Column */}
           <div className="space-y-6">
             <ArtistQuickActions artistId={artistData?.userId} />
             <ArtistUpcomingEvents events={artistActiveEvents} />
-            
+
             <ArtistPreviousEvents events={artistEvents} />
           </div>
         </div>

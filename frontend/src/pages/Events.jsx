@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { FaCalendarAlt, FaMapMarkerAlt, FaMusic, FaSearch, FaSpinner } from 'react-icons/fa';
 import { format, parseISO } from 'date-fns';
+import API_BASE_URL from '../api/config';
 
 export default function Events() {
     const [events, setEvents] = useState([]);
@@ -13,7 +14,7 @@ export default function Events() {
     useEffect(() => {
       const fetchEvents = async () => {
         try {
-          const response = await axios.get('http://localhost:8000/api/events', {
+          const response = await axios.get(`${API_BASE_URL}/api/events`, {
             headers: {
               Authorization: `Bearer ${localStorage.getItem('token')}`
             }

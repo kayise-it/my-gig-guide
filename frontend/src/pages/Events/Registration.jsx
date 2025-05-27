@@ -78,7 +78,7 @@ export default function Registration() {
       });
 
       const response = await axios.post(
-        'http://localhost:8000/api/events/createevent',
+        `${API_BASE_URL}/api/events/createevent`,
         formDataToSend,
         {
           headers: {

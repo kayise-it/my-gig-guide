@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarIcon, ClockIcon, CurrencyDollarIcon, UserGroupIcon, MapPinIcon } from '@heroicons/react/24/outline';
+import { CalendarIcon, ClockIcon, CurrencyDollarIcon, PhotoIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
+import API_BASE_URL from '../../api/config';
 
 export default function ViewEvents() {
   const [events, setEvents] = useState([]);
@@ -16,16 +17,14 @@ export default function ViewEvents() {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const response = await axios.get(`http://localhost:8000/api/events`, {
-            headers: {
-              'Authorization': `Bearer ${token}` // Pass the token here
-            }
-          });        
-          if (!response.ok) throw new Error('Failed to fetch events');
-        const data = await response.json();
-        setEvents(data);
+        const response = await axios.get(`${API_BASE_URL}/api/events`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        setEvents(response.data);
       } catch (err) {
-        setError(err.message);
+        setError(err.response?.data?.message || err.message);
       } finally {
         setLoading(false);
       }
@@ -36,8 +35,8 @@ export default function ViewEvents() {
 
   // Filter events based on search and category
   const filteredEvents = events.filter(event => {
-    const matchesSearch = event.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         event.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = event.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || event.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });

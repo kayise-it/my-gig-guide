@@ -1,3 +1,4 @@
+/* /src/components/Artist/ProfilePictureUploader.jsx */
 import React, { useState, useRef } from 'react';
 import { PhotoIcon, UserIcon, XMarkIcon } from '@heroicons/react/24/outline';
 

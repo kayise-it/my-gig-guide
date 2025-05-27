@@ -36,7 +36,7 @@ export default function ArtistEditForm({
             type="text"
             name="real_name"
             id="real_name"
-            value={artistData.real_name}
+            value={artistData.real_name || ""}
             onChange={onInputChange}
             className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />

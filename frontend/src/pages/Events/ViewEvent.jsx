@@ -7,6 +7,7 @@ import { AuthContext } from '../../context/AuthContext';
 import DashboardBreadCrumb from '../../components/Includes/DashboardBreadCrumb';
 import VenueMap from '../../components/Map/VenueMap';
 import { venueService } from '../../api/venueService'; // You'll need to implement these API functions
+import API_BASE_URL from '../../api/config';
 
 export default function ViewEvent() {
     const { id } = useParams();
@@ -31,11 +32,12 @@ export default function ViewEvent() {
     const token = localStorage.getItem('token'); // or wherever your token is stored
     const [editMode, setEditMode] = useState(false);
 
+    console.log(currentUser.aclInfo.acl_name);
 
     useEffect(() => {
         const fetchEvent = async () => {
             try {
-                const response = await axios.get(`http://localhost:8000/api/events/${id}`);
+                const response = await axios.get(`${API_BASE_URL}/api/events/${id}`);
                 if (response.data.success) {
                     const eventData = response.data.event;
                     setEvent(eventData);
@@ -55,7 +57,7 @@ export default function ViewEvent() {
         const fetchArtistVenues = async () => {
             try {
                 const userId = JSON.parse(localStorage.getItem('user')).id;
-                const response = await axios.get(`http://localhost:8000/api/artists/venues_by_artist/${userId}`, {
+                const response = await axios.get(`${API_BASE_URL}/api/artists/venues_by_artist/${userId}`, {
                     headers: {
                         'Authorization': `Bearer ${token}` // Pass the token here
                     }
@@ -139,7 +141,7 @@ export default function ViewEvent() {
     if (!event) return <div className="text-center py-8">Event not found</div>;
 
     const breadcrumbs = [
-        { label: 'Dashboard', path: '/artists/dashboard' },
+        { label: 'Dashboard', path: `/${currentUser.aclInfo.acl_name}/dashboard` },
         { label: currentUser.username, path: '' },
     ];
     return (

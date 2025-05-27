@@ -35,27 +35,6 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white">
-      {/* Navigation */}
-      <nav className="px-6 py-4 border-b border-gray-700">
-        <div className="container mx-auto flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <FiMusic className="text-purple-500 text-2xl" />
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
-              GigGuide
-            </span>
-          </div>
-          <div className="hidden md:flex space-x-6">
-            <a href="#" className="hover:text-purple-400 transition">Home</a>
-            <a href="#" className="hover:text-purple-400 transition">Upcoming</a>
-            <a href="#" className="hover:text-purple-400 transition">Venues</a>
-            <a href="Event/Registration" className="hover:text-purple-400 transition">Add Event</a>
-          </div>
-          <button className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-md transition">
-            Sign In
-          </button>
-        </div>
-      </nav>
-
       {/* Hero Section */}
       <section className="py-20 px-6">
         <div className="container mx-auto text-center">

@@ -11,7 +11,6 @@ router.get("/", eventController.events);
 
 // Create new event
 router.post('/create_event', verifyToken, async (req, res) => {
-    console.log("QWeewqqweqwasqdcxsaqcaqsoicajscoiuasncoasnicasodiucn");
     try {
         // Validate request
         if (!req.body.name) {
@@ -33,6 +32,7 @@ router.post('/create_event', verifyToken, async (req, res) => {
         // Create event object
         const event = {
             userId: req.body.userId,
+            organiser_id: req.body.organiser_id,
             name: req.body.name,
             description: req.body.description || null,
             date: req.body.date,
@@ -41,8 +41,6 @@ router.post('/create_event', verifyToken, async (req, res) => {
             ticket_url: req.body.ticket_url || null,
         };
 
-
-        console.log("Event data:", event); // Log the event data for debugging
         const createdEvent = await Event.create(event);
 
         res.status(201).json({
@@ -95,14 +93,16 @@ router.put('/edit/:id', verifyToken, async (req, res) => {
     }
 });
 
-// Get single event by ID
+/**
+ * Get event by ID (duplicate of the route below, but without the typo in the error message)
+ */
 router.get('/:id', async (req, res) => {
     try {
         const event = await Event.findByPk(req.params.id);
         if (!event) {
             return res.status(404).json({
                 success: false,
-                message: "Event not 2323found"
+                message: "Event not found"
             });
         }
         res.status(200).json({
@@ -116,20 +116,23 @@ router.get('/:id', async (req, res) => {
         });
     }
 });
-
 // Get events for a specific organiser
 router.get('/organiser/:id', verifyToken, async (req, res) => {
     try {
-        const organiserId = req.params.id; // Use the dynamic ID]
-        console.log("Fetching events for organiser ID:", organiserId); // Log the ID for debugging
+        const organiserId = parseInt(req.params.id, 10);
+        
+
         const events = await Event.findAll({
             where: {
-                organiser_id: organiserId
-            }
+                organiser_id: organiserId  // Corrected: match the actual column name
+            },
+              logging: console.log // 👈 this logs the actual SQL to console
+
         });
+        console.log("Fetching events for userID:", req.params.id);
 
         if (!events.length) {
-            return res.status(404).json({
+            return res.status(200).json({
                 success: false,
                 message: "No events found for this organiser"
             });
@@ -140,6 +143,7 @@ router.get('/organiser/:id', verifyToken, async (req, res) => {
             events
         });
     } catch (error) {
+        console.error("Error fetching events:", error);
         res.status(500).json({
             success: false,
             message: error.message || "Error fetching events"

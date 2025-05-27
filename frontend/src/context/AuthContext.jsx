@@ -14,7 +14,6 @@ export const AuthProvider = ({ children }) => {
         if (token && user) {
             setCurrentUser(user);
         }
-
         setIsLoading(false);
     }, []);
 

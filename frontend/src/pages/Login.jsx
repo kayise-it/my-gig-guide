@@ -4,6 +4,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FaEnvelope, FaLock } from 'react-icons/fa';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import API_BASE_URL from '../api/config';
+
 
 export default function Login() {
   const [formData, setFormData] = useState({
@@ -48,7 +50,7 @@ export default function Login() {
     setErrors({});
 
     try {
-      const response = await axios.post('http://localhost:8000/api/auth/login', formData);
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, formData);
       console.log('Login successful:', response.data);
 
       if (response.data?.token && response.data?.user) {

@@ -18,7 +18,12 @@ module.exports = (sequelize, DataTypes) => {
     },
     userId: {
       type: DataTypes.INTEGER,
-    }
+    },
+        // Raw TEXT for storing JSON string
+    settings: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   });
 
   return Organiser;

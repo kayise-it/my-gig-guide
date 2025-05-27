@@ -1,4 +1,8 @@
+
 {
+  "name": "my gig guide",
+  "homepage": "http://wwwkayiseit.co.za/tesing",
+  "version": "0.1.0",
   "devDependencies": {
     "nodemon": "^3.1.10"
   },

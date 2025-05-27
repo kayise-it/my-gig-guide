@@ -65,6 +65,7 @@ export default function ArtistViewProfile({ artistData }) {
               >
                 <LinkIcon className="h-4 w-4 mr-1" />
                 Instagram: @{artistData.instagram}
+                
               </a>
             )}
             {artistData.twitter && (

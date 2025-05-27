@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useEffect } from 'react';
 import axios from 'axios';
-
+import API_BASE_URL from '../../api/config';
 
 const Dashboard = ({ organiser }) => {
   // Sample data - replace with actual data from props/API
@@ -17,7 +17,7 @@ const Dashboard = ({ organiser }) => {
 
   const handleDeleteEvent = async (eventId) => {
     if (!window.confirm('Are you sure you want to delete this event?')) return;
-    
+
     setLoading(true);
     setError(null);
 
@@ -36,7 +36,7 @@ const Dashboard = ({ organiser }) => {
       setLoading(false);
     }
   };
-  
+
   const stats = [
     { name: 'Total Events', value: 1, change: '+4%', changeType: 'positive' },
     { name: 'Upcoming Events', value: 1, change: '+2', changeType: 'positive' },
@@ -57,21 +57,26 @@ const Dashboard = ({ organiser }) => {
     const storedUser = JSON.parse(localStorage.getItem("user"));
     setUser(storedUser);
   }, []);
-  console.log("Events data:", events); // Log the events data for debugging
 
   // Fetch events after user is loaded
   useEffect(() => {
     if (user) {
       axios
-        .get(`http://localhost:8000/api/events/organiser/${user.id}`, {
+        .get(`${API_BASE_URL}/api/events/organiser/${user.organiser_id}`, {
           headers: {
             'Authorization': `Bearer ${token}` // Pass the token here
           }
         })
         .then((response) => {
-          setEvents(response.data.events);
+          console.log("Fetched events:", response.data.success); // Log fetched events
+          if (response.data.success) {
+            setEvents(response.data.events);
+          } else {
+            setError(response.data.message || 'Failed to fetch events');
+          }
+          setLoading(false);
         })
-        .catch((error) => console.error("Error fetching events:", error));
+        .catch((error) => console.error("Error fetchin2341/g events:", error));
     }
   }, [user]); // Depends on user state
 
@@ -153,7 +158,7 @@ const Dashboard = ({ organiser }) => {
               </div>
               <span className="font-medium">New Venue</span>
             </Link>
-           
+
           </div>
         </div>
 
@@ -166,59 +171,61 @@ const Dashboard = ({ organiser }) => {
             </Link>
           </div>
           <div className="divide-y divide-gray-200">
-  {events?.map((event) => (
-    <div key={event.id} className="px-4 py-4 sm:px-6 hover:bg-gray-50 transition-colors">
-      <div className="flex items-center justify-between">
-        <div>
-          <Link
-            to={`/organiser/dashboard/event/${event.id}`}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
-          >
-            {event.name}
-          </Link>
-          <p className="text-sm text-gray-500 mt-1">
-            {new Date(event.date).toLocaleDateString()} • {event.attendees} attendees
-          </p>
-        </div>
-        
-        <div className="flex items-center space-x-4">
-          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-            event.status === 'completed'
-              ? 'bg-green-100 text-green-800'
-              : event.status === 'upcoming'
-                ? 'bg-blue-100 text-blue-800'
-                : 'bg-gray-100 text-gray-800'
-          }`}>
-            {event.status}
-          </span>
-          
-          {/* Edit Link */}
-          <Link
-            to={`/organiser/dashboard/event/edit/${event.id}`}
-            className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
-            onClick={(e) => e.stopPropagation()} // Prevent row click from triggering
-          >
-            Edit
-          </Link>
-          
-          {/* Delete Link */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (window.confirm('Are you sure you want to delete this event?')) {
-                // Call your delete function here
-                handleDeleteEvent(event.id);
-              }
-            }}
-            className="text-red-600 hover:text-red-900 text-sm font-medium"
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
-  ))}
-</div>
+            {/* If the events */}
+            {loading && <div className="text-center py-8">Loading events...</div>}
+            {error && <div className="text-center py-8 text-red-500">{error} <Link to="/organiser/dashboard/events/new">Create Event</Link></div>}
+            {events?.map((event) => (
+              <div key={event.id} className="px-4 py-4 sm:px-6 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Link
+                      to={`/organiser/dashboard/event/${event.id}`}
+                      className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                    >
+                      {event.name}
+                    </Link>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {new Date(event.date).toLocaleDateString()} • {event.attendees} attendees
+                    </p>
+                  </div>
+
+                  <div className="flex items-center space-x-4">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${event.status === 'completed'
+                      ? 'bg-green-100 text-green-800'
+                      : event.status === 'upcoming'
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-gray-100 text-gray-800'
+                      }`}>
+                      {event.status}
+                    </span>
+
+                    {/* Edit Link */}
+                    <Link
+                      to={`/organiser/dashboard/event/edit/${event.id}`}
+                      className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+                      onClick={(e) => e.stopPropagation()} // Prevent row click from triggering
+                    >
+                      Edit
+                    </Link>
+
+                    {/* Delete Link */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm('Are you sure you want to delete this event?')) {
+                          // Call your delete function here
+                          handleDeleteEvent(event.id);
+                        }
+                      }}
+                      className="text-red-600 hover:text-red-900 text-sm font-medium"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Recent Activity */}

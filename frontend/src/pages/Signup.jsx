@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FaUser, FaEnvelope, FaLock, FaUserTag } from 'react-icons/fa';
 import axios from 'axios';
 import { FiMusic } from 'react-icons/fi';
+import API_BASE_URL from '../api/config';
 
 //get util function to validate username
 import { validateUsername } from '../utils/validation';
@@ -35,7 +36,7 @@ export default function Signup() {
     // Fetching ACL trusts from the API
     const fetchAclTrusts = async () => {
       try {
-        const response = await axios.get("http://localhost:8000/api/acl-trusts", {
+        const response = await axios.get(`${API_BASE_URL}/api/acl-trusts`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         });
         setAclTrusts(response.data);
@@ -81,7 +82,7 @@ export default function Signup() {
     setIsSubmitting(true);
 
     try {
-      const response = await axios.post('http://localhost:8000/api/auth/register', formData);
+      const response = await axios.post(`${API_BASE_URL}/api/auth/register`, formData);
       console.log('Signup successful:', response.data);
       navigate('/login'); // Redirect to login after successful signup
     } catch (error) {

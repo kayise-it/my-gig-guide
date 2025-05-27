@@ -6,14 +6,28 @@ import axios from 'axios';
 import DynamicEventButton from '../../components/Includes/DynamicEventButton';
 import DashboardBreadCrumb from '../../components/Includes/DashboardBreadCrumb';
 import PageHeader from '../../components/Includes/PageHeader';
+import API_BASE_URL from '../../api/config';
+import { useAuth } from '../../context/AuthContext';
+import { Link } from 'react-router-dom';
+import VenueCard from '@/components/Venue/VenueCard';
+import VenueModal from '../../components/Venue/VenueModal.jsx';
+import { VenueModalProvider } from '@/components/Venue/VenueModalContext';
+import { useVenueModal } from '@/components/Venue/VenueModalContext';
+
+
+
 
 const CreateEvent = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const artistId = location.state?.artistId;
+  const { currentUser } = useAuth();
+const { openVenueModal } = useVenueModal();
+  const artistId = currentUser.artist_id || location.state?.artistId; // Get artist ID from state if it exists
+  const organiserId = currentUser.organiser_id || location.state?.organiserId; // Get organiser ID from state if it exists
   const { id } = useParams(); // Get event ID from URL if it exists
   const [formData, setFormData] = useState({
-    userId: artistId,
+    userId: artistId || null,
+    organiser_id: organiserId || null,
     name: '',
     description: '',
     date: '',
@@ -26,12 +40,13 @@ const CreateEvent = () => {
     poster: null,
     gallery: [],
   });
-  const userId = JSON.parse(localStorage.getItem('user')).id;
+
+
   const { id: eventId } = useParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+  const [venues, setVenues] = useState({});
   const [apiError, setApiError] = useState(null);
-  const [user, setUser] = useState(null);
   const token = localStorage.getItem('token'); // or wherever your token is stored
 
   useEffect(() => {
@@ -39,11 +54,12 @@ const CreateEvent = () => {
     if (id) {
       fetchEventDetails();
     }
+    fetchVenues();
   }, [id]);
 
   const fetchEventDetails = async () => {
     try {
-      const response = await axios.get(`http://localhost:8000/api/events/${id}`, {
+      const response = await axios.get(`${API_BASE_URL}/api/events/${id}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
@@ -60,13 +76,31 @@ const CreateEvent = () => {
         booked_artists: event.booked_artists || '',
         category: event.category || '',
         capacity: event.capacity || '',
-        venue_id: 12890,
+        venue_id: 0,
         poster: event.poster || null,
         gallery: event.gallery ? event.gallery.split(',') : [],
       });
     } catch (error) {
       console.error("Failed to load event data:", error);
       setApiError("Failed to load event data.");
+    }
+  };
+
+  const fetchVenues = async () => {
+    /* Try to get the vunues for this currentUser.id */
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/venues/${currentUser.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setVenues(response.data.venues || []);
+    } catch (error) {
+      console.error("Failed to fetch venues:", error);
+      setApiError("Failed to fetch venues.");
     }
   };
 
@@ -99,41 +133,25 @@ const CreateEvent = () => {
       //if artistId is set
       let eventData = {};
 
-      if (artistId) {
-        eventData = {
-          userId: formData.userId,
-          name: formData.name,
-          description: formData.description,
-          date: formData.date,
-          time: formData.time,
-          price: formData.price || null,
-          ticket_url: formData.ticket_url || null,
-          booked_artists: formData.booked_artists || null,
-          category: formData.category || null,
-          capacity: formData.capacity || null,
-          poster: formData.poster || null,
-          gallery: formData.gallery.join(','),
-        };
-      } else {
-        eventData = {
-          userId: formData.userId,
-          name: formData.name,
-          description: formData.description,
-          date: formData.date,
-          time: formData.time,
-          price: formData.price || null,
-          ticket_url: formData.ticket_url || null,
-          booked_artists: formData.booked_artists || null,
-          category: formData.category || null,
-          capacity: formData.capacity || null,
-          poster: formData.poster || null,
-          gallery: formData.gallery.join(','),
-        };
-      }
+      eventData = {
+        userId: formData.userId,
+        organiser_id: formData.organiser_id,
+        name: formData.name,
+        description: formData.description,
+        date: formData.date,
+        time: formData.time,
+        price: formData.price || null,
+        ticket_url: formData.ticket_url || null,
+        booked_artists: formData.booked_artists || null,
+        category: formData.category || null,
+        capacity: formData.capacity || null,
+        poster: formData.poster || null,
+        gallery: formData.gallery.join(','),
+      };
       let response;
       if (id) {
         // edit existing event
-        response = await axios.put(`http://localhost:8000/api/events/edit/${id}`, eventData, {
+        response = await axios.put(`${API_BASE_URL}/api/events/edit/${id}`, eventData, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`
           }
@@ -141,14 +159,15 @@ const CreateEvent = () => {
         console.log('Eveupdated successfully:', response);
       } else {
         // 
-        console.log('Creating new event:');
-        response = await axios.post('http://localhost:8000/api/events/create_event', eventData, {
+        console.log('Creating new event:' + JSON.stringify(eventData));
+        response = await axios.post(`${API_BASE_URL}/api/events/create_event`, eventData, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`
           }
         });
       }
-      navigate(`/artists/dashboard/event/${response.data.eventId}`);
+
+      navigate(`/${currentUser.aclInfo.acl_name}/dashboard/event/${response.data.eventId}`);
     } catch (error) {
       console.error('Event submission error:', error);
       setApiError(error.response?.data?.message || 'Failed to submit event');
@@ -158,8 +177,8 @@ const CreateEvent = () => {
   };
 
   const breadcrumbs = [
-    { label: 'Dashboard', path: '/organiser/dashboard' },
-    { label: 'Organisation Profile', path: '/organiser/dashboard/organisation-profile' },
+    { label: 'Dashboard', path: `/${currentUser.aclInfo.acl_name}/dashboard` },
+    { label: `Create Event`, path: `${currentUser.aclInfo.acl_name}/dashboard/organisation-profile` },
   ];
 
   return (
@@ -167,7 +186,6 @@ const CreateEvent = () => {
     <div className="min-h-screen bg-gray-50">
       <PageHeader HeaderName="Create New Event" />
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-
         <div className="flex justify-between items-stretch w-full">
           <DashboardBreadCrumb breadcrumbs={breadcrumbs} />
           <button
@@ -178,15 +196,18 @@ const CreateEvent = () => {
             Back to Events
           </button>
         </div>
-
+<button onClick={() => openVenueModal({ id: 1, name: 'Example Venue' })}>
+      Open Venue Modal
+    </button>
         <form onSubmit={handleSubmit} className="space-y-8 divide-y divide-gray-200">
           <div className="space-y-6">
             {/* Basic Information */}
             <div>
               <h2 className="text-xl font-medium text-gray-900 mb-4">Basic Information</h2>
-              <input type="hidden" name="theArtistID" value={artistId} />
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-6">
-                <div className="sm:col-span-6">
+              <input type="hidden" name="artist_id" value={artistId} />
+              <input type="hidden" name="organiser_id" value={organiserId} />
+              <div className="grid grid-cols-3 bg-red-500">
+                <div className="">
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                     Event Name *
                   </label>
@@ -201,7 +222,7 @@ const CreateEvent = () => {
                   {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
                 </div>
 
-                <div className="sm:col-span-6">
+                <div className="">
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700">
                     Description
                   </label>
@@ -215,19 +236,21 @@ const CreateEvent = () => {
                   />
                 </div>
 
-                <div className="sm:col-span-3">
-                  <label htmlFor="date" className="block text-sm font-medium text-gray-700">
-                    Date *
-                  </label>
-                  <input
-                    type="date"
-                    name="date"
-                    id="date"
-                    value={formData.date}
-                    onChange={handleChange}
-                    className={`mt-1 block w-full border ${errors.date ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                  />
-                  {errors.date && <p className="mt-1 text-sm text-red-600">{errors.date}</p>}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="">
+                    <label htmlFor="date" className="block text-sm font-medium text-gray-700">
+                      Date *
+                    </label>
+                    <input
+                      type="date"
+                      name="date"
+                      id="date"
+                      value={formData.date}
+                      onChange={handleChange}
+                      className={`mt-1 block w-full border ${errors.date ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                    />
+                    {errors.date && <p className="mt-1 text-sm text-red-600">{errors.date}</p>}
+                  </div>
                 </div>
 
                 <div className="sm:col-span-3">
@@ -247,6 +270,30 @@ const CreateEvent = () => {
               </div>
             </div>
 
+            {/* Venue Details */}
+            <div className="bg-slate-100 rounded-lg p-6 border">
+              <h2 className="text-xl font-medium text-gray-900 mb-4">Venue Details</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+                {/* Vunue Card */}
+                {venues && venues.length > 0 ? (
+                  venues.map(venue => (
+                    <VenueCard
+                      key={venue.id}
+                      venue={venue}
+                      who={`${currentUser.aclInfo.acl_name}/dashboard`}
+                    />
+                  ))
+                ) : (
+                  <div className="text-center text-gray-500 my-4">
+                    No venues found. <br />
+                    <button onClick={() => setShowVenueModal(true)} className="mt-2">
+                      + Add a Venue
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
             {/* Event Details */}
             <div className="pt-6">
               <h2 className="text-xl font-medium text-gray-900 mb-4">Event Details</h2>
@@ -472,6 +519,9 @@ const CreateEvent = () => {
           </div>
         </form>
       </div>
+       <VenueModalProvider>
+
+       </VenueModalProvider>
     </div>
   );
 };

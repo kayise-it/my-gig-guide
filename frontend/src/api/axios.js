@@ -1,15 +1,11 @@
-//file: src/api/axios.js
 import axios from 'axios';
-
-// Determine the base URL based on the environment
-const baseURL ='http://localhost:8000/api';
+import API_BASE_URL from './config';
 
 const instance = axios.create({
-  baseURL,
+  baseURL: API_BASE_URL,
   withCredentials: true,
 });
 
-// Add request interceptor (optional: Add auth token if available)
 instance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -21,7 +17,6 @@ instance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Add response interceptor for handling errors
 instance.interceptors.response.use(
   (response) => response,
   (error) => {

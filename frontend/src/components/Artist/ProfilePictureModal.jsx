@@ -2,33 +2,37 @@
 import React, { useState, useRef } from 'react';
 import { XMarkIcon, ArrowPathIcon, CheckIcon } from '@heroicons/react/24/outline';
 
-const ProfilePictureModal = ({ isOpen, onClose, initialImage, onSave }) => {
+const ProfilePictureModal = ({ isOpen, onClose, initialImage, onSave, settings }) => {
   const [image, setImage] = useState(initialImage);
   const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef(null);
+  const [rawFile, setRawFile] = useState(null);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      setRawFile(file); // ✅ store the File object for upload
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImage(reader.result);
+        setImage(reader.result); // preview
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSave = async () => {
-    setIsLoading(true);
-    try {
-      await onSave(image);
-      onClose();
-    } catch (error) {
-      console.error("Error saving profile picture:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+const handleSave = async () => {
+  setIsLoading(true);
+  try {
+    const destinationPath = settings.path + settings.folder_name;
+    await onSave(rawFile, destinationPath); // ✅ send actual file
+    onClose();
+  } catch (error) {
+    console.error("Error saving profile picture:", error);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   if (!isOpen) return null;
 
@@ -41,13 +45,13 @@ const ProfilePictureModal = ({ isOpen, onClose, initialImage, onSave }) => {
             <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
-        
+
         <div className="p-6 flex flex-col items-center">
           <div className="relative mb-6">
             {image ? (
-              <img 
-                src={image} 
-                alt="Preview" 
+              <img
+                src={image}
+                alt="Preview"
                 className="w-64 h-64 rounded-full object-cover border-4 border-white shadow-lg"
               />
             ) : (

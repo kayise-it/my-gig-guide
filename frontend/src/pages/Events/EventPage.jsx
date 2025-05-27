@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
+import API_BASE_URL from '../../api/config';
 
 export default function EventPage() {
   const { id } = useParams();
@@ -11,7 +12,7 @@ export default function EventPage() {
   useEffect(() => {
     const fetchEvent = async () => {
       try {
-        const response = await axios.get(`http://localhost:8000/api/events/${id}`);
+        const response = await axios.get(`${API_BASE_URL}/api/events/${id}`);
         if (response.data.success) {
           setEvent(response.data.event);
         } else {

@@ -2,32 +2,41 @@
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
 import Layout from './components/Layout';
-import AboutUs from "./pages/AboutUs";
+
+/* Owners */
 import AdminDashboard from "./pages/AdminDashboard";
+import Dashboard from "./pages/Dashboard/Dashboard";
+
+/* Public Pages */
+import Home from "./pages/Home";
+import AboutUs from "./pages/AboutUs";
+import Contact from "./pages/Contact";
+import Venues from "./pages/Venues";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+
+/* Artists */
 import ArtistDashboard from "./pages/Artists/dashboard";
 import ArtistRegistration from "./pages/Artists/ArtistRegistration.jsx";
 import Artists from "./pages/Artists.jsx";
-import Contact from "./pages/Contact";
-import Dashboard from "./pages/Dashboard/Dashboard";
+import ShowArtist from "./pages/Public/ShowArtist";
+
+/* Organisers */
+import OrganiserDashboard from "./pages/Organiser/Dashboard.jsx";
+import OrganisationProfile from "./pages/Organiser/Dashboard/OrganisationProfile";
+import newOrganiserVenue from "./pages/Organiser/Dashboard/Venues/newOrganiserVenue";
+
+/* Events */
 import Events from "./pages/Events.jsx";
 import EventRegistration from "./pages/Events/Registration.jsx";
 import ViewEvents from "./pages/Events/ViewEvents.jsx";
 import ViewEvent from "./pages/Events/ViewEvent.jsx";
+import ShowEvent from "./pages/Public/ShowEvent.jsx";
+import CreateEvent from "./pages/Organiser/CreateEvent";
 
+/* Venues */
 import ViewVenue from "./pages/Venue/ViewVenue";
 import NewVenue from "./pages/Venue/NewVenue";
-
-import Home from "./pages/Home";
-import Login from "./pages/Login";
-import OrganiserDashboard from "./pages/Organiser/Dashboard.jsx";
-import CreateEvent from "./pages/Organiser/CreateEvent";
-import OrganisationProfile from "./pages/Organiser/Dashboard/OrganisationProfile";
-import newOrganiserVenue from "./pages/Organiser/Dashboard/Venues/newOrganiserVenue";
-
-
-import Signup from "./pages/Signup";
-import Venues from "./pages/Venues";
-
 
 function App() {
   return (
@@ -37,12 +46,13 @@ function App() {
         <Route path="/" element={<Layout><Home /></Layout>} />
         <Route path="/about" element={<Layout><AboutUs /></Layout>} />
         <Route path="/artists" element={<Layout><Artists /></Layout>} />
+        <Route path="/Artists/:artist_id" element={<Layout><ShowArtist /></Layout>} />
         <Route path="/artist-registration" element={<Layout><ArtistRegistration /></Layout>} />
         <Route path="/contact" element={<Layout><Contact /></Layout>} />
         <Route path="/events" element={<Layout><Events /></Layout>} />
         <Route path="/venues" element={<Layout><Venues /></Layout>} />
         <Route path="/Event/Registration" element={<Layout><EventRegistration /></Layout>} />
-        <Route path="/events/:id" element={<Layout><ViewEvent /></Layout>} />
+        <Route path="/events/:id" element={<Layout><ShowEvent /></Layout>} />
         <Route path="/events/" element={<Layout><ViewEvents /></Layout>} />
 
         {/* Authentication Routes */}

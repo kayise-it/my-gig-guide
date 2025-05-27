@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { FaMusic, FaSearch, FaSpinner } from 'react-icons/fa';
+import API_BASE_URL from '../api/config';
 
 export default function ArtistPage() {
   const [artists, setArtists] = useState([]);
@@ -11,7 +12,7 @@ export default function ArtistPage() {
   useEffect(() => {
     const fetchArtists = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/api/artists', {
+        const response = await axios.get(`${API_BASE_URL}/api/artists`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`
           }
@@ -94,9 +95,13 @@ export default function ArtistPage() {
                   <span className="text-xs text-gray-500">
                     Joined: {new Date(artist.createdAt).toLocaleDateString()}
                   </span>
-                  <button className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+
+                  <a
+                    href={`/Artists/${artist.id}`}
+                    className="inline-block bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition-colors duration-200 font-medium text-sm"
+                  >
                     View Profile
-                  </button>
+                  </a>
                 </div>
               </div>
             </div>

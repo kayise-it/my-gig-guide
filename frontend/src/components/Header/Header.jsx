@@ -1,21 +1,22 @@
 // src/components/Header/Header.jsx
-import { useState } from 'react';
+import { useState, useEffect, use } from 'react';
 import { Link } from 'react-router-dom';
 import { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import { FiMusic } from 'react-icons/fi';
 import { FaUser, FaSignOutAlt, FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import DisplayRoleName from '../../components/DisplayRoleName';
 
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const { currentUser, logout } = useContext(AuthContext);
+  
 
-  // Debugging: Log the currentUser to verify authentication status
-  console.log('Current User:', currentUser);
 
   return (
-    <header className="bg-indigo-100 text-white shadow-md">
+
+    <header className="bg-indigo-100 text-white bg-gradient-to-b from-gray-900 to-gray-800 shadow-md">
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
           {/* Logo/Brand */}
@@ -26,14 +27,17 @@ const Header = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
-            <Link to="/discover" className="hover:text-indigo-200 transition">
-              Discover
+            <Link to="/Events" className="hover:text-indigo-200 transition">
+              Events
             </Link>
-            <Link to="/library" className="hover:text-indigo-200 transition">
-              My Library
+            <Link to="/Artists" className="hover:text-indigo-200 transition">
+              Artists
             </Link>
-            <Link to="/playlists" className="hover:text-indigo-200 transition">
-              Playlists
+            <Link to="/about" className="hover:text-indigo-200 transition">
+              About Us
+            </Link>
+            <Link to="/Contact" className="hover:text-indigo-200 transition">
+              Contact Us
             </Link>
 
             {/* User Dropdown - Only show if currentUser exists */}
@@ -50,7 +54,7 @@ const Header = () => {
                 {isUserDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 z-50">
                     <Link
-                      to="/profile"
+                      to="/organiser/dashboard"
                       className="block px-4 py-2 text-gray-800 hover:bg-indigo-50 transition"
                       onClick={() => setIsUserDropdownOpen(false)}
                     >
@@ -120,8 +124,8 @@ const Header = () => {
             {currentUser ? (
               <>
                 <Link
-                  to="/profile"
-                  className="block py-2 hover:bg-indigo-800 px-2 rounded transition flex items-center space-x-2"
+                  to="/organiser/dashboard"
+                  className="block py-2 hover:bg-indigo-800 px-2 rounded transition items-center space-x-2"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   <FaUser size={14} />

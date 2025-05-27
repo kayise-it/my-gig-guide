@@ -1,12 +1,13 @@
 // src/api/venueService.js
 import axios from 'axios';
+import API_BASE_URL from '../api/config';
 
-const API_URL = 'http://localhost:8000/api';
+const API_URL = `${API_BASE_URL}/api`;
 
 export const venueService = {
   createVenue: async (venueData) => {
     try {
-      const response = await axios.post(`${API_URL}/venue/createVenue`, venueData, {
+      const response = await axios.post(`${API_BASE_URL}/venue/createVenue`, venueData, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
