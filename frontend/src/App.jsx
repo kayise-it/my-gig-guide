@@ -22,10 +22,10 @@ import Artists from "./pages/Artists.jsx";
 import ShowArtist from "./pages/Public/ShowArtist";
 
 /* Organisers */
-import OrganiserDashboard from "./pages/Organiser/Dashboard.jsx";
+import OrganiserDashboard from "./pages/Organiser/Dashboard";
 import OrganisationProfile from "./pages/Organiser/Dashboard/OrganisationProfile";
 import NewOrganiserVenue from "./pages/Organiser/Dashboard/Venues/NewOrganiserVenue";
-import OrganiserVenues from "./pages/Organiser/Dashboard/Venues/Venues.jsx";
+import OrganiserVenues from "./pages/Organiser/Dashboard/Venues/Venues.";
 
 /* Events */
 import Events from "./pages/Events.jsx";
