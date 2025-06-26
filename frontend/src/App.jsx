@@ -29,10 +29,10 @@ import OrganiserVenues from "./pages/Organiser/Dashboard/Venues/Venues";
 
 /* Events */
 import Events from "./pages/Events.jsx";
-import EventRegistration from "./pages/Events/Registration.jsx";
-import ViewEvents from "./pages/Events/ViewEvents.jsx";
-import ViewEvent from "./pages/Events/ViewEvent.jsx";
-import ShowEvent from "./pages/Public/ShowEvent.jsx";
+import EventRegistration from "./pages/Events/Registration";
+import ViewEvents from "./pages/Events/ViewEvents";
+import ViewEvent from "./pages/Events/ViewEvent";
+import ShowEvent from "./pages/Public/ShowEvent";
 import CreateEvent from "./pages/Organiser/CreateEvent";
 
 /* Venues */
