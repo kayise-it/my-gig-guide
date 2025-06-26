@@ -10,7 +10,7 @@ export default function ArtistVenuesSection({ venues }) {
           to="/artists/dashboard/venue/new"
           className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
         >
-          Add Venue
+          Add V3enue
         </Link>
       </div>
       <div className="grid grid-cols-4 gap-4 mt-4">

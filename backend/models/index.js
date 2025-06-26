@@ -2,6 +2,7 @@ const dbConfig = require("../config/db.config.js");
 const { Sequelize, DataTypes } = require("sequelize");
 const bcrypt = require('bcrypt');
 
+// ✅ Initialize Sequelize
 const sequelize = new Sequelize(dbConfig.DB, dbConfig.USER, dbConfig.PASSWORD, {
   host: dbConfig.HOST,
   dialect: dbConfig.dialect,
@@ -12,7 +13,7 @@ const db = {};
 db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
-// ✅ Load all models
+// ✅ Load models
 db.acl_trust = require("./acl_trust.model.js")(sequelize, DataTypes);
 db.user = require("./user.model.js")(sequelize, DataTypes);
 db.artist = require("./artist.model.js")(sequelize, DataTypes);
@@ -22,19 +23,27 @@ db.event = require("./event.model.js")(sequelize, DataTypes);
 db.event_artist = require("./event_artist.model.js")(sequelize, DataTypes);
 db.favorites = require("./favorite.model.js")(sequelize, DataTypes);
 
-// ✅ Automatically call associate() for each model if defined
+// ✅ Define model relationships
+db.user.hasMany(db.venue, { foreignKey: 'userId' });
+db.venue.belongsTo(db.user, { foreignKey: 'userId' });
+
+db.organiser.hasMany(db.venue, { foreignKey: 'organiser_id' });
+db.venue.belongsTo(db.organiser, { foreignKey: 'organiser_id' });
+
+db.artist.hasMany(db.venue, { foreignKey: 'artist_id' });
+db.venue.belongsTo(db.artist, { foreignKey: 'artist_id' });
+
+// (Optional) Enable future use of associate() per model
 Object.keys(db).forEach((modelName) => {
   if (db[modelName].associate) {
     db[modelName].associate(db);
   }
 });
 
-// ✅ Sync all tables and insert dummy data
+// ✅ Initial Setup: Insert roles and dummy data
 (async () => {
   try {
-    await sequelize.sync();
-
-    // Insert ACL roles if not present
+    // ACL Trust roles
     const aclCount = await db.acl_trust.count();
     if (aclCount === 0) {
       await db.acl_trust.bulkCreate([
@@ -48,7 +57,7 @@ Object.keys(db).forEach((modelName) => {
       console.log("✅ ACL trust roles inserted successfully.");
     }
 
-    // Create admin user if not exists
+    // Admin user
     const [admin, created] = await db.user.findOrCreate({
       where: { email: "thandov.hlophe@gmail.com" },
       defaults: {
@@ -64,7 +73,7 @@ Object.keys(db).forEach((modelName) => {
       console.log("ℹ️ Admin user already exists");
     }
 
-    // Create dummy artist profile
+    // Dummy artist profile
     const artistExists = await db.artist.findOne({ where: { userId: admin.id } });
 
     if (!artistExists) {

@@ -92,7 +92,7 @@ export default function ArtistDashboard() {
         setArtistActiveEvents(activeEventsRes.data);
         setArtistVenues(venuesRes.data);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching Artist data dashboard:', error);
         setError('Failed to load data');
       } finally {
         setLoading(false);
@@ -113,38 +113,38 @@ export default function ArtistDashboard() {
 
   //uploadProfilePic We have set up a directory structure for uploading profile pictures. The folder path is “uploads/artist/{id}_{name}”, where {id} is the artist’s unique ID, and {name} is the artist’s name. Uploaded images are stored in this directory.
   const handleProfilePicUpload = async (imageFile) => {
-  try {
-    const formData = new FormData();
+    try {
+      const formData = new FormData();
 
-    formData.append("profile_picture", imageFile); // ✅ Use the actual file object
-    formData.append("setting_name", artistSettings.setting_name);
-    formData.append("path", artistSettings.path);
-    formData.append("folder_name", artistSettings.folder_name);
-    formData.append("propic", artistSettings.setting_name);
+      formData.append("profile_picture", imageFile); // ✅ Use the actual file object
+      formData.append("setting_name", artistSettings.setting_name);
+      formData.append("path", artistSettings.path);
+      formData.append("folder_name", artistSettings.folder_name);
+      formData.append("propic", artistSettings.setting_name);
 
-    const response = await axios.put(
-      `${API_BASE_URL}/api/artists/uploadprofilepicture/${artistData.userId}`,
-      formData,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+      const response = await axios.put(
+        `${API_BASE_URL}/api/artists/uploadprofilepicture/${artistData.userId}`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
         }
+      );
+
+      console.log("Upload response:", response.data);
+
+      // ✅ Update artistData with new profile picture (this triggers re-render)
+      if (response.status === 200) {
+        setArtistData((prev) => ({
+          ...prev,
+          profile_picture: response.data.path
+        }));
       }
-    );
-
-        console.log("Upload response:", response.data);
-
-        // ✅ Update artistData with new profile picture (this triggers re-render)
-    if (response.status === 200) {
-      setArtistData((prev) => ({
-        ...prev,
-        profile_picture: response.data.path
-      }));
+    } catch (error) {
+      console.error("Error uploading profile picture:", error);
     }
-  } catch (error) {
-    console.error("Error uploading profile picture:", error);
-  }
-};
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

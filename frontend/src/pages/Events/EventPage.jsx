@@ -45,14 +45,14 @@ export default function EventPage() {
         <p>{event.description}</p>
       </div>
       {event.ticket_url && (
-        <a 
+        {/* <a 
           href={event.ticket_url} 
           target="_blank" 
           rel="noopener noreferrer"
           className="mt-6 inline-block bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700"
         >
           Get Tickets
-        </a>
+        </a> */}
       )}
     </div>
   );

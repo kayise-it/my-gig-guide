@@ -9,6 +9,7 @@ const ShowEvent = () => {
     const [event, setEvent] = React.useState(null);
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState(null);
+    const [venue, setVenue] = React.useState(null);
 
     React.useEffect(() => {
         const fetchEvent = async () => {
@@ -24,6 +25,53 @@ const ShowEvent = () => {
 
         fetchEvent();
     }, [id]);
+
+    
+
+
+    React.useEffect(() => {
+        if (event && event.organiser_id) {
+            console.log('Yebo yes');
+
+            // Fetch organiser settings and extract folder_name and path
+            axios.get(`${API_BASE_URL}/api/organisers/${event.organiser_id}/settings`)
+                .then(res => {
+                    const { folder_name, path } = res.data || {};
+                    console.log('Organiser folder_name:', folder_name, 'path:', path);
+                    // You can set state here if you want to use these values in the component
+                })
+                .catch(err => {
+                    console.error('Failed to fetch organiser settings:', err);
+                });
+        }
+        
+    }, [event]);
+
+    // take event.venue_id and go find the venue details
+    React.useEffect(() => {
+        if (event && event.venue_id) {
+            axios.get(`${API_BASE_URL}/api/venues/${event.venue_id}`)
+                .then(res => {
+                    const venue = res.data.venue;
+                    // Update the event with venue details
+                    setEvent(prevEvent => ({
+                        ...prevEvent,
+                        venue_id: venue.name || 'Venue not specified',
+                        address: venue.address || 'Address not specified',
+                    }));
+                })
+                .catch(err => {
+                    console.error('Failed to fetch venue details:', err);
+                    // Optionally set a default value or handle the error
+                    setEvent(prevEvent => ({
+                        ...prevEvent,
+                        venue_id: 'Venue not specified',
+                        address: 'Address not specified',
+                    }));
+                });
+        }
+    }, [event]);
+
 
     if (loading) return <div className="text-center py-8">Loading...</div>;
     if (error) return <div className="text-center py-8 text-red-500">{error}</div>;
@@ -67,7 +115,7 @@ const ShowEvent = () => {
                         <img
                             src={event.poster}
                             alt={event.name}
-                            className="w-full h-64 object-cover rounded-lg mb-4"
+                            className="w-full h-64 object-cover bg-slate-100 rounded-lg mb-4"
                         />
                     )}
                 </div>
@@ -90,7 +138,7 @@ const ShowEvent = () => {
                             <h2 className="text-xl font-semibold mb-2">Address</h2>
                             <div className="flex items-center text-gray-700">
                                 <MapPinIcon className="h-5 w-5 mr-2" />
-                                <p>{event.venue_id?.address || 'Address not specified'}</p>
+                                <p>{event.venue_id || 'Address not specified'}</p>
                             </div>
                         </div>
 
@@ -111,17 +159,7 @@ const ShowEvent = () => {
                             </div>
                         )}
 
-                        {/* Ticket Button */}
-                        {event.ticket_url && (
-                            <a
-                                href={event.ticket_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-3 px-4 rounded-md mb-4 transition-colors"
-                            >
-                                Get Tickets
-                            </a>
-                        )}
+   
 
                         {/* Add to Calendar */}
                         <button className="w-full flex items-center justify-center border border-gray-300 hover:bg-gray-100 py-2 px-4 rounded-md mb-6 transition-colors">

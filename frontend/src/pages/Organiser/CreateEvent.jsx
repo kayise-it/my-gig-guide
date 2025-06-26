@@ -9,41 +9,81 @@ import PageHeader from '../../components/Includes/PageHeader';
 import API_BASE_URL from '../../api/config';
 import { useAuth } from '../../context/AuthContext';
 import { Link } from 'react-router-dom';
-import VenueCard from '@/components/Venue/VenueCard';
-import { useVenueModal } from "@/components/Venue/VenueModalContext";
-
+import { useVenueModal } from "../../components/Venue/VenueModalContext";
+import OrganiserPosterUpload from '../../components/Events/OrganiserPosterUpload';
+import GalleryUploader from '../../components/Events/GalleryUploader';
+import { venueService } from '../../api/venueService'; // You'll need to implement these API functions
 
 const CreateEvent = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [loading, setLoading] = useState(true);
   const { currentUser } = useAuth();
   const { openVenueModal } = useVenueModal();
   const artistId = currentUser.artist_id || location.state?.artistId; // Get artist ID from state if it exists
   const organiserId = currentUser.organiser_id || location.state?.organiserId; // Get organiser ID from state if it exists
   const { id } = useParams(); // Get event ID from URL if it exists
+  const userId = JSON.parse(localStorage.getItem('user')).id;
   const [formData, setFormData] = useState({
-    userId: artistId || null,
+    userId: userId || artistId || null,
     organiser_id: organiserId || null,
+    venue_id: '',
     name: '',
     description: '',
     date: '',
     time: '',
     price: '',
     ticket_url: '',
+    poster: '',
     booked_artists: '',
     category: '',
     capacity: '',
-    poster: null,
     gallery: [],
   });
+  
 
 
   const { id: eventId } = useParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [venues, setVenues] = useState({});
+  const [organiser, setOrganiser] = useState({});
   const [apiError, setApiError] = useState(null);
   const token = localStorage.getItem('token'); // or wherever your token is stored
+  const [organiserSettings, setOrganiserSettings] = useState({});
+  const [user, setUser] = useState(null);
+  const [orgFolder, setOrgFolder] = useState('');
+  const [posterFileName, setPosterFileName] = useState('');
+
+  const handlePosterSave = (fileName) => {
+    const newpath = orgFolder.replace('../frontend/public', '');
+    //alert("Poster file saved: " + newpath+"/"+fileName);
+    setPosterFileName(newpath+"/"+fileName); // ✅ Update posterFileName with full path
+
+    setFormData((prev) => ({
+      ...prev,
+      poster: newpath+"/"+fileName, // ✅ Update formData.poster
+    }));
+  };
+
+  // Fetch events after user is loaded
+  useEffect(() => {
+    axios.get(`http://localhost:8000/api/organisers/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((response) => {
+        const parsedSettings = JSON.parse(response.data.settings);
+
+        setOrganiser(response.data);
+        setOrganiserSettings(parsedSettings);
+        setOrgFolder(parsedSettings.path + parsedSettings.folder_name); // ✅ Use it directly
+      })
+      .catch((err) => {
+        console.error("Failed to fetch organiser", err);
+      });
+  }, [user]); // Depends on user state
 
   useEffect(() => {
     // If ID exists, fetch the event details and populate form
@@ -75,6 +115,9 @@ const CreateEvent = () => {
         venue_id: 0,
         poster: event.poster || null,
         gallery: event.gallery ? event.gallery.split(',') : [],
+        latitude: event.latitude || '',
+        longitude: event.longitude || '',
+        organiser_id: event.organiser_id || null,
       });
     } catch (error) {
       console.error("Failed to load event data:", error);
@@ -85,15 +128,9 @@ const CreateEvent = () => {
   const fetchVenues = async () => {
     /* Try to get the vunues for this currentUser.id */
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/api/venues/${currentUser.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      setVenues(response.data.venues || []);
+      const response = await venueService.getOrganisersVenues(userId);
+      console.log("API re34sponse:", response);
+      setVenues(response || []);
     } catch (error) {
       console.error("Failed to fetch venues:", error);
       setApiError("Failed to fetch venues.");
@@ -117,10 +154,16 @@ const CreateEvent = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
+
+    if (posterFileName) {
+      setFormData((prev) => ({
+        ...prev,
+        poster: posterFileName,
+      }));
+    }
 
     setIsSubmitting(true);
 
@@ -129,19 +172,21 @@ const CreateEvent = () => {
       //if artistId is set
       let eventData = {};
 
+      console.log("posterFileName:", posterFileName);
       eventData = {
         userId: formData.userId,
         organiser_id: formData.organiser_id,
+        venue_id: formData.venue_id,
         name: formData.name,
         description: formData.description,
         date: formData.date,
         time: formData.time,
         price: formData.price || null,
         ticket_url: formData.ticket_url || null,
+        poster: posterFileName || null,
         booked_artists: formData.booked_artists || null,
         category: formData.category || null,
         capacity: formData.capacity || null,
-        poster: formData.poster || null,
         gallery: formData.gallery.join(','),
       };
       let response;
@@ -155,12 +200,13 @@ const CreateEvent = () => {
         console.log('Eveupdated successfully:', response);
       } else {
         // 
-        console.log('Creating new event:' + JSON.stringify(eventData));
+
         response = await axios.post(`${API_BASE_URL}/api/events/create_event`, eventData, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`
           }
         });
+        console.log('099009209023902392309:' + JSON.stringify(eventData));
       }
 
       navigate(`/${currentUser.aclInfo.acl_name}/dashboard/event/${response.data.eventId}`);
@@ -177,10 +223,12 @@ const CreateEvent = () => {
     { label: `Create Event`, path: `${currentUser.aclInfo.acl_name}/dashboard/organisation-profile` },
   ];
 
+
   return (
 
     <div className="min-h-screen bg-gray-50">
       <PageHeader HeaderName="Create New Event" />
+
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="flex justify-between items-stretch w-full">
           <DashboardBreadCrumb breadcrumbs={breadcrumbs} />
@@ -197,10 +245,10 @@ const CreateEvent = () => {
           <div className="space-y-6">
             {/* Basic Information */}
             <div>
-              <h2 className="text-xl font-medium text-gray-900 mb-4">Basic Information</h2>
+              <h2 className="text-2xl font-bold mb-6 text-gray-8000 mb-4">Basic Information</h2>
               <input type="hidden" name="artist_id" value={artistId} />
               <input type="hidden" name="organiser_id" value={organiserId} />
-              <div className="grid grid-cols-3 bg-red-500">
+              <div className="grid grid-cols-3 gap-6 bg-slate-100 p-6 rounded">
                 <div className="">
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                     Event Name *
@@ -215,22 +263,7 @@ const CreateEvent = () => {
                   />
                   {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
                 </div>
-
                 <div className="">
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                    Description
-                  </label>
-                  <textarea
-                    name="description"
-                    id="description"
-                    rows={4}
-                    value={formData.description}
-                    onChange={handleChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="">
                     <label htmlFor="date" className="block text-sm font-medium text-gray-700">
                       Date *
@@ -247,7 +280,7 @@ const CreateEvent = () => {
                   </div>
                 </div>
 
-                <div className="sm:col-span-3">
+                <div className="">
                   <label htmlFor="time" className="block text-sm font-medium text-gray-700">
                     Time *
                   </label>
@@ -263,35 +296,64 @@ const CreateEvent = () => {
                 </div>
               </div>
             </div>
+            <div>
+              <div className="bg-slate-100 p-6 rounded ">
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  id="description"
+                  rows={4}
+                  value={formData.description}
+                  onChange={handleChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                />
+              </div>
+
+            </div>
 
             {/* Venue Details */}
             <div className="bg-slate-100 rounded-lg p-6 border">
-              <h2 className="text-xl font-medium text-gray-900 mb-4">Venue Details</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <h2 className="text-2xl font-bold mb-6 text-gray-8000">Event Venue</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-6 gap-6">
 
                 {/* Vunue Card */}
+                {/* Each venue will be a radio but with the same name, and using venue_id as the value */}
                 {venues && venues.length > 0 ? (
-                  venues.map(venue => (
-                    <VenueCard
-                      key={venue.id}
-                      venue={venue}
-                      who={`${currentUser.aclInfo.acl_name}/dashboard`}
-                    />
-                  ))
+                  venues
+                    .filter(v => v && v.id) // prevent undefined/null or missing id
+                    .map(venue => (
+                      <label className="flex items-center space-x-2 mb-2" key={venue.id}>
+                        <input
+                          type="radio"
+                          name="venue_id"
+                          value={venue.id}
+                          checked={formData.venue_id === venue.id}
+                          onChange={e =>
+                            setFormData(prev => ({
+                              ...prev,
+                              venue_id: venue.id
+                            }))
+                          }
+                          className="form-radio h-4 w-4 text-indigo-600"
+                        />
+                        <span className="font-medium">{venue.name}</span>
+                      </label>
+                    ))
                 ) : (
-                  <div className="text-center text-gray-500 my-4">
-                    No venues found. <br />
-                    <button onClick={() => openVenueModal(true)} className="mt-2">
-                      + Add a Venue
-                    </button>
-                    
+                  <div className="text-gray-500 space-y-2">
+                    <p>No venues found. Please create a venue first.</p>
                   </div>
                 )}
+
+
               </div>
             </div>
+
             {/* Event Details */}
             <div className="pt-6">
-              <h2 className="text-xl font-medium text-gray-900 mb-4">Event Details</h2>
+              <h2 className="text-2xl font-bold mb-6 text-gray-8000">Event Details</h2>
 
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-6">
                 <div className="sm:col-span-2">
@@ -367,7 +429,7 @@ const CreateEvent = () => {
                   />
                 </div>
 
-                <div className="sm:col-span-3">
+               {/*  <div className="sm:col-span-3">
                   <label htmlFor="booked_artists" className="block text-sm font-medium text-gray-700">
                     Booked Artists
                   </label>
@@ -381,122 +443,35 @@ const CreateEvent = () => {
                     placeholder="Artist 1, Artist 2, ..."
                   />
                   <p className="mt-1 text-sm text-gray-500">Separate multiple artists with commas</p>
-                </div>
+                </div> */}
               </div>
             </div>
 
             {/* Media Uploads */}
-            {/*  <div className="pt-6">
-            <h2 className="text-xl font-medium text-gray-900 mb-4">Event Media</h2>
+            <div className="pt-6">
+              <h2 className="text-2xl font-bold mb-6 text-gray-800">Event Media</h2>
 
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-6">
-              <div className="sm:col-span-6">
-                <label className="block text-sm font-medium text-gray-700">Event Poster</label>
-                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                  {formData.poster ? (
-                    <div className="text-center">
-                      <img
-                        src={formData.poster}
-                        alt="Poster preview"
-                        className="mx-auto h-40 object-contain mb-4"
-                      />
-                      <div className="flex justify-center space-x-3">
-                        <label className="cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500">
-                          Change
-                          <input
-                            type="file"
-                            className="sr-only"
-                            accept="image/*"
-                            onChange={(e) => handleFileUpload(e, 'poster')}
-                          />
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, poster: null }))}
-                          className="text-sm text-red-600 hover:text-red-500"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-1 text-center">
-                      <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
-                      <div className="flex text-sm text-gray-600 justify-center">
-                        <label className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500">
-                          Upload a file
-                          <input
-                            type="file"
-                            className="sr-only"
-                            accept="image/*"
-                            onChange={(e) => handleFileUpload(e, 'poster')}
-                          />
-                        </label>
-                        <p className="pl-1">or drag and drop</p>
-                      </div>
-                      <p className="text-xs text-gray-500">PNG, JPG up to 10MB</p>
-                    </div>
-                  )}
+              <div className="grid grid-cols-6 gap-6 sm:grid-cols-6">
+                <div className="col-span-3">
+                  <label className="block text-sm font-medium text-gray-700">Event Poster</label>
+                  <OrganiserPosterUpload
+                    onSave={handlePosterSave}
+                    orgFolder={orgFolder} />
                 </div>
-              </div>
-
-              <div className="sm:col-span-6">
-                <label className="block text-sm font-medium text-gray-700">Event Gallery</label>
-                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                  {formData.gallery.length > 0 ? (
-                    <div className="w-full">
-                      <div className="grid grid-cols-3 gap-2 mb-4">
-                        {formData.gallery.map((img, index) => (
-                          <div key={index} className="relative group">
-                            <img
-                              src={img}
-                              alt={`Gallery preview ${index}`}
-                              className="h-24 w-full object-cover rounded"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeGalleryImage(index)}
-                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                      <label className="cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500">
-                        Add more images
-                        <input
-                          type="file"
-                          className="sr-only"
-                          accept="image/*"
-                          onChange={handleGalleryUpload}
-                          multiple
-                        />
-                      </label>
+{/* 
+                <div className="col-span-3">
+                  <label className="block text-sm font-medium text-gray-700">Event Gallery</label>
+                  <div className="mt-1 flex justify-center border-2 border-gray-300 border-dashed rounded-md">
+                    <div>
+                      <GalleryUploader
+                        onSave={handlePosterSave}
+                        orgFolder={orgFolder} />
                     </div>
-                  ) : (
-                    <div className="space-y-1 text-center">
-                      <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
-                      <div className="flex text-sm text-gray-600 justify-center">
-                        <label className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500">
-                          Upload files
-                          <input
-                            type="file"
-                            className="sr-only"
-                            accept="image/*"
-                            onChange={handleGalleryUpload}
-                            multiple
-                          />
-                        </label>
-                        <p className="pl-1">or drag and drop</p>
-                      </div>
-                      <p className="text-xs text-gray-500">PNG, JPG up to 10MB each</p>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                </div> */}
               </div>
             </div>
-          </div> */}
+
           </div>
 
           <div className="pt-5">

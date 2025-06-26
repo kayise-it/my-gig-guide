@@ -73,7 +73,7 @@ export default function ViewEvents() {
       </div>
 
       {/* Filters */}
-      <div className="mb-8 bg-white p-4 rounded-lg shadow">
+      <div className="mb-8 bg-slate-100 p-4 rounded-lg shadow">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Search Input */}
           <div>
@@ -172,7 +172,7 @@ export default function ViewEvents() {
                   <h3 className="text-lg font-medium text-gray-900">{event.name}</h3>
                   {event.price && (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      ${event.price.toFixed(2)}
+                      R{event.price.toFixed(2)}
                     </span>
                   )}
                 </div>

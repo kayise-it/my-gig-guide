@@ -27,8 +27,7 @@ router.post('/create_event', verifyToken, async (req, res) => {
             return res.status(400).json({
                 message: "Event time is required"
             });
-        }
-
+        }        
         // Create event object
         const event = {
             userId: req.body.userId,
@@ -39,6 +38,8 @@ router.post('/create_event', verifyToken, async (req, res) => {
             time: req.body.time,
             price: req.body.price ? parseFloat(req.body.price) : 0,
             ticket_url: req.body.ticket_url || null,
+            poster: req.body.poster || null,
+            venue_id: req.body.venue_id || null,
         };
 
         const createdEvent = await Event.create(event);
@@ -92,7 +93,6 @@ router.put('/edit/:id', verifyToken, async (req, res) => {
         });
     }
 });
-
 /**
  * Get event by ID (duplicate of the route below, but without the typo in the error message)
  */
@@ -116,6 +116,7 @@ router.get('/:id', async (req, res) => {
         });
     }
 });
+router.delete('/delete/:id', verifyToken, eventController.deleteEvent);
 // Get events for a specific organiser
 router.get('/organiser/:id', verifyToken, async (req, res) => {
     try {
@@ -125,11 +126,8 @@ router.get('/organiser/:id', verifyToken, async (req, res) => {
         const events = await Event.findAll({
             where: {
                 organiser_id: organiserId  // Corrected: match the actual column name
-            },
-              logging: console.log // 👈 this logs the actual SQL to console
-
+            }
         });
-        console.log("Fetching events for userID:", req.params.id);
 
         if (!events.length) {
             return res.status(200).json({

@@ -12,7 +12,7 @@ module.exports = (sequelize, DataTypes) => {
     capacity: DataTypes.INTEGER,
     contact_email: {
       type: DataTypes.STRING,
-      unique: true
+      unique: true 
     },
     phone_number: DataTypes.STRING,
     website: DataTypes.STRING,

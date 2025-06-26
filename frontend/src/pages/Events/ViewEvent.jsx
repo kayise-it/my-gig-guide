@@ -1,3 +1,4 @@
+//File location : frontend/src/pages/Events/ViewEvent.jsx
 import React, { useState, useEffect } from 'react';
 import { toast, Toaster } from 'react-hot-toast'; // Install with: npm install react-hot-toast
 import axios from 'axios';
@@ -8,6 +9,7 @@ import DashboardBreadCrumb from '../../components/Includes/DashboardBreadCrumb';
 import VenueMap from '../../components/Map/VenueMap';
 import { venueService } from '../../api/venueService'; // You'll need to implement these API functions
 import API_BASE_URL from '../../api/config';
+import GoogleMapComponent from '../../components/Map/GoogleMapComponent';
 
 export default function ViewEvent() {
     const { id } = useParams();
@@ -17,6 +19,11 @@ export default function ViewEvent() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const { currentUser, logout } = useContext(AuthContext);
+    const [user, setUser] = useState(null);
+    const userId = JSON.parse(localStorage.getItem('user')).id;
+    const [organiserSettings, setOrganiserSettings] = useState({});
+    const [organiser, setOrganiser] = useState({});
+    const [orgFolder, setOrgFolder] = useState('');
     const [venues, setVenues] = useState({
         'name': '',
         'location': '',
@@ -29,10 +36,9 @@ export default function ViewEvent() {
         'longitude': '',
     });
 
+
     const token = localStorage.getItem('token'); // or wherever your token is stored
     const [editMode, setEditMode] = useState(false);
-
-    console.log(currentUser.aclInfo.acl_name);
 
     useEffect(() => {
         const fetchEvent = async () => {
@@ -41,9 +47,9 @@ export default function ViewEvent() {
                 if (response.data.success) {
                     const eventData = response.data.event;
                     setEvent(eventData);
-
-                    const result = await venueService.getVenue(eventData.id);
+                    const result = await venueService.getVenueById(eventData.venue_id);
                     console.log("Venue Thando is:", result);
+                    setVenue(result);
                 } else {
                     setError(response.data.message || 'Event not found');
                 }
@@ -56,7 +62,7 @@ export default function ViewEvent() {
         };
         const fetchArtistVenues = async () => {
             try {
-                const userId = JSON.parse(localStorage.getItem('user')).id;
+
                 const response = await axios.get(`${API_BASE_URL}/api/artists/venues_by_artist/${userId}`, {
                     headers: {
                         'Authorization': `Bearer ${token}` // Pass the token here
@@ -136,6 +142,24 @@ export default function ViewEvent() {
             setIsUpdating(false);
         }
     };
+
+    useEffect(() => {
+        axios.get(`http://localhost:8000/api/organisers/${userId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        })
+            .then((response) => {
+                const parsedSettings = JSON.parse(response.data.settings);
+                setOrganiser(response.data);
+                setOrganiserSettings(parsedSettings);
+                setOrgFolder(parsedSettings.folder_name); // ✅ Use it directly
+            })
+            .catch((err) => {
+                console.error("Failed to fetch organiser", err);
+            });
+    }, [user]); // Depends on user state
+
     if (loading) return <div className="text-center py-8">Loading event details...</div>;
     if (error) return <div className="text-center py-8 text-red-500">{error}</div>;
     if (!event) return <div className="text-center py-8">Event not found</div>;
@@ -144,6 +168,8 @@ export default function ViewEvent() {
         { label: 'Dashboard', path: `/${currentUser.aclInfo.acl_name}/dashboard` },
         { label: currentUser.username, path: '' },
     ];
+    event.poster = event.poster.replace('../frontend/public', '');
+
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Header with breadcrumb */}
@@ -162,24 +188,40 @@ export default function ViewEvent() {
             <div className="flex flex-col md:flex-row gap-8 mb-12">
                 {/* Left column - Map and Poster */}
                 <div className="w-full md:w-2/3 space-y-6">
-                    <div className="relative z-10 rounded-xl overflow-hidden shadow-lg h-96">
-                        <VenueMap
-                            venue={{
-                                latitude: -25.4718,
-                                longitude: 30.9765,
-                                name: "Kirsten Calderon",
-                                address: "39b brown street, Mbombela"
-                            }}
-                            className="w-full h-full z-30"
-                        />
-                    </div>
 
-                    <div className="rounded-xl overflow-hidden shadow-lg">
-                        <img
-                            src={event.image_url || '../public/placeholder.png'}
-                            alt={event.name}
-                            className="w-full h-64 object-cover"
+                    {/* Media */}
+                    <div className="grid grid-cols-5 gap-4">
+                        <div className="col-span-5">
+                            <div className="rounded-xl overflow-hidden shadow-lg">
+                                <img
+                                    src={event.poster ? `${event.poster}` : '/placeholder.png'}
+                                    alt={event.name}
+                                    className="w-full h-64 object-cover bg-green-400"
+                                    onError={() => console.log("Image failed to load:", `${event.poster}`)}
+                                />
+                            </div>
+                        </div>
+                        {/* <div className="col-span-3">
+                            <div className="bg-slate-100 rounded-lg shadow p-6 h-full">
+                                Gallery
+                            </div>
+                        </div> */}
+                    </div>
+                    <div className="relative z-10 rounded-xl overflow-hidden shadow-lg h-96">
+                        <GoogleMapComponent
+                            gigs={[
+                                {
+                                    id: venue.id,
+                                    name: venue.name,
+                                    venue: {
+                                        name: venue.name,
+                                        address: venue.address
+                                    }
+                                }
+                            ]}
+                            apiKey={'AIzaSyDVfOS0l8Tv59v8WTgUO231X2FtmBQCc2Y'}
                         />
+
                     </div>
                 </div>
 
@@ -266,7 +308,7 @@ export default function ViewEvent() {
             </div>
 
             {/* Upcoming events section */}
-            <div className="mb-12">
+            {/* <div className="mb-12">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
                     <svg className="w-6 h-6 text-gray-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -275,14 +317,14 @@ export default function ViewEvent() {
                 </h2>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {/* Placeholder for upcoming events */}
                     {[1, 2, 3].map((item) => (
                         <div key={item} className="bg-gray-100 rounded-xl p-4 h-48 flex items-center justify-center">
                             <span className="text-gray-400">Event card placeholder</span>
                         </div>
                     ))}
                 </div>
-            </div>
+            </div> 
+            */}
 
             {/* Venue selection modal (when editMode is true) */}
             {editMode && (

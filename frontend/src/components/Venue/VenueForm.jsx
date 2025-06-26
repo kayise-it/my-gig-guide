@@ -1,5 +1,6 @@
 // src/components/Venue/VenueForm.jsx
-import { useState, useEffect } from 'react';
+import { LoadScript, Autocomplete } from '@react-google-maps/api';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { venueService } from '../../api/venueService'; // You'll need to implement these API functions
@@ -10,8 +11,32 @@ const VenueForm = ({ isModal = false, onSuccess, onClose }) => {
   const { venueId } = useParams();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
-  
-  const [formData, setFormData] = useState({
+  const [user, setUser] = useState(null);
+  const libraries = ['places'];
+  const googleMapsApiKey = 'AIzaSyDVfOS0l8Tv59v8WTgUO231X2FtmBQCc2Y'; // your API key
+  const autocompleteRef = useRef(null);
+
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      const address = place.formatted_address;
+      const location = place.geometry?.location;
+
+      setFormData(prev => ({
+        ...prev,
+        address: address || '',
+        latitude: location?.lat() || '',
+        longitude: location?.lng() || '',
+      }));
+    }
+  };
+  // Fetch user info on mount
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem("user"));
+    setUser(storedUser);
+
+  }, []);
+  let initialFormData = {
     name: '',
     location: '',
     capacity: '',
@@ -21,9 +46,16 @@ const VenueForm = ({ isModal = false, onSuccess, onClose }) => {
     address: '',
     latitude: '',
     longitude: '',
-    userId: 0,
-  });
-  
+    userId: currentUser.id,
+  };
+  if (currentUser.organiser_id) {
+    initialFormData.organiser_id = currentUser.organiser_id;
+  } else if (currentUser.artist_id) {
+    initialFormData.artist_id = currentUser.artist_id;
+  }
+
+  const [formData, setFormData] = useState(initialFormData);
+
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -36,22 +68,22 @@ const VenueForm = ({ isModal = false, onSuccess, onClose }) => {
   }, [venueId]);
 
   const validateForm = () => {
-  const newErrors = {};
-  if (!formData.name.trim()) newErrors.name = 'Name is required';
-  if (!formData.location.trim()) newErrors.location = 'Location is required';
-  if (!formData.capacity) newErrors.capacity = 'Capacity is required';
-  if (!formData.contact_email.trim()) {
-    newErrors.contact_email = 'Email is required';
-  } else if (!/^\S+@\S+\.\S+$/.test(formData.contact_email)) {
-    newErrors.contact_email = 'Email is invalid';
-  }
-  if (!formData.address.trim()) newErrors.address = 'Address is required';
-  
-  setErrors(newErrors);
-  return Object.keys(newErrors).length === 0;
-};
+    const newErrors = {};
+    if (!formData.name.trim()) newErrors.name = 'Name is required';
+    if (!formData.location.trim()) newErrors.location = 'Location is required';
+    if (!formData.capacity) newErrors.capacity = 'Capacity is required';
+    if (!formData.contact_email.trim()) {
+      newErrors.contact_email = 'Email is required';
+    } else if (!/^\S+@\S+\.\S+$/.test(formData.contact_email)) {
+      newErrors.contact_email = 'Email is invalid';
+    }
+    if (!formData.address.trim()) newErrors.address = 'Address is required';
 
-const fetchVenue = async () => {
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const fetchVenue = async () => {
     try {
       setIsLoading(true);
       const venue = await venueService.getVenue(venueId);
@@ -78,25 +110,25 @@ const fetchVenue = async () => {
   };
 
   const handleChange = (e) => {
-  const { name, value } = e.target;
-  setFormData(prev => ({
-    ...prev,
-    [name]: value
-  }));
-  // Clear error if user types
-  if (errors[name]) {
-    setErrors(prev => ({
+    const { name, value } = e.target;
+    setFormData(prev => ({
       ...prev,
-      [name]: null
+      [name]: value
     }));
-  }
-};
+    // Clear error if user types
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: null
+      }));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     try {
       setIsLoading(true);
       const venueData = {
@@ -141,7 +173,7 @@ const fetchVenue = async () => {
           {isEditMode ? 'Edit Venue' : 'Create New Venue'}
         </h2>
       )}
-      
+
       {errors.server && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           {errors.server}
@@ -150,7 +182,7 @@ const fetchVenue = async () => {
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Name */}
-          <input type="hidden" name="userId" value={currentUser.id}/>
+          <input type="hidden" name="userId" value={currentUser.id} />
           <div className="mb-4">
             <label htmlFor="name" className="block text-sm font-medium mb-1">
               Venue Name *
@@ -169,7 +201,7 @@ const fetchVenue = async () => {
           {/* Location */}
           <div className="mb-4">
             <label htmlFor="location" className="block text-sm font-medium mb-1">
-              Location *
+              Description of premisis *
             </label>
             <input
               type="text"
@@ -250,20 +282,28 @@ const fetchVenue = async () => {
             <label htmlFor="address" className="block text-sm font-medium mb-1">
               Address *
             </label>
-            <input
-              type="text"
-              id="address"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              className={`w-full p-2 border rounded ${errors.address ? 'border-red-500' : 'border-gray-300'}`}
-            />
+            <LoadScript googleMapsApiKey={googleMapsApiKey} libraries={libraries}>
+              <Autocomplete
+                onLoad={(autoC) => (autocompleteRef.current = autoC)}
+                onPlaceChanged={onPlaceChanged}
+              >
+                <input
+                  type="text"
+                  id="address"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  placeholder="Start typing address..."
+                  className={`w-full p-2 border rounded ${errors.address ? 'border-red-500' : 'border-gray-300'}`}
+                />
+              </Autocomplete>
+            </LoadScript>
             {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address}</p>}
           </div>
 
           {/* Latitude & Longitude */}
           <div className="mb-4">
-            <label htmlFor="latitude" className="block text-sm font-medium mb-1">
+            <label htmlFor="latitude" className=" text-sm font-medium mb-1">
               Latitude
             </label>
             <input
@@ -278,7 +318,7 @@ const fetchVenue = async () => {
           </div>
 
           <div className="mb-4">
-            <label htmlFor="longitude" className="block text-sm font-medium mb-1">
+            <label htmlFor="longitude" className=" text-sm font-medium mb-1 ">
               Longitude
             </label>
             <input
@@ -288,7 +328,7 @@ const fetchVenue = async () => {
               name="longitude"
               value={formData.longitude}
               onChange={handleChange}
-              className="w-full p-2 border border-gray-300 rounded"
+              className="w-full p-2 border border-gray-300 rounded "
             />
           </div>
         </div>
@@ -308,7 +348,7 @@ const fetchVenue = async () => {
             disabled={isLoading}
             className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
           >
-            {isLoading ? 'Saving...' : isEditMode ? 'Update Venue' : 'Create Venue'}
+            {isLoading ? 'Saving...' : isEditMode ? 'Update Venue' : 'Creaete Venue'}
           </button>
         </div>
       </form>

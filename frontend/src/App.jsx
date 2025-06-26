@@ -25,6 +25,7 @@ import ShowArtist from "./pages/Public/ShowArtist";
 import OrganiserDashboard from "./pages/Organiser/Dashboard.jsx";
 import OrganisationProfile from "./pages/Organiser/Dashboard/OrganisationProfile";
 import NewOrganiserVenue from "./pages/Organiser/Dashboard/Venues/NewOrganiserVenue";
+import OrganiserVenues from "./pages/Organiser/Dashboard/Venues/Venues.jsx";
 
 /* Events */
 import Events from "./pages/Events.jsx";
@@ -37,6 +38,8 @@ import CreateEvent from "./pages/Organiser/CreateEvent";
 /* Venues */
 import ViewVenue from "./pages/Venue/ViewVenue";
 import NewVenue from "./pages/Venue/NewVenue";
+/* Organiser Venues */
+import EditVenue from "./pages/Organiser/Dashboard/Venues/EditVenue";
 
 function App() {
   return (
@@ -72,6 +75,9 @@ function App() {
         <Route path="/organiser/dashboard" element={<PrivateRoute requiredRole="organiser"><Layout><OrganiserDashboard /></Layout></PrivateRoute>} />
         <Route path="/organiser/dashboard/profile" element={<PrivateRoute requiredRole="organiser"><Layout><OrganisationProfile /></Layout></PrivateRoute>} />
 
+        <Route path="/organiser/dashboard/venues" element={<PrivateRoute requiredRole="organiser"><Layout><OrganiserVenues /></Layout></PrivateRoute>} />
+        <Route path="/organiser/dashboard/venues/:id" element={<PrivateRoute requiredRole="organiser"><Layout><ViewVenue /></Layout></PrivateRoute>} />
+        <Route path="/organiser/dashboard/venues/edit/:id" element={<PrivateRoute requiredRole="organiser"><Layout><EditVenue /></Layout></PrivateRoute>} />
         <Route path="/organiser/dashboard/venues/new" element={<PrivateRoute requiredRole="organiser"><Layout><NewOrganiserVenue /></Layout></PrivateRoute>} />
         <Route path="/organiser/dashboard/events/new" element={<PrivateRoute requiredRole="organiser"><Layout><CreateEvent /></Layout></PrivateRoute>} />
         <Route path="/organiser/dashboard/event/:id" element={<PrivateRoute requiredRole="organiser"><Layout><ViewEvent /></Layout></PrivateRoute>} />

@@ -10,6 +10,7 @@ export default function Events() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [orgFolder, setOrgFolder] = useState('');
   
     useEffect(() => {
       const fetchEvents = async () => {
@@ -26,7 +27,22 @@ export default function Events() {
           setLoading(false);
         }
       };
-  
+
+      const fetchOrgFolder = async () => {
+        try {
+          const response = await axios.get(`${API_BASE_URL}/api/organisers/folder`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+          setOrgFolder(response.data.folder);
+        } catch (err) {
+          console.error('Failed to fetch organiser folder:', err);
+          setError(err.response?.data?.message || 'Failed to fetch organiser folder');
+        }
+      };
+      fetchOrgFolder();
+
       fetchEvents();
     }, []);
   
@@ -76,9 +92,9 @@ export default function Events() {
                 <div className="md:flex">
                   {/* Event Image */}
                   <div className="md:w-1/3 h-48 bg-gray-200">
-                    {event.image_url ? (
+                    {event.poster ? (
                       <img 
-                        src={event.image_url} 
+                        src={event.poster} 
                         alt={event.name}
                         className="w-full h-full object-cover"
                       />
@@ -104,7 +120,7 @@ export default function Events() {
                         </div>
                       </div>
                       <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm font-medium">
-                        ${event.ticket_price}
+                        R{event.ticket_price}
                       </span>
                     </div>
                     
@@ -130,9 +146,9 @@ export default function Events() {
                       <button className="text-indigo-600 hover:text-indigo-800 font-medium">
                         More Details
                       </button>
-                      <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md">
+                      {/* <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md">
                         Get Tickets
-                      </button>
+                      </button> */}
                     </div>
                   </div>
                 </div>
