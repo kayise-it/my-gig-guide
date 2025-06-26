@@ -16,7 +16,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 
 /* Artists */
-import ArtistDashboard from "./pages/Artists/dashboard";
+import ArtistDashboard from "./pages/Artists/Dashboard";
 import ArtistRegistration from "./pages/Artists/ArtistRegistration.jsx";
 import Artists from "./pages/Artists.jsx";
 import ShowArtist from "./pages/Public/ShowArtist";
