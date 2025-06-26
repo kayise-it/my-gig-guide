@@ -1,4 +1,4 @@
-// frontend/src/App.jsx
+// frontend/src/App
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
 import Layout from './components/Layout';
@@ -17,8 +17,8 @@ import Signup from "./pages/Signup";
 
 /* Artists */
 import ArtistDashboard from "./pages/Artists/Dashboard";
-import ArtistRegistration from "./pages/Artists/ArtistRegistration.jsx";
-import Artists from "./pages/Artists.jsx";
+import ArtistRegistration from "./pages/Artists/ArtistRegistration";
+import Artists from "./pages/Artists";
 import ShowArtist from "./pages/Public/ShowArtist";
 
 /* Organisers */
@@ -28,7 +28,7 @@ import NewOrganiserVenue from "./pages/Organiser/Dashboard/Venues/NewOrganiserVe
 import OrganiserVenues from "./pages/Organiser/Dashboard/Venues/Venues";
 
 /* Events */
-import Events from "./pages/Events.jsx";
+import Events from "./pages/Events";
 import EventRegistration from "./pages/Events/Registration";
 import ViewEvents from "./pages/Events/ViewEvents";
 import ViewEvent from "./pages/Events/ViewEvent";
