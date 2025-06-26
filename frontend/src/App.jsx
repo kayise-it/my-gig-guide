@@ -25,7 +25,7 @@ import ShowArtist from "./pages/Public/ShowArtist";
 import OrganiserDashboard from "./pages/Organiser/Dashboard";
 import OrganisationProfile from "./pages/Organiser/Dashboard/OrganisationProfile";
 import NewOrganiserVenue from "./pages/Organiser/Dashboard/Venues/NewOrganiserVenue";
-import OrganiserVenues from "./pages/Organiser/Dashboard/Venues/Venues.";
+import OrganiserVenues from "./pages/Organiser/Dashboard/Venues/Venues";
 
 /* Events */
 import Events from "./pages/Events.jsx";
