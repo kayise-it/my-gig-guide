@@ -69,7 +69,7 @@ router.put('/uploadprofilepicture/:id', upload.single('profile_picture'), async 
 
 /* Public Routes */
 router.get('/', artistController.artists);
-router.get('/:id', artistController.userOrganisation);
+
 
 router.get('/:artist_id', async (req, res) => {
     try {
