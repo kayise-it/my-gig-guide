@@ -50,10 +50,23 @@ Object.keys(db).forEach((modelName) => {
   }
 });
 
-// ✅ Exported Initial Setup: Insert dummy data AFTER sync (ACL roles handled by migration)
-db.initializeData = async () => {
+// ✅ Initial Setup: Insert roles and dummy data
+(async () => {
   try {
-    // ACL roles are now handled by migration, so we skip seeding them here
+    // ACL Trust roles
+   // STEP 1: Insert roles first
+    const aclCount = await db.acl_trust.count();
+    if (aclCount === 0) {
+      await db.acl_trust.bulkCreate([
+        { acl_id: 1, acl_name: "superuser", acl_display: "Superuser" },
+        { acl_id: 2, acl_name: "admin", acl_display: "Administrator" },
+        { acl_id: 3, acl_name: "artist", acl_display: "Artist" },
+        { acl_id: 4, acl_name: "organiser", acl_display: "Event Organiser" },
+        { acl_id: 5, acl_name: "venue", acl_display: "Venue Owner" },
+        { acl_id: 6, acl_name: "user", acl_display: "User" },
+      ]);
+      console.log("✅ ACL trust roles inserted");
+    }
 
     // STEP 2: THEN create user
     const [admin, created] = await db.user.findOrCreate({
@@ -61,7 +74,7 @@ db.initializeData = async () => {
       defaults: {
         username: "Thando",
         password: await bcrypt.hash("thandov.hlophe@gmail.com", 12),
-        role: 3,
+        role: 3, // ✅ Now role 3 actually exists
       },
     });
 
@@ -109,6 +122,6 @@ db.initializeData = async () => {
   } catch (error) {
     console.error("❌ Error during initial setup:", error);
   }
-};
+})();
 
 module.exports = db;
