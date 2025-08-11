@@ -1,20 +1,24 @@
 // File: backend/controllers/acl_trust.controller.js
 const db = require("../models");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const { validationResult } = require('express-validator');
 const AclTrust = db.acl_trust;
+const aclCache = require("../utils/aclCache");
 
 //Get the ACL trust for the front-end phasing registration, do not get admin or superuser
 exports.getAclTrust = async (req, res) => {
   try {
+    // Define restricted roles that should not be exposed publicly
+    const restrictedRoles = process.env.RESTRICTED_ROLES ? 
+      process.env.RESTRICTED_ROLES.split(',') : 
+      ["superuser", "admin"];
+    
     // Try to fetch all ACL trusts from the database
     const aclTrusts = await AclTrust.findAll({
       where: {
         acl_name: {
-          [db.Sequelize.Op.notIn]: ["superuser", "admin"]
+          [db.Sequelize.Op.notIn]: restrictedRoles
         }
-      }
+      },
+      attributes: ['acl_id', 'acl_name', 'acl_display'] // Only return necessary fields
     });
     
     if (aclTrusts.length === 0) {
@@ -31,43 +35,28 @@ exports.getAclTrust = async (req, res) => {
 
 exports.getRoleIdName = async (req, res) => {
   try {
-    // Fetch ACL trust by id and select only display_name
+    const roleId = parseInt(req.params.id);
+    
+    // Validate roleId parameter
+    if (isNaN(roleId) || roleId <= 0) {
+      return res.status(400).json({ message: 'Invalid role ID provided' });
+    }
+    
+    // Fetch ACL trust by acl_id and select display name
     const aclTrust = await AclTrust.findOne({
       where: {
-        id: req.body.role
+        acl_id: roleId
       },
-      attributes: ['display_name']
+      attributes: ['acl_display']
     });
 
     if (!aclTrust) {
       return res.status(404).json({ message: 'Role not found' });
     }
 
-    console.log("13134". aclTrust);
-    res.status(200).json(aclTrust);
+    res.status(200).json({ display_name: aclTrust.acl_display });
   } catch (err) {
     console.error('Error fetching role display name:', err);
     res.status(500).json({ message: 'Failed to fetch role display name', error: err.message });
-  }
-};
-
-exports.getRoleIdName = async (req, res) => {
-  try {
-    // Fetch ACL trusts by role and select only display_name
-    const aclTrusts = await AclTrust.findAll({
-      where: {
-        role: req.body.role
-      },
-      attributes: ['display_name']
-    });
-
-    if (aclTrusts.length === 0) {
-      return res.status(404).json({ message: 'No roles found' });
-    }
-
-    res.status(200).json(aclTrusts);
-  } catch (err) {
-    console.error('Error fetching role display names:', err);
-    res.status(500).json({ message: 'Failed to fetch role display names', error: err.message });
   }
 };

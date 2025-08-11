@@ -12,6 +12,10 @@ export default function ArtistProfileCard({
   onSaveProfilePicture, // Add this new prop for saving
   artistSettings,
 }) {
+  // Remove "../frontend" from the profile_picture path if present
+  const profilePicture = artistData.profile_picture
+    ? artistData.profile_picture.replace(/^(\.\.\/frontend)/, '')
+    : '';
   return (
     <>
     
@@ -28,7 +32,7 @@ export default function ArtistProfileCard({
                 >
                   {artistData.profile_picture ? (
                     <img
-                        src={`${artistData.profile_picture}?t=${new Date().getTime()}`} // ✅ reloads the image on update
+                        src={`${profilePicture}?t=${new Date().getTime()}`} // ✅ reloads the image on update
                       alt="Profile"
                       className="h-full w-full object-cover"
                     />
@@ -46,7 +50,7 @@ export default function ArtistProfileCard({
                     <PencilIcon className="h-5 w-5 text-indigo-600" />
                   </div>
                 )}
-                {artistSettings.path + artistSettings.folder_name}
+                
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-white">{artistData.stage_name}</h1>

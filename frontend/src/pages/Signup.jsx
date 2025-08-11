@@ -15,7 +15,7 @@ export default function Signup() {
     username: '',
     email: '',
     password: '',
-    role: 'user'
+    role: ''
   });
   const [aclTrusts, setAclTrusts] = useState([]);
   const token = localStorage.getItem('token');
@@ -70,6 +70,10 @@ export default function Signup() {
       newErrors.password = 'Password must be at least 6 characters';
     }
 
+    if (!formData.role.trim()) {
+      newErrors.role = 'Please select an account type';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -87,9 +91,16 @@ export default function Signup() {
       navigate('/login'); // Redirect to login after successful signup
     } catch (error) {
       console.error('Signup error:', error.response?.data);
-      setErrors({
-        server: error.response?.data?.message || 'Signup failed. Please try again.'
-      });
+      
+      if (error.response?.data?.errors) {
+        // Handle field-specific errors from backend
+        setErrors(error.response.data.errors);
+      } else {
+        // Handle general server error
+        setErrors({
+          server: error.response?.data?.message || 'Registration failed. Please try again.'
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -97,6 +108,8 @@ export default function Signup() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      
+      <h1>Thando Hlophe</h1>
       <div className="flex items-center space-x-4 max-auto">
         <Link to="/" className="flex gap-2 text-2xl font-bold text-indigo-600 mx-auto">
           <FiMusic className="text-purple-500 text-4xl" />
@@ -251,6 +264,9 @@ export default function Signup() {
                   ))}
                 </select>
               </div>
+              {errors.role && (
+                <p className="mt-2 text-sm text-red-600">{errors.role}</p>
+              )}
             </div>
 
             {/* Submit Button */}

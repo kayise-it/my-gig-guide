@@ -2,7 +2,7 @@
 import axios from 'axios';
 import API_BASE_URL from './config';
 
-const API_URL = `${API_BASE_URL}/api`;
+const API_URL = `${API_BASE_URL}`;
 
 export const artistService = {
   createArtist: async (artistData) => {
@@ -20,7 +20,7 @@ export const artistService = {
 
   getArtist: async (artistId) => {
     try {
-      const response = await axios.get(`${API_URL}/artist/${artistId}`, {
+      const response = await axios.get(`${API_URL}/api/artists/${artistId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -33,19 +33,20 @@ export const artistService = {
 
   updateArtist: async (artistId, artistData) => {
     try {
-      const response = await axios.put(`${API_URL}/artist/updateArtist/${artistId}`, artistData, {
+      const response = await axios.put(`${API_URL}/api/artists/edit/${artistId}`, artistData, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || 'Failed to update artist');
+      throw new Error(error.response?.data?.message || 'Failed to update 4444artist');
     }
   },
+  
   updateEventArtist: async (artistId, artistData) => {
     try {
-      const response = await axios.put(`${API_URL}/artists/event/updateArtist/${artistId}`, artistData, {
+      const response = await axios.put(`${API_URL}/api/artists/event/updateArtist/${artistId}`, artistData, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

@@ -1,17 +1,32 @@
-// file: frontend/src/pages/Organiser/Dashboard.jsx
-import React from 'react';
-import { useState } from 'react';
+// file: frontend/src/pages/Organiser/OrganiserDashboard.jsx
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useEffect } from 'react';
 import axios from 'axios';
 import API_BASE_URL from '../../api/config';
-import { venueService } from '../../api/venueService'; // You'll need to implement these API functions
+import { venueService } from '../../api/venueService';
+import { eventService } from '../../api/eventService';
 import VenueCard from '../../components/Venue/VenueCard';
 import { useAuth } from '../../context/AuthContext';
 import VenueList from '../../components/Venue/VenueList';
+import {
+  CalendarDaysIcon,
+  MapPinIcon,
+  UsersIcon,
+  ChartBarIcon,
+  PlusIcon,
+  UserIcon,
+  BuildingOffice2Icon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
+  EyeIcon,
+  PencilIcon,
+  TrashIcon,
+  SparklesIcon,
+  TicketIcon
+} from '@heroicons/react/24/outline';
 const API_URL = `${API_BASE_URL}/api`;
 
-const Dashboard = ({ organiser }) => {
+const OrganiserDashboard = ({ organiser }) => {
   // Sample data - replace with actual data from props/API
   const [organiserEvents, setOrganiserEvents] = useState([]);
   const { currentUser } = useAuth();
@@ -23,14 +38,13 @@ const Dashboard = ({ organiser }) => {
   const userId = JSON.parse(localStorage.getItem('user')).id;
   const [apiError, setApiError] = useState(null);
 
-
   const fetchVenues = async () => {
-
-    /* Try to get the vunues for this currentUser.id */
+    /* Try to get the venues for this organiser */
     try {
-      const response = await venueService.getOrganisersVenues(userId);
-      setVenues(response);
-
+      if (currentUser?.organiser_id) {
+        const response = await venueService.getOrganisersVenues(currentUser.organiser_id);
+        setVenues(response);
+      }
     } catch (error) {
       console.error("Failed to fetch venues:", error);
       setApiError("Failed to fetch venues.");
@@ -46,7 +60,7 @@ const Dashboard = ({ organiser }) => {
         }
       });
 
-      setActiveEvents(activeEvents.filter(event => event.id !== eventId));
+      setActiveEvents(Array.isArray(activeEvents) ? activeEvents.filter(event => event.id !== eventId) : []);
     } catch (err) {
       console.error('Delete error:', err);
       setError(err.response?.data?.message || 'Failed to delete event');
@@ -71,18 +85,46 @@ const Dashboard = ({ organiser }) => {
     }
   };
 
-  const upcomingEventsCount = activeEvents?.filter(event => {
+  const upcomingEventsCount = Array.isArray(activeEvents) ? activeEvents.filter(event => {
     const eventDate = new Date(event.date);
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Remove time portion for comparison
     return eventDate >= today;
-  }).length || 0;
+  }).length : 0;
 
   const stats = [
-    { name: 'Total Events', value: activeEvents?.length || 0, change: '+4%', changeType: 'positive' },
-    { name: 'Upcoming Events', value: 8, change: '+2', changeType: 'positive' },
-    { name: 'Past Events', value: upcomingEventsCount, change: '-1', changeType: 'negative' },
-    { name: 'Avg. Attendance', value: '85%', change: '+5%', changeType: 'positive' },
+    { 
+      name: 'Total Events', 
+      value: Array.isArray(activeEvents) ? activeEvents.length : 0, 
+      change: '+4%', 
+      changeType: 'positive',
+      icon: CalendarDaysIcon,
+      color: 'purple'
+    },
+    { 
+      name: 'Upcoming Events', 
+      value: upcomingEventsCount, 
+      change: '+2', 
+      changeType: 'positive',
+      icon: SparklesIcon,
+      color: 'blue'
+    },
+    { 
+      name: 'Total Venues', 
+      value: venues?.length || 0, 
+      change: '+1', 
+      changeType: 'positive',
+      icon: BuildingOffice2Icon,
+      color: 'green'
+    },
+    { 
+      name: 'Total Bookings', 
+      value: '156', 
+      change: '+12%', 
+      changeType: 'positive',
+      icon: TicketIcon,
+      color: 'orange'
+    },
   ];
 
   const recentEvents = [
@@ -97,32 +139,50 @@ const Dashboard = ({ organiser }) => {
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem("user"));
     setUser(storedUser);
-
   }, []);
+
+  // Fetch venues when currentUser is available
+  useEffect(() => {
+    if (currentUser?.organiser_id) {
+      fetchVenues();
+    }
+  }, [currentUser]);
 
   // Fetch events after user is loaded
   useEffect(() => {
-    if (user) {
-      axios
-        .get(`${API_BASE_URL}/api/events/organiser/${user.organiser_id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}` // Pass the token here
-          }
-        })
-        .then((response) => {
-          console.log("Fetched events:", response.data.success); // Log fetched events
-          if (response.data.success) {
-            setActiveEvents(response.data.events);
-          } else {
-            setError(response.data.message || 'Failed to fetch events');
-          }
+    const fetchEvents = async () => {
+      if (currentUser?.organiser_id) {
+        try {
+          setLoading(true);
+          const eventData = await eventService.getEventsByOrganiser(currentUser.organiser_id);
+          // Handle both array and object response formats
+          const events = eventData?.events || eventData || [];
+          setActiveEvents(events);
+          console.log('Fetched events:', eventData);
+        } catch (error) {
+          console.error('Error fetching events:', error);
+          setError('Failed to load events');
+        } finally {
           setLoading(false);
-        })
-        .catch((error) => console.error("Error fetchin2341g events:", error));
-
-      fetchVenues();
-    }
-  }, [user]); // Depends on user state
+        }
+      } else if (currentUser?.id) {
+        // Fallback to user ID if organiser_id is not available
+        try {
+          setLoading(true);
+          const eventData = await eventService.getOrganisersEvents(currentUser.id);
+          setActiveEvents(eventData);
+          console.log('Fetched events by user ID:', eventData);
+        } catch (error) {
+          console.error('Error fetching events by user ID:', error);
+          setError('Failed to load events');
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    
+    fetchEvents();
+  }, [currentUser]); // Depends on currentUser state
 
 
   /*   if (loading) return <div className="text-center py-8">Loading event details...</div>;
@@ -132,136 +192,223 @@ const Dashboard = ({ organiser }) => {
 
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">Organiser Dashboard</h1>
-          <div className="flex items-center space-x-4">
-            <span className="text-gray-700 font-medium">{organiser?.name || ''}</span>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+      {/* Modern Header */}
+      <header className="bg-white/80 backdrop-blur-sm border-b border-purple-100 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                Event Organiser Dashboard
+              </h1>
+              <p className="text-gray-600 mt-1">Welcome back! Here's what's happening with your events.</p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-2 rounded-xl">
+                <UserIcon className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Welcome back,</p>
+                <p className="font-semibold text-gray-900">{organiser?.name || currentUser?.username || 'Organiser'}</p>
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto p-3 space-y-3 sm:space-y-0 sm:px-6 lg:px-8">
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-          {stats.map((stat) => (
-            <div key={stat.name} className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 bg-indigo-500 rounded-md p-3">
-                    {/* Icon would go here */}
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dt className="text-sm font-medium text-gray-500 truncate">{stat.name}</dt>
-                    <dd className="flex items-baseline">
-                      <div className="text-2xl font-semibold text-gray-900">{stat.value}</div>
-                      <div className={`ml-2 flex items-baseline text-sm font-semibold ${stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
-                        }`}>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Enhanced Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {stats.map((stat) => {
+            const IconComponent = stat.icon;
+            const colorClasses = {
+              purple: 'from-purple-500 to-purple-600 bg-purple-50 text-purple-600',
+              blue: 'from-blue-500 to-blue-600 bg-blue-50 text-blue-600',
+              green: 'from-green-500 to-green-600 bg-green-50 text-green-600',
+              orange: 'from-orange-500 to-orange-600 bg-orange-50 text-orange-600'
+            };
+            
+            return (
+              <div key={stat.name} className="bg-white/70 backdrop-blur-sm border border-purple-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-600 mb-1">{stat.name}</p>
+                    <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+                    <div className="flex items-center mt-2">
+                      {stat.changeType === 'positive' ? (
+                        <ArrowTrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
+                      ) : (
+                        <ArrowTrendingDownIcon className="h-4 w-4 text-red-500 mr-1" />
+                      )}
+                      <span className={`text-sm font-medium ${
+                        stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
+                      }`}>
                         {stat.change}
-                      </div>
-                    </dd>
+                      </span>
+                      <span className="text-gray-500 text-sm ml-1">vs last month</span>
+                    </div>
+                  </div>
+                  <div className={`p-3 rounded-xl bg-gradient-to-r ${colorClasses[stat.color].split(' ')[0]} ${colorClasses[stat.color].split(' ')[1]}`}>
+                    <IconComponent className="h-8 w-8 text-white" />
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {/* Quick Actions */}
-        <div className="">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 mb-5">
+        {/* Modern Quick Actions */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Quick Actions</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Link
               to="/organiser/dashboard/events/new"
-              className="bg-white overflow-hidden shadow rounded-lg p-4 flex items-center hover:bg-gray-50 transition-colors"
+              className="group bg-white/70 backdrop-blur-sm border border-purple-100 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 hover:scale-105 hover:border-purple-300"
             >
-              <div className="bg-indigo-100 p-3 rounded-md mr-4">
-                {/* Plus icon */}
+              <div className="flex items-center">
+                <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-3 rounded-xl mr-4 group-hover:scale-110 transition-transform duration-300">
+                  <PlusIcon className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">Create New Event</h3>
+                  <p className="text-sm text-gray-600">Start planning your next amazing event</p>
+                </div>
               </div>
-              <span className="font-medium">Create New Event</span>
             </Link>
 
             <Link
               to="/organiser/dashboard/profile"
-              className="bg-white overflow-hidden shadow rounded-lg p-4 flex items-center hover:bg-gray-50 transition-colors"
+              className="group bg-white/70 backdrop-blur-sm border border-purple-100 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 hover:scale-105 hover:border-blue-300"
             >
-              <div className="bg-blue-100 p-3 rounded-md mr-4">
-                {/* Profile icon */}
+              <div className="flex items-center">
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-3 rounded-xl mr-4 group-hover:scale-110 transition-transform duration-300">
+                  <UserIcon className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">Edit Profile</h3>
+                  <p className="text-sm text-gray-600">Update your organization details</p>
+                </div>
               </div>
-              <span className="font-medium">Edit Profile</span>
             </Link>
+
             <Link
               to="/organiser/dashboard/venues/new"
-              className="bg-white overflow-hidden shadow rounded-lg p-4 flex items-center hover:bg-gray-50 transition-colors"
+              className="group bg-white/70 backdrop-blur-sm border border-purple-100 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 hover:scale-105 hover:border-green-300"
             >
-              <div className="bg-blue-100 p-3 rounded-md mr-4">
-                {/* Profile icon */}
+              <div className="flex items-center">
+                <div className="bg-gradient-to-r from-green-500 to-green-600 p-3 rounded-xl mr-4 group-hover:scale-110 transition-transform duration-300">
+                  <BuildingOffice2Icon className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 group-hover:text-green-600 transition-colors">Add New Venue</h3>
+                  <p className="text-sm text-gray-600">Register a new event venue</p>
+                </div>
               </div>
-              <span className="font-medium">New Venue</span>
             </Link>
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-4">
-          {/* Recent Events */}
-          <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
-            <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">Recent Events</h3>
-              <Link to="/organiser/dashboard/events" className="text-sm text-indigo-600 hover:text-indigo-500">
+        {/* Modern Grid Layout */}
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Enhanced Recent Events */}
+          <div className="bg-white/70 backdrop-blur-sm border border-purple-100 rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-6 py-5 border-b border-purple-100 flex justify-between items-center">
+              <div className="flex items-center">
+                <CalendarDaysIcon className="h-6 w-6 text-purple-600 mr-3" />
+                <h3 className="text-xl font-semibold text-gray-900">Recent Events</h3>
+              </div>
+              <Link 
+                to="/organiser/dashboard/events" 
+                className="text-sm font-medium text-purple-600 hover:text-purple-700 flex items-center"
+              >
                 View all
+                <EyeIcon className="h-4 w-4 ml-1" />
               </Link>
             </div>
-            <div className="divide-y divide-gray-200">
-              {loading && <div className="text-center py-8">Loading ev233ents...</div>}
-              {error && <div className="text-center py-8 text-red-500">{error} <Link to="/organiser/dashboard/events/new">Create Event</Link></div>}
+            <div className="max-h-96 overflow-y-auto">
+              {loading && (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+                  <p className="text-gray-600 mt-2">Loading events...</p>
+                </div>
+              )}
+              
+              {error && (
+                <div className="text-center py-12">
+                  <div className="text-red-500 mb-4">{error}</div>
+                  <Link 
+                    to="/organiser/dashboard/events/new"
+                    className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-all"
+                  >
+                    Create Your First Event
+                  </Link>
+                </div>
+              )}
+              
+              {activeEvents?.length === 0 && !loading && !error && (
+                <div className="text-center py-12">
+                  <CalendarDaysIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 mb-4">No events yet</p>
+                  <Link 
+                    to="/organiser/dashboard/events/new"
+                    className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-all"
+                  >
+                    Create Your First Event
+                  </Link>
+                </div>
+              )}
+              
               {activeEvents?.map((event) => (
-                <div key={event.id} className="px-4 py-4 sm:px-6 hover:bg-gray-50 transition-colors">
+                <div key={event.id} className="px-6 py-4 border-b border-gray-100 last:border-b-0 hover:bg-purple-50/50 transition-colors">
                   <div className="flex items-center justify-between">
-                    <div>
+                    <div className="flex-1">
                       <Link
                         to={`/organiser/dashboard/event/${event.id}`}
-                        className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                        className="text-lg font-semibold text-gray-900 hover:text-purple-600 transition-colors"
                       >
                         {event.name}
                       </Link>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {new Date(event.date).toLocaleDateString()} • {event.attendees} attendees
-                      </p>
+                      <div className="flex items-center mt-2 text-sm text-gray-600">
+                        <CalendarDaysIcon className="h-4 w-4 mr-1" />
+                        {new Date(event.date).toLocaleDateString()}
+                        <UsersIcon className="h-4 w-4 ml-4 mr-1" />
+                        {event.attendees || 0} attendees
+                      </div>
                     </div>
 
-                    <div className="flex items-center space-x-4">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${event.status === 'completed'
-                        ? 'bg-green-100 text-green-800'
-                        : event.status === 'upcoming'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-gray-100 text-gray-800'
-                        }`}>
+                    <div className="flex items-center space-x-3">
+                      <span className={`px-3 py-1 text-xs font-medium rounded-full ${
+                        event.status === 'completed'
+                          ? 'bg-green-100 text-green-700 border border-green-200'
+                          : event.status === 'upcoming'
+                          ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                          : 'bg-gray-100 text-gray-700 border border-gray-200'
+                      }`}>
                         {event.status}
                       </span>
 
-                      {/* Edit Link */}
-                      <Link
-                        to={`/organiser/dashboard/event/edit/${event.id}`}
-                        className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        Edit
-                      </Link>
+                      <div className="flex items-center space-x-2">
+                        <Link
+                          to={`/organiser/dashboard/event/edit/${event.id}`}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Edit event"
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </Link>
 
-                      {/* Delete Link */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (window.confirm('Are you sure you want to delete this event?')) {
-                            handleDeleteEvent(event.id);
-                          }
-                        }}
-                        className="text-red-600 hover:text-red-900 text-sm font-medium"
-                      >
-                        Delete
-                      </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm('Are you sure you want to delete this event?')) {
+                              handleDeleteEvent(event.id);
+                            }
+                          }}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete event"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -269,18 +416,36 @@ const Dashboard = ({ organiser }) => {
             </div>
           </div>
 
-          {/* Venue List */}
-          <div className="">
-            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-              <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Your Venues</h3>
+          {/* Enhanced Venue List */}
+          <div className="bg-white/70 backdrop-blur-sm border border-purple-100 rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-6 py-5 border-b border-purple-100 flex justify-between items-center">
+              <div className="flex items-center">
+                <BuildingOffice2Icon className="h-6 w-6 text-purple-600 mr-3" />
+                <h3 className="text-xl font-semibold text-gray-900">Your Venues</h3>
               </div>
-              <div className="">
-                {/* VenueList component */}
-                {/* You need to import VenueList at the top: 
-                */}
-                <VenueList venues={venues} onDelete={handleDeleteVenue}/>
-              </div>
+              <Link 
+                to="/organiser/dashboard/venues/new"
+                className="text-sm font-medium text-purple-600 hover:text-purple-700 flex items-center"
+              >
+                Add venue
+                <PlusIcon className="h-4 w-4 ml-1" />
+              </Link>
+            </div>
+            <div className="max-h-96 overflow-y-auto">
+              {venues?.length === 0 ? (
+                <div className="text-center py-12">
+                  <BuildingOffice2Icon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 mb-4">No venues registered yet</p>
+                  <Link 
+                    to="/organiser/dashboard/venues/new"
+                    className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-all"
+                  >
+                    Add Your First Venue
+                  </Link>
+                </div>
+              ) : (
+                <VenueList venues={venues} onDelete={handleDeleteVenue} />
+              )}
             </div>
           </div>
         </div>
@@ -289,4 +454,4 @@ const Dashboard = ({ organiser }) => {
   );
 };
 
-export default Dashboard;
+export default OrganiserDashboard;

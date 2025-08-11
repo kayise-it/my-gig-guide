@@ -50,10 +50,11 @@ export default function ArtistEditForm({
             type="text"
             name="genre"
             id="genre"
-            value={artistData.genre}
+            value={artistData.genre || ""}
             onChange={onInputChange}
             className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
+          
         </div>
 
         <div>
@@ -68,7 +69,7 @@ export default function ArtistEditForm({
               type="tel"
               name="phone_number"
               id="phone_number"
-              value={artistData.phone_number}
+              value={artistData.phone_number || ""}
               onChange={onInputChange}
               className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md py-2 px-3"
               placeholder="+27 12 345 6789"
@@ -84,7 +85,7 @@ export default function ArtistEditForm({
             name="bio"
             id="bio"
             rows={4}
-            value={artistData.bio}
+            value={artistData.bio || ""}
             onChange={onInputChange}
             className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
@@ -102,7 +103,7 @@ export default function ArtistEditForm({
               type="text"
               name="instagram"
               id="instagram"
-              value={artistData.instagram}
+              value={artistData.instagram || ""}
               onChange={onInputChange}
               className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-7 sm:text-sm border-gray-300 rounded-md py-2 px-3"
               placeholder="username"
@@ -122,7 +123,7 @@ export default function ArtistEditForm({
               type="text"
               name="twitter"
               id="twitter"
-              value={artistData.twitter}
+              value={artistData.twitter || ""}
               onChange={onInputChange}
               className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-7 sm:text-sm border-gray-300 rounded-md py-2 px-3"
               placeholder="username"
@@ -142,7 +143,7 @@ export default function ArtistEditForm({
               type="text"
               name="facebook"
               id="facebook"
-              value={artistData.facebook}
+              value={artistData.facebook || ""}
               onChange={onInputChange}
               className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-28 sm:text-sm border-gray-300 rounded-md py-2 px-3"
               placeholder="username"

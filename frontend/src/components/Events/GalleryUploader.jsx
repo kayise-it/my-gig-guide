@@ -4,12 +4,13 @@ import axios from 'axios';
 import API_BASE_URL from '../../api/config';
 const API_URL = `${API_BASE_URL}/api`;
 
-export default function GalleryUploader({ onSave, orgFolder }) {
+export default function GalleryUploader({ onSave, orgFolder, userType = 'organisers' }) {
   const [files, setFiles] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({});
   const [uploadErrors, setUploadErrors] = useState([]);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
 
   const hasImages = files.length > 0;
   const imageCount = files.length;
@@ -80,12 +81,10 @@ export default function GalleryUploader({ onSave, orgFolder }) {
       // Upload each file individually
       const uploadPromises = files.map(async (file) => {
         const formData = new FormData();
-        files.forEach(file => {
-          formData.append('gallery', file); // Must match the Multer field name
-        });
+        formData.append('gallery', file); // Must match the Multer field name
         formData.append('orgFolder', galleryFolder);
 
-        const response = await axios.post(`${API_URL}/organisers/upload-gallery`, formData, {
+        const response = await axios.post(`${API_URL}/${userType}/upload-gallery`, formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
             Authorization: `Bearer ${localStorage.getItem('token')}`
@@ -115,6 +114,12 @@ export default function GalleryUploader({ onSave, orgFolder }) {
       // Reset after successful upload
       setFiles([]);
       setUploadProgress({});
+      setUploadSuccess(true);
+      
+      // Reset success message after 3 seconds
+      setTimeout(() => {
+        setUploadSuccess(false);
+      }, 3000);
     } catch (error) {
       console.error('Upload error:', error);
       setUploadErrors(prev => [...prev, 'Failed to upload some images. Please try again.']);
@@ -228,6 +233,13 @@ export default function GalleryUploader({ onSave, orgFolder }) {
           </div>
         )}
       </div>
+
+      {/* Success Message */}
+      {uploadSuccess && (
+        <div className="mt-4 p-4 bg-green-50 border-l-4 border-green-500 text-green-700">
+          <p className="text-sm font-medium">Gallery images uploaded successfully!</p>
+        </div>
+      )}
 
       {/* Error Messages */}
       {uploadErrors.length > 0 && (

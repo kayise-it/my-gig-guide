@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import API_BASE_URL from '../../api/config';
 
-const OrganiserPosterUpload = ({ onSave, orgFolder }) => {
+const OrganiserPosterUpload = ({ onSave, orgFolder, userType = 'organisers' }) => {
   const [organiser, setOrganiser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -12,29 +12,30 @@ const OrganiserPosterUpload = ({ onSave, orgFolder }) => {
   const [previewUrl, setPreviewUrl] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
 
   // Get user ID from localStorage
   const userId = JSON.parse(localStorage.getItem('user'))?.id;
 
   useEffect(() => {
-    const fetchOrganiser = async () => {
+    const fetchUserData = async () => {
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/organisers/${userId}`);
-        const orgData = response.data;
+        const response = await axios.get(`${API_BASE_URL}/api/${userType}/${userId}`);
+        const userData = response.data;
 
-        if (orgData) {
-          setOrganiser(orgData);
+        if (userData) {
+          setOrganiser(userData);
           //If poster exists in gallery, use the first one as preview
-          if (orgData.gallery && orgData.gallery.length > 0) {
-            const settings = orgData.settings ? JSON.parse(orgData.settings) : {};
-            const basePath = settings.path || '/organiser/';
+          if (userData.gallery && Array.isArray(userData.gallery) && userData.gallery.length > 0) {
+            const settings = userData.settings ? JSON.parse(userData.settings) : {};
+            const basePath = settings.path || `/${userType.slice(0, -1)}/`; // Remove 's' from end
             const folderName = settings.folder_name || '';
-            const posterUrl = `${basePath}${folderName}/${orgData.gallery[0]}`;
+            const posterUrl = `${basePath}${folderName}/${userData.gallery[0]}`;
             setPreviewUrl(posterUrl);
           }
         }
       } catch (err) {
-        setError('Failed to fetch organiser data');
+        setError(`Failed to fetch ${userType.slice(0, -1)} data`);
         console.error(err);
       } finally {
         setLoading(false);
@@ -42,9 +43,9 @@ const OrganiserPosterUpload = ({ onSave, orgFolder }) => {
     };
 
     if (userId) {
-      fetchOrganiser();
+      fetchUserData();
     }
-  }, [userId]);
+  }, [userId, userType]);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -85,7 +86,7 @@ const handleUpload = async () => {
   formData.append('setting_name', 'Event Poster'); // optional
 
   try {
-    const response = await axios.post(`${API_BASE_URL}/api/organisers/upload-poster`, formData, {
+    const response = await axios.post(`${API_BASE_URL}/api/${userType}/upload-poster`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -104,7 +105,8 @@ const handleUpload = async () => {
     }
 
     // Update organiser gallery
-    const updatedGallery = [...(organiser.gallery || []), response.data.posterFilename];
+    const currentGallery = Array.isArray(organiser.gallery) ? organiser.gallery : [];
+    const updatedGallery = [...currentGallery, response.data.posterFilename];
     setOrganiser({
       ...organiser,
       gallery: updatedGallery,
@@ -115,6 +117,12 @@ const handleUpload = async () => {
     setSelectedFile(null);
     setIsUploading(false);
     setUploadProgress(0);
+    setUploadSuccess(true);
+    
+    // Reset success message after 3 seconds
+    setTimeout(() => {
+      setUploadSuccess(false);
+    }, 3000);
   } catch (err) {
     setError('Failed to upload poster');
     console.error(err);
@@ -122,13 +130,13 @@ const handleUpload = async () => {
   }
 };
 
-  const handleRemovePoster = async (posterIndex) => {
-    if (!organiser?.gallery || organiser.gallery.length <= posterIndex) return;
+    const handleRemovePoster = async (posterIndex) => {
+    if (!organiser?.gallery || !Array.isArray(organiser.gallery) || organiser.gallery.length <= posterIndex) return;
 
     try {
-      await axios.delete(`${API_BASE_URL}/api/organisers/remove-poster`, {
+      await axios.delete(`${API_BASE_URL}/api/${userType}/remove-poster`, {
         data: {
-          organiserId: organiser.id,
+          userId: organiser.id,
           posterFilename: organiser.gallery[posterIndex]
         }
       });
@@ -161,6 +169,12 @@ const handleUpload = async () => {
       {error && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
           {error}
+        </div>
+      )}
+
+      {uploadSuccess && (
+        <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+          Poster uploaded successfully!
         </div>
       )}
 
@@ -231,7 +245,7 @@ const handleUpload = async () => {
       )}
 
       {/* Gallery display if multiple posters are allowed */}
-      {organiser.gallery && organiser.gallery.length > 1 && (
+      {organiser.gallery && Array.isArray(organiser.gallery) && organiser.gallery.length > 1 && (
         <div className="mt-8">
           <h3 className="text-lg font-semibold mb-3">Poster Gallery</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">

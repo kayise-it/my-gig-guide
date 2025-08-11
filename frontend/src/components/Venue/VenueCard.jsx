@@ -4,20 +4,26 @@ import { MapPinIcon, StarIcon, UsersIcon, CalendarIcon } from '@heroicons/react/
 const VenueCard = ({ venue, who }) => {
   return (
     <Link 
-      to={`/${who}/venues/${venue.id}`}
+      to={`/${who}/venue/${venue.id}`}
       className="group block rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 border border-gray-100"
     >
       {/* Image with gradient overlay */}
-      <div className="relative aspect-[4/3] bg-gray-100">
-        {venue.image_url ? (
-          <img
-            src={venue.image_url}
-            alt={venue.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center">
-            <MapPinIcon className="h-12 w-12 text-indigo-300" />
+      <div 
+        className="relative aspect-[4/3] bg-gray-100 transition-transform duration-500 group-hover:scale-105"
+        style={{
+          backgroundImage: venue.main_picture 
+            ? `url(${venue.main_picture})` 
+            : 'linear-gradient(135deg, rgb(238 242 255) 0%, rgb(250 245 255) 100%)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      >
+        {!venue.main_picture && (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-100 to-pink-100">
+            <div className="p-4 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg">
+              <MapPinIcon className="h-8 w-8 text-white" />
+            </div>
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-black/5 to-transparent" />
@@ -43,7 +49,7 @@ const VenueCard = ({ venue, who }) => {
         </div>
         
         <div className="mt-2 flex items-center text-sm text-gray-500">
-          <MapPinIcon className="flex-shrink-0 h-4 w-4 mr-1" />
+          <MapPinIcon className="flex-shrink-0 h-4 w-4 mr-1 text-purple-500" />
           <span className="truncate">{venue.location || 'Location not specified'}</span>
         </div>
         

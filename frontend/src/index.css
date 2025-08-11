@@ -81,31 +81,44 @@ button:focus-visible {
 
 @layer base {
   :root {
+    /* Base surfaces */
     --background: 0 0% 100%;
     --foreground: 224 71.4% 4.1%;
     --card: 0 0% 100%;
     --card-foreground: 224 71.4% 4.1%;
     --popover: 0 0% 100%;
     --popover-foreground: 224 71.4% 4.1%;
-    --primary: 220.9 39.3% 11%;
+
+    /* Brand palette: white, purple, dark purple */
+    --primary: 262 83% 58%; /* purple */
     --primary-foreground: 210 20% 98%;
-    --secondary: 220 14.3% 95.9%;
-    --secondary-foreground: 220.9 39.3% 11%;
+    --secondary: 262 90% 96%; /* light purple surface */
+    --secondary-foreground: 262 83% 28%;
+    --accent: 277 84% 20%; /* dark purple */
+    --accent-foreground: 210 20% 98%;
+
+    /* Neutrals */
     --muted: 220 14.3% 95.9%;
     --muted-foreground: 220 8.9% 46.1%;
-    --accent: 220 14.3% 95.9%;
-    --accent-foreground: 220.9 39.3% 11%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 20% 98%;
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 224 71.4% 4.1%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
+    --ring: 262 83% 58%;
+
+    /* Charts (optional) */
+    --chart-1: 262 83% 58%;
+    --chart-2: 277 84% 20%;
+    --chart-3: 262 90% 66%;
+    --chart-4: 250 80% 60%;
+    --chart-5: 285 75% 55%;
+
+    /* Brand gradient tokens */
+    --brand-from: 262 83% 58%; /* purple */
+    --brand-to: 277 84% 20%;   /* dark purple */
+
+    /* Radius scale */
+    --radius: 0.75rem; /* 12px for consistent rounded corners */
   }
   .dark {
     --background: 224 71.4% 4.1%;
@@ -114,24 +127,24 @@ button:focus-visible {
     --card-foreground: 210 20% 98%;
     --popover: 224 71.4% 4.1%;
     --popover-foreground: 210 20% 98%;
-    --primary: 210 20% 98%;
-    --primary-foreground: 220.9 39.3% 11%;
-    --secondary: 215 27.9% 16.9%;
+    --primary: 262 83% 68%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 262 34% 20%;
     --secondary-foreground: 210 20% 98%;
     --muted: 215 27.9% 16.9%;
     --muted-foreground: 217.9 10.6% 64.9%;
-    --accent: 215 27.9% 16.9%;
+    --accent: 277 84% 20%;
     --accent-foreground: 210 20% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 20% 98%;
     --border: 215 27.9% 16.9%;
     --input: 215 27.9% 16.9%;
-    --ring: 216 12.2% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --ring: 262 83% 58%;
+    --chart-1: 262 83% 58%;
+    --chart-2: 277 84% 20%;
+    --chart-3: 262 90% 66%;
+    --chart-4: 250 80% 60%;
+    --chart-5: 285 75% 55%;
   }
 }
 
@@ -143,5 +156,33 @@ button:focus-visible {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Brand components/utilities */
+@layer utilities {
+  .bg-brand-gradient {
+    background-image: linear-gradient(135deg, hsl(var(--brand-from)) 0%, hsl(var(--brand-to)) 100%);
+  }
+  .text-brand-gradient {
+    background-image: linear-gradient(135deg, hsl(var(--brand-from)) 0%, hsl(var(--brand-to)) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .shadow-brand {
+    box-shadow: 0 10px 16px rgba(109, 40, 217, 0.12), 0 2px 6px rgba(59, 7, 100, 0.08);
+  }
+}
+
+@layer components {
+  .brand-card {
+    @apply bg-white border border-gray-200 rounded-xl shadow-sm;
+  }
+  .brand-section {
+    @apply bg-white/70 backdrop-blur rounded-2xl shadow-sm border border-gray-200;
+  }
+  .btn-brand {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-colors;
   }
 }

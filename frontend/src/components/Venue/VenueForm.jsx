@@ -16,6 +16,8 @@ const VenueForm = ({ isModal = false, onSuccess, onClose }) => {
   const googleMapsApiKey = 'AIzaSyDVfOS0l8Tv59v8WTgUO231X2FtmBQCc2Y'; // your API key
   const autocompleteRef = useRef(null);
 
+  const [mainPictureFile, setMainPictureFile] = useState(null);
+
   const onPlaceChanged = () => {
     if (autocompleteRef.current) {
       const place = autocompleteRef.current.getPlace();
@@ -30,12 +32,40 @@ const VenueForm = ({ isModal = false, onSuccess, onClose }) => {
       }));
     }
   };
+  let userRole = '';
+  if (currentUser.artist_id) {
+    userRole = 'artists';
+  } 
+  if (currentUser.organiser_id) {
+    userRole = 'organisers';
+  }
   // Fetch user info on mount
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem("user"));
     setUser(storedUser);
 
   }, []);
+
+  // Determine owner_id and owner_type based on user role
+  let owner_id = null;
+  let owner_type = null;
+  
+  // Check if user has artist_id (role 3 = artist)
+  if (currentUser.artist_id) {
+    owner_id = currentUser.artist_id;
+    owner_type = 'artist';
+  } 
+  // Check if user has organiser_id (role 4 = organiser)
+  else if (currentUser.organiser_id) {
+    owner_id = currentUser.organiser_id;
+    owner_type = 'organiser';
+  }
+
+  // Debug logging
+  console.log('Current User:', currentUser);
+  console.log('Owner ID:', owner_id);
+  console.log('Owner Type:', owner_type);
+
   let initialFormData = {
     name: '',
     location: '',
@@ -47,12 +77,9 @@ const VenueForm = ({ isModal = false, onSuccess, onClose }) => {
     latitude: '',
     longitude: '',
     userId: currentUser.id,
+    owner_id: owner_id,
+    owner_type: owner_type
   };
-  if (currentUser.organiser_id) {
-    initialFormData.organiser_id = currentUser.organiser_id;
-  } else if (currentUser.artist_id) {
-    initialFormData.artist_id = currentUser.artist_id;
-  }
 
   const [formData, setFormData] = useState(initialFormData);
 
@@ -78,6 +105,8 @@ const VenueForm = ({ isModal = false, onSuccess, onClose }) => {
       newErrors.contact_email = 'Email is invalid';
     }
     if (!formData.address.trim()) newErrors.address = 'Address is required';
+    if (!formData.owner_id) newErrors.owner_id = 'Owner ID is required';
+    if (!formData.owner_type) newErrors.owner_type = 'Owner type is required';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -97,6 +126,8 @@ const VenueForm = ({ isModal = false, onSuccess, onClose }) => {
         address: venue.address,
         latitude: venue.latitude,
         longitude: venue.longitude,
+        owner_id: venue.owner_id,
+        owner_type: venue.owner_type
       });
     } catch (error) {
       console.error('Error fetching venue:', error);
@@ -131,24 +162,51 @@ const VenueForm = ({ isModal = false, onSuccess, onClose }) => {
 
     try {
       setIsLoading(true);
-      const venueData = {
+      // Normalize website: prepend https:// if missing protocol
+      const normalizedWebsite = formData.website && formData.website.trim() !== ''
+        ? (/^https?:\/\//i.test(formData.website) ? formData.website : `https://${formData.website}`)
+        : '';
+
+      const body = {
         ...formData,
+        website: normalizedWebsite,
         capacity: Number(formData.capacity),
         latitude: formData.latitude ? Number(formData.latitude) : null,
         longitude: formData.longitude ? Number(formData.longitude) : null,
+        owner_id: Number(formData.owner_id)
       };
+
+      // Build multipart form data
+      const fd = new FormData();
+      Object.entries(body).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          fd.append(key, value);
+        }
+      });
+      if (mainPictureFile) {
+        fd.append('main_picture', mainPictureFile);
+      }
 
       let result;
       if (isEditMode) {
-        result = await venueService.updateVenue(venueId, venueData);
+        result = await venueService.updateVenue(venueId, fd, true);
       } else {
-        result = await venueService.createVenue(venueData);
+        result = await venueService.createVenue(fd, true);
       }
+
+      // The service now returns the venue object directly
+      const newVenueId = result.id;
 
       if (onSuccess) {
         onSuccess(result);
       } else if (!isModal) {
-        navigate(`/venue/${result.id}`);
+        if (userRole === 'artists') {
+          const targetUrl = newVenueId ? `/artists/dashboard/venue/${newVenueId}` : '/artists/dashboard';
+          navigate(targetUrl);
+        } else {
+          const targetUrl = newVenueId ? `/venue/${newVenueId}` : '/venues';
+          navigate(targetUrl);
+        }
       }
     } catch (error) {
       console.error('Error saving venue:', error);
@@ -181,8 +239,12 @@ const VenueForm = ({ isModal = false, onSuccess, onClose }) => {
       )}
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Name */}
+          {/* Hidden fields for owner information */}
           <input type="hidden" name="userId" value={currentUser.id} />
+          <input type="hidden" name="owner_id" value={formData.owner_id} />
+          <input type="hidden" name="owner_type" value={formData.owner_type} />
+          
+          {/* Name */}
           <div className="mb-4">
             <label htmlFor="name" className="block text-sm font-medium mb-1">
               Venue Name *
@@ -268,13 +330,15 @@ const VenueForm = ({ isModal = false, onSuccess, onClose }) => {
               Website
             </label>
             <input
-              type="url"
+              type="text"
               id="website"
               name="website"
               value={formData.website}
               onChange={handleChange}
+              placeholder="example.com or https://example.com"
               className="w-full p-2 border border-gray-300 rounded"
             />
+            <p className="text-xs text-gray-500 mt-1">Protocol optional. We’ll add https:// if missing.</p>
           </div>
 
           {/* Address */}
@@ -302,6 +366,20 @@ const VenueForm = ({ isModal = false, onSuccess, onClose }) => {
           </div>
 
           {/* Latitude & Longitude */}
+          <div className="mb-4 md:col-span-2">
+            <label htmlFor="main_picture" className="block text-sm font-medium mb-1">
+              Main Venue Picture
+            </label>
+            <input
+              type="file"
+              id="main_picture"
+              name="main_picture"
+              accept="image/*"
+              onChange={(e) => setMainPictureFile(e.target.files?.[0] || null)}
+              className="w-full p-2 border border-gray-300 rounded"
+            />
+          </div>
+
           <div className="mb-4">
             <label htmlFor="latitude" className=" text-sm font-medium mb-1">
               Latitude
@@ -348,7 +426,7 @@ const VenueForm = ({ isModal = false, onSuccess, onClose }) => {
             disabled={isLoading}
             className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
           >
-            {isLoading ? 'Saving...' : isEditMode ? 'Update Venue' : 'Creaete Venue'}
+            {isLoading ? 'Saving...' : isEditMode ? 'Update Venue' : 'Create Venue'}
           </button>
         </div>
       </form>

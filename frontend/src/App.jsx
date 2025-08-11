@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard/Dashboard";
 
 /* Public Pages */
 import Home from "./pages/Home";
+import Landing from "./pages/Landing";
 import AboutUs from "./pages/AboutUs";
 import Contact from "./pages/Contact";
 import Venues from "./pages/Venues";
@@ -31,7 +32,6 @@ import OrganiserVenues from "./pages/Organiser/Dashboard/Venues/Venues";
 import Events from "./pages/Events";
 import EventRegistration from "./pages/Events/Registration";
 import ViewEvents from "./pages/Events/ViewEvents";
-import ViewEvent from "./pages/Events/ViewEvent";
 import ShowEvent from "./pages/Public/ShowEvent";
 import CreateEvent from "./pages/Organiser/CreateEvent";
 
@@ -40,6 +40,7 @@ import ViewVenue from "./pages/Venue/ViewVenue";
 import NewVenue from "./pages/Venue/NewVenue";
 /* Organiser Venues */
 import EditVenue from "./pages/Organiser/Dashboard/Venues/EditVenue";
+import GalleryTest from "./components/GalleryTest";
 
 function App() {
   return (
@@ -65,7 +66,7 @@ function App() {
         {/* Artist Routes */}
         <Route path="/artists/dashboard" element={<PrivateRoute requiredRole="artist"><Layout><ArtistDashboard /></Layout></PrivateRoute>} />
         <Route path="/artists/dashboard/events/new" element={<PrivateRoute requiredRole="artist"><Layout><CreateEvent /></Layout></PrivateRoute>} />
-        <Route path="/artists/dashboard/event/:id" element={<PrivateRoute requiredRole="artist"><Layout><ViewEvent /></Layout></PrivateRoute>} />
+        <Route path="/artists/dashboard/event/:id" element={<PrivateRoute requiredRole="artist"><Layout><ShowEvent /></Layout></PrivateRoute>} />
         <Route path="/artists/dashboard/venue/new" element={<PrivateRoute requiredRole="artist"><Layout><NewVenue /></Layout></PrivateRoute>} />
         <Route path="/artists/dashboard/venue/:id" element={<PrivateRoute requiredRole="artist"><Layout><ViewVenue /></Layout></PrivateRoute>} />
 
@@ -80,9 +81,12 @@ function App() {
         <Route path="/organiser/dashboard/venues/edit/:id" element={<PrivateRoute requiredRole="organiser"><Layout><EditVenue /></Layout></PrivateRoute>} />
         <Route path="/organiser/dashboard/venues/new" element={<PrivateRoute requiredRole="organiser"><Layout><NewOrganiserVenue /></Layout></PrivateRoute>} />
         <Route path="/organiser/dashboard/events/new" element={<PrivateRoute requiredRole="organiser"><Layout><CreateEvent /></Layout></PrivateRoute>} />
-        <Route path="/organiser/dashboard/event/:id" element={<PrivateRoute requiredRole="organiser"><Layout><ViewEvent /></Layout></PrivateRoute>} />
+        <Route path="/organisers/dashboard/event/:id" element={<PrivateRoute requiredRole="organiser"><Layout><ShowEvent /></Layout></PrivateRoute>} />
         <Route path="/organiser/dashboard/event/edit/:id" element={<PrivateRoute requiredRole="organiser"><Layout><CreateEvent /></Layout></PrivateRoute>} />
-        <Route path="/organiser/profile/" element={<PrivateRoute requiredRole="organiser"><Layout><ViewEvent /></Layout></PrivateRoute>} />
+        <Route path="/organiser/profile/" element={<PrivateRoute requiredRole="organiser"><Layout><ShowEvent /></Layout></PrivateRoute>} />
+        
+        {/* Test Routes */}
+        <Route path="/gallery-test" element={<Layout><GalleryTest /></Layout>} />
       </Routes>
     </Router>
   );

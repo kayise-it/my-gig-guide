@@ -1,247 +1,540 @@
 import React, { useState, useEffect } from 'react';
 import API_BASE_URL from '../../api/config';
 import axios from 'axios';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { 
+  StarIcon as StarIconSolid,
+  HeartIcon as HeartIconSolid 
+} from '@heroicons/react/24/solid';
+import { 
+  StarIcon as StarIconOutline,
+  HeartIcon as HeartIconOutline,
+  MusicalNoteIcon,
+  CalendarDaysIcon,
+  UsersIcon,
+  SparklesIcon,
+  MapPinIcon,
+  ArrowTopRightOnSquareIcon,
+  XMarkIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ShareIcon,
+  TicketIcon
+} from '@heroicons/react/24/outline';
+import { HeroBreadcrumb } from '../../components/UI/DynamicBreadcrumb';
 
-import { useNavigate, useParams } from 'react-router-dom';
-import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid';
-import { StarIcon as StarIconOutline } from '@heroicons/react/24/outline';
 
-
-export default function viewArtist() {
+export default function ShowArtist() {
     const { artist_id } = useParams(); // must match your route like /artists/:artist_id
 
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [isFavorite, setIsFavorite] = useState(false);
     const [events, setEvents] = useState([]);
-
-    console.log("uiuiuuiiu");
-    console.log('Fetching artist with ID:', artist_id);
-    console.log('Token:', localStorage.getItem('token'));
+    const [isFavorite, setIsFavorite] = useState(false);
+    const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+    const [galleryModalOpen, setGalleryModalOpen] = useState(false);
+    const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
 
     useEffect(() => {
-        console.log("useEffect triggered with artist_id:", artist_id);
-        console.log("Calling API:", `${API_BASE_URL}/api/artists/${artist_id}`);
-        const fetchData = async () => {
+        const fetchArtistProfile = async () => {
             try {
                 setLoading(true);
                 const response = await axios.get(`${API_BASE_URL}/api/artists/${artist_id}`);
                 setProfile(response.data);
+                setError(null);
+
+                // Fetch artist events
+                try {
+                    const eventsResponse = await axios.get(`${API_BASE_URL}/api/events/artist/${artist_id}`);
+                    setEvents(eventsResponse.data.events || []);
+                } catch (eventsError) {
+                    console.log('No events found for artist');
+                    setEvents([]);
+                }
             } catch (err) {
-                console.error('API Error Details:', {
-                    message: err.message,
-                    response: err.response?.data,
-                    request: err.request,
-                    config: err.config
-                });
-                setError(err.response?.data?.message || 'Failed to load data');
+                setError('Failed to load artist profile');
+                console.error('Error fetching artist:', err);
             } finally {
                 setLoading(false);
             }
         };
-        fetchData();
+
+        if (artist_id) {
+            fetchArtistProfile();
+        }
     }, [artist_id]);
 
-    const checkFavoriteStatus = async (organiserId) => {
-        try {
-            const res = await axios.get('/api/favorites/check', {
-                params: { organiserId },
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    // Parse gallery images
+    const galleryImages = React.useMemo(() => {
+        if (Array.isArray(profile?.gallery)) {
+            return profile.gallery;
+        }
+        if (profile?.gallery && typeof profile.gallery === 'string') {
+            try {
+                return JSON.parse(profile.gallery);
+            } catch {
+                return profile.gallery.split(',').filter(img => img.trim());
+            }
+        }
+        return [];
+    }, [profile?.gallery]);
+
+    // Handle favorite toggle
+    const handleFavoriteToggle = () => {
+        setIsFavorite(!isFavorite);
+    };
+
+    // Handle share
+    const handleShare = () => {
+        if (navigator.share) {
+            navigator.share({
+                title: profile?.stage_name || profile?.name,
+                text: `Check out ${profile?.stage_name || profile?.name}`,
+                url: window.location.href
             });
-            setIsFavorite(res.data.isFavorite);
-        } catch (err) {
-            console.error('Error checking favorite status:', err);
+        } else {
+            navigator.clipboard.writeText(window.location.href);
+            alert('Link copied to clipboard!');
         }
     };
 
-    const toggleFavorite = async () => {
-        try {
-            if (isFavorite) {
-                await axios.delete('/api/favorites', {
-                    data: { organiserId: id },
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                });
-            } else {
-                await axios.post('/api/favorites',
-                    { organiserId: id },
-                    {
-                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                    });
-            }
-            setIsFavorite(!isFavorite);
-        } catch (err) {
-            setError('Failed to update favorite status');
+    // Gallery functions
+    const openGallery = (index = 0) => {
+        setSelectedImageIndex(index);
+        setGalleryModalOpen(true);
+    };
+
+    const closeGallery = () => {
+        setGalleryModalOpen(false);
+    };
+
+    const nextImage = () => {
+        const images = Array.isArray(profile?.gallery) ? profile.gallery : [];
+        if (images.length > 0) {
+            setSelectedImageIndex((prev) => (prev + 1) % images.length);
         }
+    };
+
+    const prevImage = () => {
+        const images = Array.isArray(profile?.gallery) ? profile.gallery : [];
+        if (images.length > 0) {
+            setSelectedImageIndex((prev) => (prev - 1 + images.length) % images.length);
+        }
+    };
+
+    // Carousel functions for gallery
+    const imagesPerSlide = 4;
+    const totalSlides = Math.ceil(galleryImages.length / imagesPerSlide);
+
+    const nextCarouselSlide = () => {
+        setCurrentCarouselIndex((prev) => (prev + 1) % totalSlides);
+    };
+
+    const prevCarouselSlide = () => {
+        setCurrentCarouselIndex((prev) => (prev - 1 + totalSlides) % totalSlides);
+    };
+
+    const getCurrentSlideImages = () => {
+        const startIndex = currentCarouselIndex * imagesPerSlide;
+        return galleryImages.slice(startIndex, startIndex + imagesPerSlide);
     };
 
     if (loading) return (
-        <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+        <div className="flex items-center justify-center h-64 bg-gradient-to-br from-purple-50 via-white to-blue-50">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
         </div>
     );
 
     if (error) return (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4">
-            <div className="flex">
-                <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                    </svg>
-                </div>
-                <div className="ml-3">
-                    <p className="text-sm text-red-700">{error}</p>
-                </div>
-            </div>
+        <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-2xl mx-4 my-8">
+            <p className="font-medium">{error}</p>
         </div>
     );
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-            {/* Header Section */}
-            <div className="bg-white shadow rounded-lg overflow-hidden">
-                <div className="px-6 py-8 sm:flex sm:items-center sm:justify-between">
-                    <div className="flex items-center">
-                        <div className="flex-shrink-0 h-24 w-24 rounded-full overflow-hidden border-4 border-white shadow-lg">
+        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+            {/* Enhanced Hero Section */}
+            <div className="relative w-full h-[500px] overflow-hidden">
+                {/* Floating Action Buttons */}
+                <div className="absolute top-6 right-6 z-20 flex space-x-3">
+                    <button 
+                        onClick={handleShare}
+                        className="bg-white/90 backdrop-blur-sm text-gray-700 p-3 rounded-full shadow-lg hover:shadow-xl hover:bg-purple-100 transition-all duration-300 hover:scale-110 group"
+                    >
+                        <ShareIcon className="h-5 w-5 group-hover:text-purple-600 transition-colors duration-300" />
+                    </button>
+                    <button 
+                        onClick={handleFavoriteToggle}
+                        className={`backdrop-blur-sm p-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 group ${
+                            isFavorite 
+                                ? 'bg-red-500 text-white hover:bg-red-600' 
+                                : 'bg-white/90 text-gray-700 hover:bg-red-50 hover:text-red-500'
+                        }`}
+                    >
+                        <HeartIconOutline className={`h-5 w-5 transition-all duration-300 ${
+                            isFavorite ? 'fill-current' : 'group-hover:fill-current'
+                        }`} />
+                    </button>
+                </div>
 
+                {profile?.profile_picture ? (
+                    <div className="relative w-full h-full">
+                        <img
+                            src={profile.profile_picture.startsWith('http') ? profile.profile_picture : `${API_BASE_URL}${profile.profile_picture}`}
+                            alt={profile?.stage_name || profile?.name}
+                            className="absolute inset-0 w-full h-full object-cover transform hover:scale-105 transition-transform duration-700"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/30 via-transparent to-blue-900/30"></div>
+                    </div>
+                ) : (
+                    <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-purple-600 via-blue-600 to-purple-800">
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+                        <div className="flex items-center justify-center h-full">
+                            <div className="text-center text-white">
+                                <div className="relative mb-6">
+                                    <div className="absolute -inset-4 bg-white/20 rounded-full blur-xl"></div>
+                                    <MusicalNoteIcon className="relative h-20 w-20 mx-auto opacity-90" />
+                                </div>
+                                <span className="text-2xl font-semibold">Artist Photo Coming Soon</span>
+                            </div>
                         </div>
-                        <div className="ml-6">
-                            <h1 className="text-3xl font-bold text-gray-900">{profile.name}</h1>
-                            <div className="flex items-center mt-2">
-                                <button
-                                    onClick={toggleFavorite}
-                                    className="flex items-center text-sm text-gray-500 hover:text-yellow-500"
-                                >
+                    </div>
+                )}
+                
+                {/* Enhanced Content Overlay */}
+                <div className="absolute inset-0 flex items-end">
+                    <div className="p-8 w-full">
+                        {/* Breadcrumb at the top of content */}
+                        <div className="max-w-6xl mx-auto mb-8">
+                            <HeroBreadcrumb
+                                customBreadcrumbs={[
+                                    { label: 'Artists', path: '/artists', icon: null },
+                                    { label: profile?.stage_name || profile?.name || 'Artist', path: `/artists/${artist_id}`, isLast: true }
+                                ]}
+                                showHome={true}
+                            />
+                        </div>
+                        
+                        <div className="max-w-6xl mx-auto">
+                            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between">
+                                <div className="flex-1 mb-6 lg:mb-0">
+                                    {profile?.artist_type && (
+                                        <div className="mb-4">
+                                            <span className="inline-flex items-center bg-purple-600/90 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg">
+                                                <SparklesIcon className="h-4 w-4 mr-2" />
+                                                {profile.artist_type}
+                                            </span>
+                                        </div>
+                                    )}
+                                    <h1 className="text-4xl lg:text-6xl font-black text-white drop-shadow-2xl mb-4 leading-tight">
+                                        {profile?.stage_name || profile?.name}
+                                    </h1>
+                                    <div className="flex flex-wrap items-center gap-6 text-white/90 text-lg">
+                                        <div className="flex items-center">
+                                            <MusicalNoteIcon className="h-6 w-6 mr-2 text-purple-300" />
+                                            <span>Professional Artist</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <CalendarDaysIcon className="h-6 w-6 mr-2 text-blue-300" />
+                                            <span>{events.length} Events</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="lg:ml-8">
+                                    <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 text-center shadow-xl">
+                                        <div className="flex items-center justify-center mb-1">
+                                            <StarIconSolid className="h-5 w-5 text-yellow-300 mr-1" />
+                                            <span className="text-2xl font-bold text-white">4.8</span>
+                                        </div>
+                                        <div className="text-blue-200 text-sm">Artist Rating</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                                    <span className="ml-1">{isFavorite ? 'Favorited' : 'Mark as Favorite'}</span>
-                                </button>
+            <div className="max-w-6xl mx-auto px-4 py-8">
+                <div className="relative -mt-20 mb-8 bg-white rounded-2xl shadow-2xl overflow-hidden border border-purple-100">
+                    {/* Enhanced Artist Header */}
+                    <div className="p-8 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-blue-50">
+                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                            <div className="flex-1">
+                                <div className="flex items-center gap-4 mb-4">
+                                    <h1 className="text-4xl font-bold text-gray-900">{profile?.stage_name || profile?.name}</h1>
+                                    <button 
+                                        onClick={handleFavoriteToggle}
+                                        className={`p-2 rounded-full transition-all duration-300 hover:scale-110 ${
+                                            isFavorite 
+                                                ? 'bg-red-100 text-red-600' 
+                                                : 'bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-500'
+                                        }`}
+                                    >
+                                        <HeartIconOutline className={`h-6 w-6 ${isFavorite ? 'fill-current' : ''}`} />
+                                    </button>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-6 text-gray-600 mb-4">
+                                    <div className="flex items-center">
+                                        <MusicalNoteIcon className="h-5 w-5 mr-2 text-purple-500" />
+                                        <span className="font-medium">{profile?.artist_type || 'Professional Artist'}</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <CalendarDaysIcon className="h-5 w-5 mr-2 text-blue-500" />
+                                        <span className="font-medium">{events.length} Upcoming Events</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <UsersIcon className="h-5 w-5 mr-2 text-purple-500" />
+                                        <span className="font-medium">1.2k Followers</span>
+                                    </div>
+                                </div>
+                                {profile?.artist_type && (
+                                    <span className="inline-flex items-center bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-medium px-4 py-2 rounded-full shadow-md">
+                                        <SparklesIcon className="h-4 w-4 mr-2" />
+                                        {profile.artist_type}
+                                    </span>
+                                )}
+                            </div>
+                            
+                            {/* Enhanced Action Card */}
+                            <div className="mt-6 lg:mt-0 lg:ml-8">
+                                <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 p-6 rounded-2xl min-w-[250px] shadow-lg">
+                                    <div className="mb-6 text-center">
+                                        <p className="text-4xl font-black text-gray-900 mb-1">★ 4.8</p>
+                                        <p className="text-sm text-gray-600 bg-white px-3 py-1 rounded-full inline-block">artist rating</p>
+                                    </div>
+
+                                    <button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 group">
+                                        <SparklesIcon className="h-5 w-5 mr-2" />
+                                        <span>Follow Artist</span>
+                                        <ArrowTopRightOnSquareIcon className="h-5 w-5 ml-2 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300" />
+                                    </button>
+
+                                    {/* Additional CTA */}
+                                    <button 
+                                        onClick={handleShare}
+                                        className="w-full mt-3 bg-white hover:bg-gray-50 border border-purple-200 hover:border-purple-300 text-purple-700 font-medium py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center"
+                                    >
+                                        <ShareIcon className="h-5 w-5 mr-2" />
+                                        <span>Share Artist</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
 
+                    {/* Artist Details Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 p-8">
+                        {/* Main Content */}
+                        <div className="lg:col-span-2 space-y-8">
+                            {/* Biography */}
+                            {profile?.bio && (
+                                <div>
+                                    <h2 className="text-2xl font-semibold text-gray-900 mb-4">About the Artist</h2>
+                                    <div className="prose max-w-none">
+                                        <p className="text-gray-700 whitespace-pre-line leading-relaxed">
+                                            {profile.bio}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Gallery Section */}
+                            {galleryImages.length > 0 && (
+                                <div>
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h2 className="text-2xl font-semibold text-gray-900">Gallery</h2>
+                                        <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium">
+                                            {galleryImages.length} photos
+                                        </span>
+                                    </div>
+                                    <div className="relative">
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                            {getCurrentSlideImages().map((image, index) => (
+                                                <div 
+                                                    key={index}
+                                                    className="relative aspect-square rounded-xl overflow-hidden cursor-pointer group shadow-md hover:shadow-xl transition-all duration-300"
+                                                    onClick={() => openGallery(currentCarouselIndex * imagesPerSlide + index)}
+                                                >
+                                                    <img
+                                                        src={image.startsWith('http') ? image : `${API_BASE_URL}${image}`}
+                                                        alt={`Gallery ${index + 1}`}
+                                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                                    />
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        
+                                        {/* Carousel Navigation */}
+                                        {totalSlides > 1 && (
+                                            <div className="flex items-center justify-between mt-4">
+                                                <button 
+                                                    onClick={prevCarouselSlide}
+                                                    className="p-2 rounded-full bg-purple-100 text-purple-600 hover:bg-purple-200 transition-colors duration-200"
+                                                >
+                                                    <ChevronLeftIcon className="h-5 w-5" />
+                                                </button>
+                                                <div className="flex space-x-2">
+                                                    {Array.from({ length: totalSlides }).map((_, index) => (
+                                                        <button
+                                                            key={index}
+                                                            onClick={() => setCurrentCarouselIndex(index)}
+                                                            className={`w-2 h-2 rounded-full transition-colors duration-200 ${
+                                                                index === currentCarouselIndex ? 'bg-purple-600' : 'bg-gray-300'
+                                                            }`}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                <button 
+                                                    onClick={nextCarouselSlide}
+                                                    className="p-2 rounded-full bg-purple-100 text-purple-600 hover:bg-purple-200 transition-colors duration-200"
+                                                >
+                                                    <ChevronRightIcon className="h-5 w-5" />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Upcoming Events */}
+                            <div>
+                                <h2 className="text-2xl font-semibold text-gray-900 mb-6">Upcoming Events</h2>
+                                {events.length > 0 ? (
+                                    <div className="space-y-4">
+                                        {events.slice(0, 3).map(event => (
+                                            <Link 
+                                                key={event.id}
+                                                to={`/event/${event.id}`}
+                                                className="block bg-white hover:bg-gray-50 border border-gray-200 rounded-xl p-6 transition-all duration-300 hover:shadow-lg group"
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex-1">
+                                                        <h3 className="text-lg font-semibold text-gray-900 group-hover:text-purple-600 transition-colors duration-300">
+                                                            {event.name}
+                                                        </h3>
+                                                        <div className="flex items-center text-sm text-gray-600 mt-2">
+                                                            <CalendarDaysIcon className="h-4 w-4 mr-2" />
+                                                            {new Date(event.date).toLocaleDateString()} at {event.time}
+                                                        </div>
+                                                        {event.venue && (
+                                                            <div className="flex items-center text-sm text-gray-600 mt-1">
+                                                                <MapPinIcon className="h-4 w-4 mr-2" />
+                                                                {event.venue.name}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <ArrowTopRightOnSquareIcon className="h-5 w-5 text-gray-400 group-hover:text-purple-600 transition-colors duration-300" />
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-12">
+                                        <div className="bg-gray-50 border border-gray-200 rounded-xl p-8">
+                                            <CalendarDaysIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                                            <h3 className="text-lg font-medium text-gray-900 mb-2">No Upcoming Events</h3>
+                                            <p className="text-gray-600">This artist hasn't scheduled any events yet.</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Sidebar */}
+                        <div className="space-y-6">
+                            {/* Quick Info */}
+                            <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 p-6 rounded-xl">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Artist Info</h3>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-600">Genre</label>
+                                        <p className="text-gray-900">{profile?.artist_type || 'Not specified'}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-600">Total Events</label>
+                                        <p className="text-gray-900">{events.length}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-600">Rating</label>
+                                        <div className="flex items-center">
+                                            <StarIconSolid className="h-4 w-4 text-yellow-400 mr-1" />
+                                            <span className="text-gray-900">4.8 (124 reviews)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Contact Info */}
+                            {(profile?.email || profile?.phone_number) && (
+                                <div className="bg-white border border-gray-200 p-6 rounded-xl">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Get in Touch</h3>
+                                    <div className="space-y-3">
+                                        {profile?.email && (
+                                            <a href={`mailto:${profile.email}`} className="flex items-center text-purple-600 hover:text-purple-700 transition-colors duration-200">
+                                                <ArrowTopRightOnSquareIcon className="h-4 w-4 mr-2" />
+                                                Email Artist
+                                            </a>
+                                        )}
+                                        {profile?.phone_number && (
+                                            <a href={`tel:${profile.phone_number}`} className="flex items-center text-purple-600 hover:text-purple-700 transition-colors duration-200">
+                                                <ArrowTopRightOnSquareIcon className="h-4 w-4 mr-2" />
+                                                Call Artist
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* Gallery Section */}
-            {profile.gallery && profile.gallery.length > 0 && (
-                <div className="mt-8">
-                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Gallery</h2>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {profile.gallery.map((image, index) => (
-                            <div key={index} className="aspect-square overflow-hidden rounded-lg shadow">
-                                <img
-                                    src={image}
-                                    alt={`Gallery ${index + 1}`}
-                                    className="w-full h-full object-cover hover:scale-105 transition-transform"
-                                />
-                            </div>
-                        ))}
+            {/* Gallery Modal */}
+            {galleryModalOpen && galleryImages.length > 0 && (
+                <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+                    <div className="relative max-w-4xl w-full">
+                        <button
+                            onClick={closeGallery}
+                            className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors duration-200"
+                        >
+                            <XMarkIcon className="h-8 w-8" />
+                        </button>
+                        
+                        <div className="relative">
+                            <img
+                                src={galleryImages[selectedImageIndex]?.startsWith('http') ? galleryImages[selectedImageIndex] : `${API_BASE_URL}${galleryImages[selectedImageIndex]}`}
+                                alt={`Gallery ${selectedImageIndex + 1}`}
+                                className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
+                            />
+                            
+                            {galleryImages.length > 1 && (
+                                <>
+                                    <button
+                                        onClick={prevImage}
+                                        className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors duration-200"
+                                    >
+                                        <ChevronLeftIcon className="h-6 w-6" />
+                                    </button>
+                                    <button
+                                        onClick={nextImage}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors duration-200"
+                                    >
+                                        <ChevronRightIcon className="h-6 w-6" />
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                        
+                        <div className="text-center text-white mt-4">
+                            <span className="text-sm">{selectedImageIndex + 1} of {galleryImages.length}</span>
+                        </div>
                     </div>
                 </div>
             )}
-
-            {/* Events Section */}
-            <div className="mt-8">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Upcoming Events</h2>
-                {events.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {events.map(event => (
-                            <div key={event.id} className="bg-white shadow rounded-lg overflow-hidden">
-                                <div className="h-48 bg-gray-200 overflow-hidden">
-                                    <img
-                                        src={event.poster || 'https://via.placeholder.com/400x300'}
-                                        alt={event.name}
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
-                                <div className="p-4">
-                                    <h3 className="text-lg font-medium text-gray-900 mb-1">{event.name}</h3>
-                                    <div className="flex items-center text-sm text-gray-500 mb-2">
-                                        <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                        {new Date(event.date).toLocaleDateString()} at {event.time}
-                                    </div>
-                                    <Link
-                                        to={`/events/${event.id}`}
-                                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                    >
-                                        View Event
-                                    </Link>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="bg-white shadow rounded-lg p-8 text-center">
-                        <p className="text-gray-500">No upcoming events found</p>
-                    </div>
-                )}
-            </div>
-
-            {/* Stats Section */}
-            <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-3">
-                <div className="bg-white shadow rounded-lg overflow-hidden">
-                    <div className="px-4 py-5 sm:p-6">
-                        <div className="flex items-center">
-                            <div className="flex-shrink-0 bg-indigo-500 rounded-md p-3">
-                                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                            </div>
-                            <div className="ml-5 w-0 flex-1">
-                                <dt className="text-sm font-medium text-gray-500 truncate">Total Events</dt>
-                                <dd className="flex items-baseline">
-                                    <div className="text-2xl font-semibold text-gray-900">{events.length}</div>
-                                </dd>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div className="bg-white shadow rounded-lg overflow-hidden">
-                    <div className="px-4 py-5 sm:p-6">
-                        <div className="flex items-center">
-                            <div className="flex-shrink-0 bg-green-500 rounded-md p-3">
-                                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                                </svg>
-                            </div>
-                            <div className="ml-5 w-0 flex-1">
-                                <dt className="text-sm font-medium text-gray-500 truncate">Avg. Attendance</dt>
-                                <dd className="flex items-baseline">
-                                    <div className="text-2xl font-semibold text-gray-900">
-                                        {events.length > 0 ? Math.round(events.reduce((sum, event) => sum + (event.attendees || 0), 0) / events.length) : 0}
-                                    </div>
-                                </dd>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div className="bg-white shadow rounded-lg overflow-hidden">
-                    <div className="px-4 py-5 sm:p-6">
-                        <div className="flex items-center">
-                            <div className="flex-shrink-0 bg-yellow-500 rounded-md p-3">
-                                <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                                </svg>
-                            </div>
-                            <div className="ml-5 w-0 flex-1">
-                                <dt className="text-sm font-medium text-gray-500 truncate">Rating</dt>
-                                <dd className="flex items-baseline">
-                                    <div className="text-2xl font-semibold text-gray-900">4.8</div>
-                                    <div className="ml-2 flex items-baseline text-sm font-semibold text-green-600">
-                                        <svg className="self-center flex-shrink-0 h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                                            <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                                        </svg>
-                                        <span className="sr-only">Increased by</span>
-                                        12%
-                                    </div>
-                                </dd>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     );
 }

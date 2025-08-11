@@ -1,7 +1,20 @@
-// file: frontend/src/pages/organiser/dashboard/events/CreateEvent.jsx
+// file: frontend/src/pages/guider/dashboard/events/CreateEvent.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { ArrowLeftIcon, PhotoIcon } from '@heroicons/react/24/outline';
+import { 
+  ArrowLeftIcon, 
+  PhotoIcon, 
+  CheckIcon,
+  CalendarDaysIcon,
+  MapPinIcon,
+  TicketIcon,
+  CameraIcon,
+  XMarkIcon,
+  PlusIcon,
+  ClockIcon,
+  UsersIcon,
+  CurrencyDollarIcon
+} from '@heroicons/react/24/outline';
 import axios from 'axios';
 import DynamicEventButton from '../../components/Includes/DynamicEventButton';
 import DashboardBreadCrumb from '../../components/Includes/DashboardBreadCrumb';
@@ -10,9 +23,12 @@ import API_BASE_URL from '../../api/config';
 import { useAuth } from '../../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { useVenueModal } from "../../components/Venue/VenueModalContext";
-import OrganiserPosterUpload from '../../components/Events/OrganiserPosterUpload';
-import GalleryUploader from '../../components/Events/GalleryUploader';
-import { venueService } from '../../api/venueService'; // You'll need to implement these API functions
+import SimplePosterUpload from '../../components/Events/SimplePosterUpload';
+import SimpleGalleryUpload from '../../components/Events/SimpleGalleryUpload';
+import { venueService } from '../../api/venueService';
+import { eventService } from '../../api/eventService.js';
+import VenueSelector from '../../components/Venue/VenueSelector';
+import { notificationService } from '../../services/notificationService';
 
 const CreateEvent = () => {
   const navigate = useNavigate();
@@ -20,13 +36,28 @@ const CreateEvent = () => {
   const [loading, setLoading] = useState(true);
   const { currentUser } = useAuth();
   const { openVenueModal } = useVenueModal();
-  const artistId = currentUser.artist_id || location.state?.artistId; // Get artist ID from state if it exists
-  const organiserId = currentUser.organiser_id || location.state?.organiserId; // Get organiser ID from state if it exists
+  const artistId = currentUser.artist_id || location.state?.artistId;
+  const organiserId = currentUser.organiser_id || location.state?.organiserId;
   const { id } = useParams(); // Get event ID from URL if it exists
   const userId = JSON.parse(localStorage.getItem('user')).id;
+  
+  // Determine user role and specific ID
+  let userRole = '';
+  let specificUserId = null;
+  
+  if (currentUser?.aclInfo?.acl_name === 'artist') {
+    userRole = 'artists';
+    specificUserId = artistId;
+  } else if (currentUser?.aclInfo?.acl_name === 'organiser') {
+    userRole = 'organisers';
+    specificUserId = organiserId;
+  }
+  
   const [formData, setFormData] = useState({
-    userId: userId || artistId || null,
-    organiser_id: organiserId || null,
+    userId: userId,
+    owner_id: currentUser?.aclInfo?.acl_name === 'organiser' ? organiserId : 
+              currentUser?.aclInfo?.acl_name === 'artist' ? artistId : null,
+    owner_type: currentUser?.aclInfo?.acl_name || '',
     venue_id: '',
     name: '',
     description: '',
@@ -40,102 +71,243 @@ const CreateEvent = () => {
     capacity: '',
     gallery: [],
   });
-  
+
 
 
   const { id: eventId } = useParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [venues, setVenues] = useState({});
-  const [organiser, setOrganiser] = useState({});
+  const [guider, setGuider] = useState({});
   const [apiError, setApiError] = useState(null);
   const token = localStorage.getItem('token'); // or wherever your token is stored
-  const [organiserSettings, setOrganiserSettings] = useState({});
+  const [organiserSettings, setGuiderSettings] = useState({});
   const [user, setUser] = useState(null);
   const [orgFolder, setOrgFolder] = useState('');
-  const [posterFileName, setPosterFileName] = useState('');
+  const [selectedPosterFile, setSelectedPosterFile] = useState(null);
+  const [selectedGalleryFiles, setSelectedGalleryFiles] = useState([]);
+  const [posterPreview, setPosterPreview] = useState('');
+  const [galleryPreviews, setGalleryPreviews] = useState([]);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [completedSteps, setCompletedSteps] = useState(new Set());
 
-  const handlePosterSave = (fileName) => {
-    const newpath = orgFolder.replace('../frontend/public', '');
-    //alert("Poster file saved: " + newpath+"/"+fileName);
-    setPosterFileName(newpath+"/"+fileName); // ✅ Update posterFileName with full path
-
-    setFormData((prev) => ({
-      ...prev,
-      poster: newpath+"/"+fileName, // ✅ Update formData.poster
-    }));
+  const handlePosterSelect = (file) => {
+    setSelectedPosterFile(file);
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPosterPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
   };
 
-  // Fetch events after user is loaded
-  useEffect(() => {
-    axios.get(`http://localhost:8000/api/organisers/${userId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((response) => {
-        const parsedSettings = JSON.parse(response.data.settings);
+  const handleGallerySelect = (files) => {
+    setSelectedGalleryFiles(files);
+    // Create previews
+    const previews = [];
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        previews.push(reader.result);
+        if (previews.length === files.length) {
+          setGalleryPreviews(previews);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
 
-        setOrganiser(response.data);
-        setOrganiserSettings(parsedSettings);
-        setOrgFolder(parsedSettings.path + parsedSettings.folder_name); // ✅ Use it directly
-      })
-      .catch((err) => {
-        console.error("Failed to fetch organiser", err);
-      });
-  }, [user]); // Depends on user state
+  const removePoster = () => {
+    setSelectedPosterFile(null);
+    setPosterPreview('');
+  };
 
-  useEffect(() => {
-    // If ID exists, fetch the event details and populate form
-    if (id) {
-      fetchEventDetails();
+  const removeGalleryFile = (index) => {
+    const newFiles = selectedGalleryFiles.filter((_, i) => i !== index);
+    const newPreviews = galleryPreviews.filter((_, i) => i !== index);
+    setSelectedGalleryFiles(newFiles);
+    setGalleryPreviews(newPreviews);
+  };
+
+  // Step configuration
+  const steps = [
+    { 
+      number: 1, 
+      title: 'Basic Info', 
+      description: 'Event name, date & time',
+      icon: CalendarDaysIcon,
+      fields: ['name', 'date', 'time']
+    },
+    { 
+      number: 2, 
+      title: 'Venue & Details', 
+      description: 'Location and event details',
+      icon: MapPinIcon,
+      fields: ['venue_id', 'description', 'category']
+    },
+    { 
+      number: 3, 
+      title: 'Pricing & Tickets', 
+      description: 'Price, capacity & ticketing',
+      icon: TicketIcon,
+      fields: ['price', 'capacity', 'ticket_url']
+    },
+    { 
+      number: 4, 
+      title: 'Media', 
+      description: 'Poster and gallery images',
+      icon: CameraIcon,
+      fields: ['poster', 'gallery']
     }
-    fetchVenues();
-  }, [id]);
+  ];
+
+  // Step navigation
+  const nextStep = () => {
+    if (currentStep < steps.length) {
+      setCompletedSteps(prev => new Set([...prev, currentStep]));
+      setCurrentStep(prev => prev + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(prev => prev - 1);
+    }
+  };
+
+  const goToStep = (stepNumber) => {
+    setCurrentStep(stepNumber);
+  };
+
+  // Prevent Enter key from submitting before final step
+  const handleFormKeyDown = (e) => {
+    if (e.key === 'Enter' && currentStep < steps.length) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
+  const handleNextClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (validateCurrentStep()) {
+      nextStep();
+    }
+  };
+
+  // Validate current step
+  const validateCurrentStep = () => {
+    const currentStepData = steps[currentStep - 1];
+    const stepErrors = {};
+    
+    currentStepData.fields.forEach(field => {
+      if (field === 'name' && !formData.name.trim()) {
+        stepErrors.name = 'Event name is required';
+      }
+      if (field === 'date' && !formData.date) {
+        stepErrors.date = 'Event date is required';
+      }
+      if (field === 'time' && !formData.time) {
+        stepErrors.time = 'Event time is required';
+      }
+    });
+
+    setErrors(stepErrors);
+    return Object.keys(stepErrors).length === 0;
+  };
+
+  // Check if step is completed
+  const isStepCompleted = (stepNumber) => {
+    const stepData = steps[stepNumber - 1];
+    return stepData.fields.every(field => {
+      if (field === 'name') return formData.name.trim();
+      if (field === 'date') return formData.date;
+      if (field === 'time') return formData.time;
+      // Optional fields
+      return true;
+    });
+  };
+
+  useEffect(() => {
+    const initializeComponent = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch user data
+        const storedUser = JSON.parse(localStorage.getItem('user'));
+        let fetchedUser = null;
+        if (storedUser?.id) {
+          const userResponse = await axios.get(`${API_BASE_URL}/api/auth/${storedUser.id}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          fetchedUser = userResponse.data;
+          setUser(fetchedUser);
+        }
+
+        // Venues are now fetched by VenueSelector component
+
+        // If editing an existing event, fetch event details
+        if (id) {
+          await fetchEventDetails();
+        }
+
+        // Set organiser folder path
+        const username = fetchedUser?.username || storedUser?.username || currentUser?.username;
+        if (currentUser?.aclInfo?.acl_name === 'organiser' && organiserId && username) {
+          setOrgFolder(`public/organiser/${organiserId}_${username}`);
+        } else if (currentUser?.aclInfo?.acl_name === 'artist' && artistId && username) {
+          setOrgFolder(`public/artists/${artistId}_${username}`);
+        }
+
+      } catch (error) {
+        console.error('Error initializing component:', error);
+        setApiError('Failed to load component data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeComponent();
+  }, [id, token, currentUser, organiserId, artistId]);
 
   const fetchEventDetails = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/api/events/${id}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
+        headers: { Authorization: `Bearer ${token}` }
       });
-      const event = response.data.event;
+      
+      const eventData = response.data.event;
       setFormData({
-        userId: parseInt(event.userId, 10),
-        name: event.name,
-        description: event.description,
-        date: event.date.split("T")[0], // Extract date part only
-        time: event.time,
-        price: event.price || '',
-        ticket_url: event.ticket_url || '',
-        booked_artists: event.booked_artists || '',
-        category: event.category || '',
-        capacity: event.capacity || '',
-        venue_id: 0,
-        poster: event.poster || null,
-        gallery: event.gallery ? event.gallery.split(',') : [],
-        latitude: event.latitude || '',
-        longitude: event.longitude || '',
-        organiser_id: event.organiser_id || null,
+        userId: eventData.userId,
+        owner_id: eventData.owner_id,
+        owner_type: eventData.owner_type,
+        venue_id: eventData.venue_id || '',
+        name: eventData.name || '',
+        description: eventData.description || '',
+        date: eventData.date ? new Date(eventData.date).toISOString().split('T')[0] : '',
+        time: eventData.time || '',
+        price: eventData.price || '',
+        ticket_url: eventData.ticket_url || '',
+        poster: eventData.poster || '',
+        booked_artists: eventData.booked_artists || '',
+        category: eventData.category || '',
+        capacity: eventData.capacity || '',
+        gallery: eventData.gallery ? eventData.gallery.split(',') : [],
       });
+      
+      if (eventData.poster) {
+        setPosterPreview(`${API_BASE_URL}${eventData.poster}`);
+      }
+      if (eventData.gallery) {
+        setGalleryPreviews(eventData.gallery.split(',').map(path => `${API_BASE_URL}${path}`));
+      }
     } catch (error) {
-      console.error("Failed to load event data:", error);
-      setApiError("Failed to load event data.");
+      console.error('Error fetching event details:', error);
+      setApiError('Failed to load event details');
     }
   };
 
-  const fetchVenues = async () => {
-    /* Try to get the vunues for this currentUser.id */
-    try {
-      const response = await venueService.getOrganisersVenues(userId);
-      console.log("API re34sponse:", response);
-      setVenues(response || []);
-    } catch (error) {
-      console.error("Failed to fetch venues:", error);
-      setApiError("Failed to fetch venues.");
-    }
-  };
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -147,69 +319,88 @@ const CreateEvent = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.name.trim()) newErrors.name = 'Event name is required';
-    if (!formData.date) newErrors.date = 'Date is required';
-    if (!formData.time) newErrors.time = 'Time is required';
+    if (!formData.name) newErrors.name = 'Event name is required';
+    if (!formData.date) newErrors.date = 'Event date is required';
+    if (!formData.time) newErrors.time = 'Event time is required';
+    if (!formData.owner_id) newErrors.owner_id = 'Owner ID is required';
+    if (!formData.owner_type) newErrors.owner_type = 'Owner type is required';
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
-    if (posterFileName) {
-      setFormData((prev) => ({
-        ...prev,
-        poster: posterFileName,
-      }));
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+      e.stopPropagation();
     }
+    // If not on the last step, advance instead of submitting
+    if (currentStep < steps.length) {
+      if (validateCurrentStep()) {
+        nextStep();
+      }
+      return;
+    }
+
+    if (!validateForm()) return;
 
     setIsSubmitting(true);
 
-    console.log("Form data before submission:", formData);
     try {
-      //if artistId is set
-      let eventData = {};
+      // Create FormData for file upload
+      const formDataToSend = new FormData();
+      
+      // Add basic event data
+      formDataToSend.append('userId', formData.userId);
+      formDataToSend.append('owner_id', formData.owner_id);
+      formDataToSend.append('owner_type', formData.owner_type);
+      formDataToSend.append('venue_id', formData.venue_id || '');
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('description', formData.description || '');
+      formDataToSend.append('date', formData.date);
+      formDataToSend.append('time', formData.time);
+      formDataToSend.append('price', formData.price || '');
+      formDataToSend.append('ticket_url', formData.ticket_url || '');
+      formDataToSend.append('booked_artists', formData.booked_artists || '');
+      formDataToSend.append('category', formData.category || '');
+      formDataToSend.append('capacity', formData.capacity || '');
+      
+      // Do not send orgFolder; backend derives correct folder from profile settings
 
-      console.log("posterFileName:", posterFileName);
-      eventData = {
-        userId: formData.userId,
-        organiser_id: formData.organiser_id,
-        venue_id: formData.venue_id,
-        name: formData.name,
-        description: formData.description,
-        date: formData.date,
-        time: formData.time,
-        price: formData.price || null,
-        ticket_url: formData.ticket_url || null,
-        poster: posterFileName || null,
-        booked_artists: formData.booked_artists || null,
-        category: formData.category || null,
-        capacity: formData.capacity || null,
-        gallery: formData.gallery.join(','),
-      };
+      // Add poster file if selected
+      if (selectedPosterFile) {
+        formDataToSend.append('poster', selectedPosterFile);
+      }
+
+      // Add gallery files if selected
+      if (selectedGalleryFiles.length > 0) {
+        selectedGalleryFiles.forEach(file => {
+          formDataToSend.append('gallery', file);
+        });
+      }
+
       let response;
       if (id) {
         // edit existing event
-        response = await axios.put(`${API_BASE_URL}/api/events/edit/${id}`, eventData, {
+        response = await axios.put(`${API_BASE_URL}/api/events/edit/${id}`, formDataToSend, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'multipart/form-data'
           }
         });
-        console.log('Eveupdated successfully:', response);
+        console.log('Event updated successfully:', response);
       } else {
-        // 
-
-        response = await axios.post(`${API_BASE_URL}/api/events/create_event`, eventData, {
+        // create new event
+        response = await axios.post(`${API_BASE_URL}/api/events/create_event`, formDataToSend, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'multipart/form-data'
           }
         });
-        console.log('099009209023902392309:' + JSON.stringify(eventData));
+        console.log('Event created successfully:', currentUser.aclInfo.acl_name);
       }
 
-      navigate(`/${currentUser.aclInfo.acl_name}/dashboard/event/${response.data.eventId}`);
+      navigate(`/${currentUser.aclInfo.acl_name}s/dashboard/event/${response.data.eventId}`);
     } catch (error) {
       console.error('Event submission error:', error);
       setApiError(error.response?.data?.message || 'Failed to submit event');
@@ -219,70 +410,58 @@ const CreateEvent = () => {
   };
 
   const breadcrumbs = [
-    { label: 'Dashboard', path: `/${currentUser.aclInfo.acl_name}/dashboard` },
-    { label: `Create Event`, path: `${currentUser.aclInfo.acl_name}/dashboard/organisation-profile` },
+    { label: 'Dashboard', path: `/${currentUser.aclInfo.acl_name}s/dashboard` },
+    { label: `Create Event`, path: `${currentUser.aclInfo.acl_name}s/dashboard/events` },
   ];
 
 
-  return (
-
-    <div className="min-h-screen bg-gray-50">
-      <PageHeader HeaderName="Create New Event" />
-
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-stretch w-full">
-          <DashboardBreadCrumb breadcrumbs={breadcrumbs} />
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center text-indigo-600 hover:text-indigo-800"
-          >
-            <ArrowLeftIcon className="h-5 w-5 mr-2" />
-            Back to Events
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-8 divide-y divide-gray-200">
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
           <div className="space-y-6">
-            {/* Basic Information */}
-            <div>
-              <h2 className="text-2xl font-bold mb-6 text-gray-8000 mb-4">Basic Information</h2>
-              <input type="hidden" name="artist_id" value={artistId} />
-              <input type="hidden" name="organiser_id" value={organiserId} />
-              <div className="grid grid-cols-3 gap-6 bg-slate-100 p-6 rounded">
-                <div className="">
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                    Event Name *
+            <div className="text-center mb-8">
+              <CalendarDaysIcon className="mx-auto h-12 w-12 text-indigo-600 mb-4" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Basic Information</h2>
+              <p className="text-gray-600">Let's start with the essential details of your event</p>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <label htmlFor="name" className="block text-sm font-semibold text-gray-900 mb-2">
+                  Event Name *
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  id="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className={`w-full px-4 py-3 border ${errors.name ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-indigo-500'} rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all text-lg`}
+                  placeholder="Enter your event name"
+                />
+                {errors.name && <p className="mt-2 text-sm text-red-600">{errors.name}</p>}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="date" className="block text-sm font-semibold text-gray-900 mb-2">
+                    Event Date *
                   </label>
                   <input
-                    type="text"
-                    name="name"
-                    id="name"
-                    value={formData.name}
+                    type="date"
+                    name="date"
+                    id="date"
+                    value={formData.date}
                     onChange={handleChange}
-                    className={`mt-1 block w-full border ${errors.name ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                    className={`w-full px-4 py-3 border ${errors.date ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-indigo-500'} rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all`}
                   />
-                  {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
-                </div>
-                <div className="">
-                  <div className="">
-                    <label htmlFor="date" className="block text-sm font-medium text-gray-700">
-                      Date *
-                    </label>
-                    <input
-                      type="date"
-                      name="date"
-                      id="date"
-                      value={formData.date}
-                      onChange={handleChange}
-                      className={`mt-1 block w-full border ${errors.date ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                    />
-                    {errors.date && <p className="mt-1 text-sm text-red-600">{errors.date}</p>}
-                  </div>
+                  {errors.date && <p className="mt-2 text-sm text-red-600">{errors.date}</p>}
                 </div>
 
-                <div className="">
-                  <label htmlFor="time" className="block text-sm font-medium text-gray-700">
-                    Time *
+                <div>
+                  <label htmlFor="time" className="block text-sm font-semibold text-gray-900 mb-2">
+                    Event Time *
                   </label>
                   <input
                     type="time"
@@ -290,16 +469,70 @@ const CreateEvent = () => {
                     id="time"
                     value={formData.time}
                     onChange={handleChange}
-                    className={`mt-1 block w-full border ${errors.time ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                    className={`w-full px-4 py-3 border ${errors.time ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-indigo-500'} rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all`}
                   />
-                  {errors.time && <p className="mt-1 text-sm text-red-600">{errors.time}</p>}
+                  {errors.time && <p className="mt-2 text-sm text-red-600">{errors.time}</p>}
                 </div>
               </div>
             </div>
-            <div>
-              <div className="bg-slate-100 p-6 rounded ">
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                  Description
+          </div>
+        );
+
+      case 2:
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mb-4 shadow-lg">
+                <MapPinIcon className="h-8 w-8 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Venue & Details</h2>
+              <p className="text-gray-600">Choose your venue and add event details</p>
+            </div>
+
+                        <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-4">
+                  Select Venue
+                </label>
+                <VenueSelector
+                  selectedVenueId={formData.venue_id}
+                  onVenueSelect={(venue) => {
+                    setFormData(prev => ({ ...prev, venue_id: venue.id }));
+                  }}
+                  userRole={currentUser?.aclInfo?.acl_name}
+                  organiserId={organiserId}
+                  artistId={artistId}
+                  onVenueOwnerNotify={async (notificationData) => {
+                    try {
+                      // Show immediate feedback to user
+                      const { venue, owner } = notificationData;
+                      alert(`You've selected ${venue.name}, which is owned by ${owner.name}. They will be notified about your event booking request.`);
+                      
+                      // Send notification to venue owner
+                      await notificationService.notifyVenueOwner(notificationData);
+                      console.log('Venue owner notification sent successfully');
+                    } catch (error) {
+                      console.error('Failed to send venue owner notification:', error);
+                      // Still allow venue selection even if notification fails
+                    }
+                  }}
+                />
+                
+                {/* Create New Venue Link */}
+                <div className="mt-4 text-center">
+                  <Link
+                    to={`/${userRole}/dashboard/venues/new`}
+                    className="inline-flex items-center space-x-2 text-sm text-purple-600 hover:text-purple-700 font-medium"
+                  >
+                    <PlusIcon className="h-4 w-4" />
+                    <span>Create New Venue</span>
+                  </Link>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="description" className="block text-sm font-semibold text-gray-900 mb-2">
+                  Event Description
                 </label>
                 <textarea
                   name="description"
@@ -307,187 +540,294 @@ const CreateEvent = () => {
                   rows={4}
                   value={formData.description}
                   onChange={handleChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
+                  placeholder="Describe your event..."
                 />
               </div>
 
-            </div>
-
-            {/* Venue Details */}
-            <div className="bg-slate-100 rounded-lg p-6 border">
-              <h2 className="text-2xl font-bold mb-6 text-gray-8000">Event Venue</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-6 gap-6">
-
-                {/* Vunue Card */}
-                {/* Each venue will be a radio but with the same name, and using venue_id as the value */}
-                {venues && venues.length > 0 ? (
-                  venues
-                    .filter(v => v && v.id) // prevent undefined/null or missing id
-                    .map(venue => (
-                      <label className="flex items-center space-x-2 mb-2" key={venue.id}>
-                        <input
-                          type="radio"
-                          name="venue_id"
-                          value={venue.id}
-                          checked={formData.venue_id === venue.id}
-                          onChange={e =>
-                            setFormData(prev => ({
-                              ...prev,
-                              venue_id: venue.id
-                            }))
-                          }
-                          className="form-radio h-4 w-4 text-indigo-600"
-                        />
-                        <span className="font-medium">{venue.name}</span>
-                      </label>
-                    ))
-                ) : (
-                  <div className="text-gray-500 space-y-2">
-                    <p>No venues found. Please create a venue first.</p>
-                  </div>
-                )}
-
-
+              <div>
+                <label htmlFor="category" className="block text-sm font-semibold text-gray-900 mb-2">
+                  Event Category
+                </label>
+                <select
+                  name="category"
+                  id="category"
+                  value={formData.category}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                >
+                  <option value="">Select category</option>
+                  <option value="concert">Concert</option>
+                  <option value="festival">Festival</option>
+                  <option value="conference">Conference</option>
+                  <option value="exhibition">Exhibition</option>
+                  <option value="sports">Sports</option>
+                  <option value="other">Other</option>
+                </select>
               </div>
             </div>
+          </div>
+        );
 
-            {/* Event Details */}
-            <div className="pt-6">
-              <h2 className="text-2xl font-bold mb-6 text-gray-8000">Event Details</h2>
+      case 3:
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <TicketIcon className="mx-auto h-12 w-12 text-indigo-600 mb-4" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Pricing & Tickets</h2>
+              <p className="text-gray-600">Set your pricing and ticketing details</p>
+            </div>
 
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-6">
-                <div className="sm:col-span-2">
-                  <label htmlFor="price" className="block text-sm font-medium text-gray-700">
-                    Price
-                  </label>
-                  <div className="mt-1 relative rounded-md shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500 sm:text-sm">R</span>
-                    </div>
-                    <input
-                      type="number"
-                      name="price"
-                      id="price"
-                      min="0"
-                      step="0.01"
-                      value={formData.price}
-                      onChange={handleChange}
-                      className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-7 pr-12 sm:text-sm border-gray-300 rounded-md py-2 px-3"
-                      placeholder="0.00"
-                    />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="price" className="block text-sm font-semibold text-gray-900 mb-2">
+                  <CurrencyDollarIcon className="inline h-4 w-4 mr-1" />
+                  Ticket Price
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <span className="text-gray-500 text-lg">R</span>
                   </div>
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label htmlFor="capacity" className="block text-sm font-medium text-gray-700">
-                    Capacity
-                  </label>
                   <input
                     type="number"
-                    name="capacity"
-                    id="capacity"
+                    name="price"
+                    id="price"
                     min="0"
-                    value={formData.capacity}
+                    step="0.01"
+                    value={formData.price}
                     onChange={handleChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-lg"
+                    placeholder="0.00"
                   />
                 </div>
+              </div>
 
-                <div className="sm:col-span-2">
-                  <label htmlFor="category" className="block text-sm font-medium text-gray-700">
-                    Category
-                  </label>
-                  <select
-                    name="category"
-                    id="category"
-                    value={formData.category}
-                    onChange={handleChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  >
-                    <option value="">Select category</option>
-                    <option value="concert">Concert</option>
-                    <option value="festival">Festival</option>
-                    <option value="conference">Conference</option>
-                    <option value="exhibition">Exhibition</option>
-                    <option value="sports">Sports</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-
-                <div className="sm:col-span-3">
-                  <label htmlFor="ticket_url" className="block text-sm font-medium text-gray-700">
-                    Ticket URL
-                  </label>
-                  <input
-                    type="url"
-                    name="ticket_url"
-                    id="ticket_url"
-                    value={formData.ticket_url}
-                    onChange={handleChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    placeholder="https://example.com/tickets"
-                  />
-                </div>
-
-               {/*  <div className="sm:col-span-3">
-                  <label htmlFor="booked_artists" className="block text-sm font-medium text-gray-700">
-                    Booked Artists
-                  </label>
-                  <input
-                    type="text"
-                    name="booked_artists"
-                    id="booked_artists"
-                    value={formData.booked_artists}
-                    onChange={handleChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    placeholder="Artist 1, Artist 2, ..."
-                  />
-                  <p className="mt-1 text-sm text-gray-500">Separate multiple artists with commas</p>
-                </div> */}
+              <div>
+                <label htmlFor="capacity" className="block text-sm font-semibold text-gray-900 mb-2">
+                  <UsersIcon className="inline h-4 w-4 mr-1" />
+                  Event Capacity
+                </label>
+                <input
+                  type="number"
+                  name="capacity"
+                  id="capacity"
+                  min="0"
+                  value={formData.capacity}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  placeholder="Maximum attendees"
+                />
               </div>
             </div>
 
-            {/* Media Uploads */}
-            <div className="pt-6">
-              <h2 className="text-2xl font-bold mb-6 text-gray-800">Event Media</h2>
-
-              <div className="grid grid-cols-6 gap-6 sm:grid-cols-6">
-                <div className="col-span-3">
-                  <label className="block text-sm font-medium text-gray-700">Event Poster</label>
-                  <OrganiserPosterUpload
-                    onSave={handlePosterSave}
-                    orgFolder={orgFolder} />
-                </div>
-{/* 
-                <div className="col-span-3">
-                  <label className="block text-sm font-medium text-gray-700">Event Gallery</label>
-                  <div className="mt-1 flex justify-center border-2 border-gray-300 border-dashed rounded-md">
-                    <div>
-                      <GalleryUploader
-                        onSave={handlePosterSave}
-                        orgFolder={orgFolder} />
-                    </div>
-                  </div>
-                </div> */}
-              </div>
+            <div>
+              <label htmlFor="ticket_url" className="block text-sm font-semibold text-gray-900 mb-2">
+                Ticket Purchase URL
+              </label>
+              <input
+                type="url"
+                name="ticket_url"
+                id="ticket_url"
+                value={formData.ticket_url}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                placeholder="https://example.com/tickets"
+              />
             </div>
-
           </div>
+        );
 
-          <div className="pt-5">
-            <div className="flex justify-end">
+      case 4:
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <CameraIcon className="mx-auto h-12 w-12 text-indigo-600 mb-4" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Event Media</h2>
+              <p className="text-gray-600">Add visual content to showcase your event</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Event Poster</h3>
+                <SimplePosterUpload
+                  onFileSelect={handlePosterSelect}
+                  selectedFile={selectedPosterFile}
+                  posterPreview={posterPreview}
+                  onRemove={removePoster}
+                />
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Event Gallery</h3>
+                <SimpleGalleryUpload
+                  onFilesSelect={handleGallerySelect}
+                  selectedFiles={selectedGalleryFiles}
+                  galleryPreviews={galleryPreviews}
+                  onRemoveFile={removeGalleryFile}
+                />
+              </div>
+            </div>
+
+            {(selectedPosterFile || selectedGalleryFiles.length > 0) && (
+              <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-6">
+                <h3 className="font-semibold text-indigo-900 mb-4">Media Summary</h3>
+                <div className="space-y-2">
+                  {selectedPosterFile && (
+                    <div className="flex items-center text-sm text-indigo-800">
+                      <CheckIcon className="h-4 w-4 mr-2" />
+                      Event poster selected: {selectedPosterFile.name}
+                    </div>
+                  )}
+                  {selectedGalleryFiles.length > 0 && (
+                    <div className="flex items-center text-sm text-indigo-800">
+                      <CheckIcon className="h-4 w-4 mr-2" />
+                      {selectedGalleryFiles.length} gallery image{selectedGalleryFiles.length !== 1 ? 's' : ''} selected
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50">
+      <PageHeader HeaderName={`Create New Event - ${currentUser.aclInfo.acl_name === 'artist' ? 'Artist' : 'Organiser'}`} />
+
+      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <DashboardBreadCrumb breadcrumbs={breadcrumbs} />
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <ArrowLeftIcon className="h-5 w-5 mr-2" />
+            Back to Events
+          </button>
+        </div>
+
+        {/* Step Indicator */}
+        <div className="mb-8">
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+            <h2 className="text-lg font-semibold text-gray-900 mb-6">Create Your Event</h2>
+            <div className="flex items-center justify-between">
+            {steps.map((step, index) => {
+              const Icon = step.icon;
+              const isActive = currentStep === step.number;
+              const isCompleted = completedSteps.has(step.number) || isStepCompleted(step.number);
+              const isAccessible = step.number <= currentStep || isCompleted;
+
+              return (
+                <div key={step.number} className="flex items-center">
+                  <button
+                    onClick={() => isAccessible && goToStep(step.number)}
+                    disabled={!isAccessible}
+                    className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-300 ${
+                      isActive
+                        ? 'border-indigo-600 bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg'
+                        : isCompleted
+                        ? 'border-purple-500 bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                        : isAccessible
+                        ? 'border-gray-300 bg-white text-gray-600 hover:border-indigo-300 hover:shadow-md'
+                        : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                  >
+                    {isCompleted && !isActive ? (
+                      <CheckIcon className="h-5 w-5" />
+                    ) : (
+                      <Icon className="h-5 w-5" />
+                    )}
+                  </button>
+                  
+                  <div className="ml-3 hidden sm:block">
+                    <p className={`text-sm font-medium ${isActive ? 'text-indigo-600' : isCompleted ? 'text-purple-600' : 'text-gray-600'}`}>
+                      {step.title}
+                    </p>
+                    <p className="text-xs text-gray-500">{step.description}</p>
+                  </div>
+
+                  {index < steps.length - 1 && (
+                    <div className="flex-1 ml-4 mr-4 hidden sm:block">
+                      <div className={`h-1 rounded-full ${isCompleted ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-gray-200'}`} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            </div>
+          </div>
+        </div>
+
+        {/* Form Content */}
+        <div role="form" onKeyDown={handleFormKeyDown} className="bg-white rounded-2xl shadow-xl p-8">
+          <input type="hidden" name="artist_id" value={artistId} />
+          <input type="hidden" name="organiser_id" value={organiserId} />
+          
+          {renderStepContent()}
+
+          {/* Navigation Buttons */}
+          <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={prevStep}
+              disabled={currentStep === 1}
+              className={`flex items-center px-6 py-3 rounded-xl font-medium transition-all ${
+                currentStep === 1
+                  ? 'text-gray-400 cursor-not-allowed'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <ArrowLeftIcon className="h-4 w-4 mr-2" />
+              Previous
+            </button>
+
+            <div className="flex space-x-3">
               <button
                 type="button"
-                onClick={() => navigate('/organiser/dashboard/events')}
-                className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                onClick={() => navigate(`/${currentUser.aclInfo.acl_name}s/dashboard`)}
+                className="px-6 py-3 border border-gray-300 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-all"
               >
                 Cancel
               </button>
-              <DynamicEventButton isSubmitting={isSubmitting} isEditing={!!eventId} />
-
+              
+              {currentStep < steps.length ? (
+                <button
+                  type="button"
+                  onClick={handleNextClick}
+                  className="flex items-center px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-all"
+                >
+                  Next
+                  <ArrowLeftIcon className="h-4 w-4 ml-2 rotate-180" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="flex items-center px-8 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      {id ? 'Updating...' : 'Creating...'}
+                    </>
+                  ) : (
+                    <>
+                      <CheckIcon className="h-4 w-4 mr-2" />
+                      {id ? 'Update Event' : 'Create Event'}
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
