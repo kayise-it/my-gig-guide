@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import API_BASE_URL from '../../api/config';
 import axios from 'axios';
+import { useAuth } from '../../context/AuthContext';
+import favoriteService from '../../api/favoriteService';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { 
   StarIcon as StarIconSolid,
@@ -21,17 +23,19 @@ import {
   ShareIcon,
   TicketIcon
 } from '@heroicons/react/24/outline';
-import { HeroBreadcrumb } from '../../components/UI/DynamicBreadcrumb';
+import HeroSection from '../../components/UI/HeroSection';
 
 
 export default function ShowArtist() {
     const { artist_id } = useParams(); // must match your route like /artists/:artist_id
+    const { currentUser, isAuthenticated } = useAuth();
 
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [events, setEvents] = useState([]);
     const [isFavorite, setIsFavorite] = useState(false);
+    const [favoriteLoading, setFavoriteLoading] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
     const [galleryModalOpen, setGalleryModalOpen] = useState(false);
     const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
@@ -65,6 +69,22 @@ export default function ShowArtist() {
         }
     }, [artist_id]);
 
+    // Check favorite status when artist and user are loaded
+    useEffect(() => {
+        const checkFavoriteStatus = async () => {
+            if (profile && isAuthenticated && artist_id) {
+                try {
+                    const result = await favoriteService.checkFavorite('artist', parseInt(artist_id));
+                    setIsFavorite(result.isFavorite);
+                } catch (error) {
+                    console.error('Error checking favorite status:', error);
+                }
+            }
+        };
+
+        checkFavoriteStatus();
+    }, [profile, isAuthenticated, artist_id]);
+
     // Parse gallery images
     const galleryImages = React.useMemo(() => {
         if (Array.isArray(profile?.gallery)) {
@@ -81,8 +101,29 @@ export default function ShowArtist() {
     }, [profile?.gallery]);
 
     // Handle favorite toggle
-    const handleFavoriteToggle = () => {
-        setIsFavorite(!isFavorite);
+    const handleFavoriteToggle = async () => {
+        // If user is not authenticated, redirect to login or show message
+        if (!isAuthenticated) {
+            alert('Please log in to add favorites');
+            return;
+        }
+
+        setFavoriteLoading(true);
+        
+        try {
+            if (isFavorite) {
+                await favoriteService.removeFavorite('artist', parseInt(artist_id));
+                setIsFavorite(false);
+            } else {
+                await favoriteService.addFavorite('artist', parseInt(artist_id));
+                setIsFavorite(true);
+            }
+        } catch (error) {
+            console.error('Error toggling favorite:', error);
+            alert('Failed to update favorite status. Please try again.');
+        } finally {
+            setFavoriteLoading(false);
+        }
     };
 
     // Handle share
@@ -154,108 +195,29 @@ export default function ShowArtist() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
-            {/* Enhanced Hero Section */}
-            <div className="relative w-full h-[500px] overflow-hidden">
-                {/* Floating Action Buttons */}
-                <div className="absolute top-6 right-6 z-20 flex space-x-3">
-                    <button 
-                        onClick={handleShare}
-                        className="bg-white/90 backdrop-blur-sm text-gray-700 p-3 rounded-full shadow-lg hover:shadow-xl hover:bg-purple-100 transition-all duration-300 hover:scale-110 group"
-                    >
-                        <ShareIcon className="h-5 w-5 group-hover:text-purple-600 transition-colors duration-300" />
-                    </button>
-                    <button 
-                        onClick={handleFavoriteToggle}
-                        className={`backdrop-blur-sm p-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 group ${
-                            isFavorite 
-                                ? 'bg-red-500 text-white hover:bg-red-600' 
-                                : 'bg-white/90 text-gray-700 hover:bg-red-50 hover:text-red-500'
-                        }`}
-                    >
-                        <HeartIconOutline className={`h-5 w-5 transition-all duration-300 ${
-                            isFavorite ? 'fill-current' : 'group-hover:fill-current'
-                        }`} />
-                    </button>
-                </div>
-
-                {profile?.profile_picture ? (
-                    <div className="relative w-full h-full">
-                        <img
-                            src={profile.profile_picture.startsWith('http') ? profile.profile_picture : `${API_BASE_URL}${profile.profile_picture}`}
-                            alt={profile?.stage_name || profile?.name}
-                            className="absolute inset-0 w-full h-full object-cover transform hover:scale-105 transition-transform duration-700"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/30 via-transparent to-blue-900/30"></div>
-                    </div>
-                ) : (
-                    <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-purple-600 via-blue-600 to-purple-800">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
-                        <div className="flex items-center justify-center h-full">
-                            <div className="text-center text-white">
-                                <div className="relative mb-6">
-                                    <div className="absolute -inset-4 bg-white/20 rounded-full blur-xl"></div>
-                                    <MusicalNoteIcon className="relative h-20 w-20 mx-auto opacity-90" />
-                                </div>
-                                <span className="text-2xl font-semibold">Artist Photo Coming Soon</span>
-                            </div>
-                        </div>
-                    </div>
-                )}
-                
-                {/* Enhanced Content Overlay */}
-                <div className="absolute inset-0 flex items-end">
-                    <div className="p-8 w-full">
-                        {/* Breadcrumb at the top of content */}
-                        <div className="max-w-6xl mx-auto mb-8">
-                            <HeroBreadcrumb
-                                customBreadcrumbs={[
-                                    { label: 'Artists', path: '/artists', icon: null },
-                                    { label: profile?.stage_name || profile?.name || 'Artist', path: `/artists/${artist_id}`, isLast: true }
-                                ]}
-                                showHome={true}
-                            />
-                        </div>
-                        
-                        <div className="max-w-6xl mx-auto">
-                            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between">
-                                <div className="flex-1 mb-6 lg:mb-0">
-                                    {profile?.artist_type && (
-                                        <div className="mb-4">
-                                            <span className="inline-flex items-center bg-purple-600/90 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg">
-                                                <SparklesIcon className="h-4 w-4 mr-2" />
-                                                {profile.artist_type}
-                                            </span>
-                                        </div>
-                                    )}
-                                    <h1 className="text-4xl lg:text-6xl font-black text-white drop-shadow-2xl mb-4 leading-tight">
-                                        {profile?.stage_name || profile?.name}
-                                    </h1>
-                                    <div className="flex flex-wrap items-center gap-6 text-white/90 text-lg">
-                                        <div className="flex items-center">
-                                            <MusicalNoteIcon className="h-6 w-6 mr-2 text-purple-300" />
-                                            <span>Professional Artist</span>
-                                        </div>
-                                        <div className="flex items-center">
-                                            <CalendarDaysIcon className="h-6 w-6 mr-2 text-blue-300" />
-                                            <span>{events.length} Events</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="lg:ml-8">
-                                    <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 text-center shadow-xl">
-                                        <div className="flex items-center justify-center mb-1">
-                                            <StarIconSolid className="h-5 w-5 text-yellow-300 mr-1" />
-                                            <span className="text-2xl font-bold text-white">4.8</span>
-                                        </div>
-                                        <div className="text-blue-200 text-sm">Artist Rating</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <HeroSection
+                title={profile?.stage_name || profile?.name}
+                subtitle={profile?.artist_type}
+                image={profile?.profile_picture ? (profile.profile_picture.startsWith('http') ? profile.profile_picture : `${API_BASE_URL}${profile.profile_picture}`) : null}
+                fallbackIcon={MusicalNoteIcon}
+                fallbackText="Artist Photo Coming Soon"
+                breadcrumbs={[
+                    { label: 'Artists', path: '/artists', icon: null },
+                    { label: profile?.stage_name || profile?.name || 'Artist', path: `/artists/${artist_id}`, isLast: true }
+                ]}
+                onShare={handleShare}
+                onFavorite={handleFavoriteToggle}
+                isFavorite={isFavorite}
+                stats={[
+                    { icon: MusicalNoteIcon, text: 'Professional Artist' },
+                    { icon: CalendarDaysIcon, text: `${events.length} Events` }
+                ]}
+                rating="4.8"
+                ratingText="Artist Rating"
+                ctaText="Follow Artist"
+                ctaIcon={SparklesIcon}
+                onCtaClick={() => console.log('Follow artist clicked')}
+            />
 
             <div className="max-w-6xl mx-auto px-4 py-8">
                 <div className="relative -mt-20 mb-8 bg-white rounded-2xl shadow-2xl overflow-hidden border border-purple-100">
@@ -267,13 +229,18 @@ export default function ShowArtist() {
                                     <h1 className="text-4xl font-bold text-gray-900">{profile?.stage_name || profile?.name}</h1>
                                     <button 
                                         onClick={handleFavoriteToggle}
+                                        disabled={favoriteLoading}
                                         className={`p-2 rounded-full transition-all duration-300 hover:scale-110 ${
                                             isFavorite 
                                                 ? 'bg-red-100 text-red-600' 
                                                 : 'bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-500'
-                                        }`}
+                                        } ${favoriteLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     >
-                                        <HeartIconOutline className={`h-6 w-6 ${isFavorite ? 'fill-current' : ''}`} />
+                                        {isFavorite ? (
+                                            <HeartIconSolid className="h-6 w-6 text-red-600" />
+                                        ) : (
+                                            <HeartIconOutline className="h-6 w-6" />
+                                        )}
                                     </button>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-6 text-gray-600 mb-4">

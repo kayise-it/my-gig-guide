@@ -8,6 +8,9 @@ const containerStyle = {
   height: '100%',
 };
 
+// Static libraries array to prevent reloading
+const libraries = ['places'];
+
 function GoogleMapComponent({ gigs, apiKey }) {
   const [center, setCenter] = useState({ lat: -25.4658, lng: 30.9853 }); // Default to Mbombela
   const [marker, setMarker] = useState(null);
@@ -39,7 +42,7 @@ function GoogleMapComponent({ gigs, apiKey }) {
   };
 
   return (
-    <LoadScript googleMapsApiKey={apiKey} libraries={['places']}>
+    <LoadScript googleMapsApiKey={apiKey} libraries={libraries}>
       <GoogleMap
         mapContainerStyle={containerStyle}
         center={center}

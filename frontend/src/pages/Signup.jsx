@@ -91,7 +91,7 @@ export default function Signup() {
       navigate('/login'); // Redirect to login after successful signup
     } catch (error) {
       console.error('Signup error:', error.response?.data);
-      
+
       if (error.response?.data?.errors) {
         // Handle field-specific errors from backend
         setErrors(error.response.data.errors);
@@ -108,8 +108,6 @@ export default function Signup() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      
-      <h1>Thando Hlophe</h1>
       <div className="flex items-center space-x-4 max-auto">
         <Link to="/" className="flex gap-2 text-2xl font-bold text-indigo-600 mx-auto">
           <FiMusic className="text-purple-500 text-4xl" />
@@ -149,43 +147,42 @@ export default function Signup() {
                   <FaUser className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-  id="username"
-  name="username"
-  type="text"
-  autoComplete="username"
-  value={formData.username}
-  onChange={(e) => {
-    const newUsername = e.target.value;
-    handleChange(e); // Update form data
-    
-    // Validate on each change
-    const validationErrors = validateUsername(newUsername);
-    
-    if (validationErrors) {
-      setErrors({
-        ...errors,
-        username: validationErrors.join(', ')
-      });
-    } else {
-      // Clear error if valid
-      const { username, ...restErrors } = errors;
-      setErrors(restErrors);
-    }
-  }}
-  onBlur={(e) => {
-    // Additional validation on blur
-    const validationErrors = validateUsername(e.target.value);
-    if (validationErrors) {
-      setErrors({
-        ...errors,
-        username: validationErrors.join(', ')
-      });
-    }
-  }}
-  className={`block w-full pl-10 pr-3 py-2 border ${
-    errors.username ? 'border-red-300' : 'border-gray-300'
-  } rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-/>
+                  id="username"
+                  name="username"
+                  type="text"
+                  autoComplete="username"
+                  value={formData.username}
+                  onChange={(e) => {
+                    const newUsername = e.target.value;
+                    handleChange(e); // Update form data
+
+                    // Validate on each change
+                    const validationErrors = validateUsername(newUsername);
+
+                    if (validationErrors) {
+                      setErrors({
+                        ...errors,
+                        username: validationErrors.join(', ')
+                      });
+                    } else {
+                      // Clear error if valid
+                      const { username, ...restErrors } = errors;
+                      setErrors(restErrors);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // Additional validation on blur
+                    const validationErrors = validateUsername(e.target.value);
+                    if (validationErrors) {
+                      setErrors({
+                        ...errors,
+                        username: validationErrors.join(', ')
+                      });
+                    }
+                  }}
+                  className={`block w-full pl-10 pr-3 py-2 border ${errors.username ? 'border-red-300' : 'border-gray-300'
+                    } rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                />
               </div>
               {errors.username && (
                 <p className="mt-2 text-sm text-red-600">{errors.username}</p>

@@ -55,6 +55,7 @@ function App() {
         <Route path="/contact" element={<Layout><Contact /></Layout>} />
         <Route path="/events" element={<Layout><Events /></Layout>} />
         <Route path="/venues" element={<Layout><Venues /></Layout>} />
+        <Route path="/venue/:id" element={<Layout><ViewVenue /></Layout>} />
         <Route path="/Event/Registration" element={<Layout><EventRegistration /></Layout>} />
         <Route path="/events/:id" element={<Layout><ShowEvent /></Layout>} />
         <Route path="/events/" element={<Layout><ViewEvents /></Layout>} />

@@ -133,6 +133,14 @@ export const venueService = {
       throw new Error(error.response?.data?.message || 'Failed to fetch venue');
     }
   },
+  getVenueByIdPublic: async (venueId) => {
+    try {
+      const response = await axios.get(`${API_URL}/api/venue/public/${venueId}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch venue');
+    }
+  },
   deleteVenue: async (venueId) => {
     try {
       const response = await axios.delete(`${API_URL}/api/venue/delete/${venueId}`, {

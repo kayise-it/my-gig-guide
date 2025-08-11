@@ -1,81 +1,420 @@
-import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import React, { useEffect, useState, useMemo, useRef } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { venueService } from '../../api/venueService';
-import VenueCard from '../../components/Venue/VenueCard';
+import API_BASE_URL from '../../api/config';
+import HeroSection from '../../components/UI/HeroSection';
 import { useAuth } from '../../context/AuthContext';
-import DashboardBreadCrumb from '../../components/Includes/DashboardBreadCrumb';
-import { HeroBreadcrumb } from '../../components/UI/DynamicBreadcrumb';
-import { Link } from 'react-router-dom';
-import GoogleMapComponent from '../../components/Map/GoogleMapComponent';
+import { LoadScript, Autocomplete } from '@react-google-maps/api';
+import VenueMap from '../../components/Map/VenueMap';
+import { PhotoIcon } from '@heroicons/react/24/outline';
 import { 
+  StarIcon as StarIconSolid,
+  HeartIcon as HeartIconSolid 
+} from '@heroicons/react/24/solid';
+import { 
+  StarIcon as StarIconOutline,
+  HeartIcon as HeartIconOutline,
   MapPinIcon, 
   UsersIcon, 
   PhoneIcon, 
   EnvelopeIcon, 
   GlobeAltIcon,
-  StarIcon,
   XMarkIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ChevronDownIcon,
   BuildingLibraryIcon,
   CalendarDaysIcon,
   MusicalNoteIcon,
   SparklesIcon,
   ShareIcon,
-  HeartIcon,
-  PlusIcon,
-  ArrowTopRightOnSquareIcon
+  ArrowTopRightOnSquareIcon,
+  TicketIcon
 } from '@heroicons/react/24/outline';
 
 
 export default function ViewVenue() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { currentUser, isAuthenticated } = useAuth();
   const [venue, setVenue] = useState(null);
-  const [venues, setVenues] = useState(null);
-  const [apiError, setApiError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [galleryModalOpen, setGalleryModalOpen] = useState(false);
+  const [events, setEvents] = useState([]);
+  const [isFavorite, setIsFavorite] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [galleryModalOpen, setGalleryModalOpen] = useState(false);
+  const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedVenueName, setEditedVenueName] = useState('');
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
+  const [editedVenueDetails, setEditedVenueDetails] = useState({
+    location: '',
+    capacity: '',
+    category: '',
+    latitude: '',
+    longitude: ''
+  });
+  const [isGalleryUploadModalOpen, setIsGalleryUploadModalOpen] = useState(false);
+  const [selectedGalleryFiles, setSelectedGalleryFiles] = useState([]);
+  const [galleryFilePreviews, setGalleryFilePreviews] = useState([]);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
 
+  // Google Maps configuration
+  const libraries = ['places'];
+  const googleMapsApiKey = 'AIzaSyDVfOS0l8Tv59v8WTgUO231X2FtmBQCc2Y';
+  const autocompleteRef = useRef(null);
 
-  useEffect(() => {
-    async function fetchVenue() {
-      try {
-        const response = await venueService.getVenueById(id);
-        console.log("Venue qwe:", response);
-        setVenue(response.venue);
-      } catch (error) {
-        console.error("Error fetching venue:", error);
-      }
-    }
-    const userId = JSON.parse(localStorage.getItem('user')).id;
-
-    const fetchVenues = async () => {
-      /* Try to get the vunues for this currentUser.id */
-      try {
-        const response = await venueService.getOrganisersVenues(userId);
-        setVenues(response);
-
-      } catch (error) {
-        console.error("Failed to fetch venues:", error);
-        setApiError("Failed to fetch venues.");
-      }
-    };
-
-    if (id) { fetchVenue(); fetchVenues(); }
-  }, [id]);
-
-  const breadcrumbs = [
-    { label: 'Dashboard', path: '/organiser/dashboard' },
-    { label: venue?.name, path: `/organiser/dashboard/venues/edit/${id}` },
+  // Venue categories
+  const venueCategories = [
+    'Live Music Venue',
+    'Jazz Club',
+    'Rock Venue',
+    'Electronic Music Venue',
+    'Folk Venue',
+    'Blues Club',
+    'Country Music Venue',
+    'Hip Hop Venue',
+    'Classical Music Venue',
+    'Comedy Club',
+    'Multi-Purpose Venue',
+    'Theater',
+    'Concert Hall',
+    'Bar & Grill',
+    'Nightclub',
+    'Restaurant with Live Music',
+    'Outdoor Venue',
+    'Festival Grounds',
+    'Recording Studio',
+    'Rehearsal Space'
   ];
 
-  // Parse gallery images
-  const galleryImages = venue?.venue_gallery ? JSON.parse(venue.venue_gallery) : [];
-  const allImages = [venue?.main_picture, ...galleryImages].filter(Boolean);
+  // Capacity options (starting from 10)
+  const capacityOptions = Array.from({ length: 91 }, (_, i) => (i + 10) * 10); // 10, 20, 30, ..., 1000
 
-  // Gallery navigation functions
+  // Check if current user is the venue owner
+  const isVenueOwner = useMemo(() => {
+    if (!isAuthenticated || !currentUser || !venue) return false;
+    
+    // Check if user is an artist and owns this venue
+    if (currentUser.role === 3 && currentUser.artist_id) {
+      return venue.owner_type === 'artist' && venue.owner_id === currentUser.artist_id;
+    }
+    
+    // Check if user is an organiser and owns this venue
+    if (currentUser.role === 4 && currentUser.organiser_id) {
+      return venue.owner_type === 'organiser' && venue.owner_id === currentUser.organiser_id;
+    }
+    
+    return false;
+  }, [isAuthenticated, currentUser, venue]);
+
+
+  const fetchVenueData = async () => {
+    try {
+      setLoading(true);
+      const response = await venueService.getVenueByIdPublic(id);
+      console.log('Venue data received:', response.venue);
+      console.log('Venue coordinates:', response.venue?.latitude, response.venue?.longitude);
+      console.log('Venue gallery:', response.venue?.venue_gallery);
+      setVenue(response.venue);
+      setError(null);
+
+      // Fetch venue events (if you have this endpoint)
+      try {
+        // const eventsResponse = await venueService.getVenueEvents(id);
+        // setEvents(eventsResponse.events || []);
+        setEvents([]); // Mock data for now
+      } catch (eventsError) {
+        console.log('No events found for venue');
+        setEvents([]);
+      }
+    } catch (err) {
+      setError('Failed to load venue profile');
+      console.error('Error fetching venue:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (id) {
+      fetchVenueData();
+    }
+  }, [id]);
+
+  // Parse gallery images
+  const galleryImages = React.useMemo(() => {
+    console.log('Parsing gallery images from:', venue?.venue_gallery);
+    if (Array.isArray(venue?.venue_gallery)) {
+      console.log('Gallery is already an array:', venue.venue_gallery);
+      return venue.venue_gallery;
+    }
+    if (venue?.venue_gallery && typeof venue.venue_gallery === 'string') {
+      try {
+        const parsed = JSON.parse(venue.venue_gallery);
+        console.log('Parsed gallery from JSON:', parsed);
+        return parsed;
+      } catch (error) {
+        console.log('Failed to parse JSON, trying comma split:', error);
+        const split = venue.venue_gallery.split(',').filter(img => img.trim());
+        console.log('Split gallery:', split);
+        return split;
+      }
+    }
+    console.log('No gallery data found, returning empty array');
+    return [];
+  }, [venue?.venue_gallery]);
+
+  // Handle favorite toggle
+  const handleFavoriteToggle = () => {
+    setIsFavorite(!isFavorite);
+  };
+
+  // Handle share
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: venue?.name,
+        text: `Check out ${venue?.name}`,
+        url: window.location.href
+      });
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      alert('Link copied to clipboard!');
+    }
+  };
+
+  // Handle edit venue (name and details)
+  const handleEditVenue = () => {
+    if (isVenueOwner) {
+      setIsEditingName(true);
+      setEditedVenueName(venue?.name || '');
+      setIsEditingDetails(true);
+      setEditedVenueDetails({
+        location: venue?.location || '',
+        capacity: venue?.capacity || '',
+        category: venue?.category || 'Live Music Venue',
+        latitude: venue?.latitude || '',
+        longitude: venue?.longitude || ''
+      });
+    }
+  };
+
+  // Handle edit venue details
+  const handleEditVenueDetails = () => {
+    if (isVenueOwner) {
+      setIsEditingDetails(true);
+      setEditedVenueDetails({
+        location: venue?.location || '',
+        capacity: venue?.capacity || '',
+        category: venue?.category || 'Live Music Venue',
+        latitude: venue?.latitude || '',
+        longitude: venue?.longitude || ''
+      });
+    }
+  };
+
+  // Google Places onPlaceChanged function
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      const address = place.formatted_address;
+      const location = place.geometry?.location;
+
+      setEditedVenueDetails(prev => ({
+        ...prev,
+        location: address || '',
+        latitude: location?.lat() || '',
+        longitude: location?.lng() || '',
+      }));
+    }
+  };
+
+  // Handle save venue (name and details)
+  const handleSaveVenue = async () => {
+    try {
+      console.log('Saving venue:', { name: editedVenueName, details: editedVenueDetails });
+      
+      // Prepare update data with required owner information
+      const updateData = {
+        name: editedVenueName,
+        location: editedVenueDetails.location,
+        capacity: parseInt(editedVenueDetails.capacity),
+        category: editedVenueDetails.category,
+        latitude: editedVenueDetails.latitude || venue?.latitude,
+        longitude: editedVenueDetails.longitude || venue?.longitude,
+        owner_id: venue?.owner_id,
+        owner_type: venue?.owner_type,
+        userId: currentUser.id
+      };
+      
+      console.log('Update data:', updateData);
+      
+      // Make API call to update venue
+      const response = await venueService.updateVenue(id, updateData);
+      
+      // Update local venue state with the response
+      if (response.venue) {
+        setVenue(response.venue);
+      } else {
+        // Fallback: update local state if API response doesn't include venue object
+        setVenue(prev => prev ? { 
+          ...prev, 
+          name: editedVenueName,
+          location: editedVenueDetails.location,
+          capacity: parseInt(editedVenueDetails.capacity),
+          category: editedVenueDetails.category,
+          latitude: editedVenueDetails.latitude,
+          longitude: editedVenueDetails.longitude
+        } : null);
+      }
+      
+      setIsEditingName(false);
+      setIsEditingDetails(false);
+      console.log('Venue saved successfully');
+      
+      // Show success message
+      alert('Venue updated successfully!');
+    } catch (error) {
+      console.error('Error saving venue:', error);
+      alert(`Failed to save venue: ${error.message}`);
+    }
+  };
+
+  // Handle save venue details
+  const handleSaveVenueDetails = async () => {
+    try {
+      console.log('Saving venue details:', editedVenueDetails);
+      
+      // Prepare update data with required owner information
+      const updateData = {
+        location: editedVenueDetails.location,
+        capacity: parseInt(editedVenueDetails.capacity),
+        category: editedVenueDetails.category,
+        latitude: editedVenueDetails.latitude || venue?.latitude,
+        longitude: editedVenueDetails.longitude || venue?.longitude,
+        owner_id: venue?.owner_id,
+        owner_type: venue?.owner_type,
+        userId: currentUser.id
+      };
+      
+      console.log('Update data:', updateData);
+      
+      // Make API call to update venue details
+      const response = await venueService.updateVenue(id, updateData);
+      
+      // Update local venue state with the response
+      if (response.venue) {
+        setVenue(response.venue);
+      } else {
+        // Fallback: update local state if API response doesn't include venue object
+        setVenue(prev => prev ? { 
+          ...prev, 
+          location: editedVenueDetails.location,
+          capacity: parseInt(editedVenueDetails.capacity),
+          category: editedVenueDetails.category,
+          latitude: editedVenueDetails.latitude,
+          longitude: editedVenueDetails.longitude
+        } : null);
+      }
+      
+      setIsEditingDetails(false);
+      console.log('Venue details saved successfully');
+      
+      // Show success message
+      alert('Venue details updated successfully!');
+    } catch (error) {
+      console.error('Error saving venue details:', error);
+      alert(`Failed to save venue details: ${error.message}`);
+    }
+  };
+
+  // Handle cancel edit
+  const handleCancelEdit = () => {
+    setIsEditingName(false);
+    setIsEditingDetails(false);
+    setEditedVenueName(venue?.name || '');
+    setEditedVenueDetails({
+      location: venue?.location || '',
+      capacity: venue?.capacity || '',
+      category: venue?.category || 'Live Music Venue',
+      latitude: venue?.latitude || '',
+      longitude: venue?.longitude || ''
+    });
+  };
+
+  // Handle cancel edit details
+  const handleCancelEditDetails = () => {
+    setIsEditingDetails(false);
+    setEditedVenueDetails({
+      location: venue?.location || '',
+      capacity: venue?.capacity || '',
+      category: venue?.category || 'Live Music Venue',
+      latitude: venue?.latitude || '',
+      longitude: venue?.longitude || ''
+    });
+  };
+
+  // Gallery upload functions
+  const handleGalleryFileSelection = (files) => {
+    const fileArray = Array.from(files);
+    const validFiles = fileArray.filter(file => {
+      const isValidType = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type);
+      const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB
+      return isValidType && isValidSize;
+    });
+
+    setSelectedGalleryFiles(validFiles);
+    
+    // Create previews
+    const previews = validFiles.map(file => URL.createObjectURL(file));
+    setGalleryFilePreviews(previews);
+  };
+
+  const removeGalleryPreview = (index) => {
+    const newFiles = selectedGalleryFiles.filter((_, i) => i !== index);
+    const newPreviews = galleryFilePreviews.filter((_, i) => i !== index);
+    setSelectedGalleryFiles(newFiles);
+    setGalleryFilePreviews(newPreviews);
+  };
+
+  const handleGalleryUpload = async () => {
+    if (selectedGalleryFiles.length === 0) return;
+    
+    setUploadingGallery(true);
+    try {
+      const formData = new FormData();
+      selectedGalleryFiles.forEach(file => {
+        formData.append('venue_gallery', file);
+      });
+
+      await venueService.uploadVenueGallery(id, formData);
+      
+      // Refresh venue data to get updated gallery
+      await fetchVenueData();
+      
+      // Close modal and reset
+      setIsGalleryUploadModalOpen(false);
+      setSelectedGalleryFiles([]);
+      setGalleryFilePreviews([]);
+      
+      alert('Gallery uploaded successfully!');
+    } catch (error) {
+      console.error('Error uploading gallery:', error);
+      alert(`Failed to upload gallery: ${error.message}`);
+    } finally {
+      setUploadingGallery(false);
+    }
+  };
+
+  const closeGalleryUploadModal = () => {
+    setIsGalleryUploadModalOpen(false);
+    setSelectedGalleryFiles([]);
+    setGalleryFilePreviews([]);
+  };
+
+  // Gallery functions
   const openGallery = (index = 0) => {
     setSelectedImageIndex(index);
     setGalleryModalOpen(true);
@@ -86,418 +425,565 @@ export default function ViewVenue() {
   };
 
   const nextImage = () => {
-    setSelectedImageIndex((prev) => (prev + 1) % allImages.length);
+    const images = Array.isArray(venue?.venue_gallery) ? venue.venue_gallery : [];
+    if (images.length > 0) {
+      setSelectedImageIndex((prev) => (prev + 1) % images.length);
+    }
   };
 
   const prevImage = () => {
-    setSelectedImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
+    const images = Array.isArray(venue?.venue_gallery) ? venue.venue_gallery : [];
+    if (images.length > 0) {
+      setSelectedImageIndex((prev) => (prev - 1 + images.length) % images.length);
+    }
   };
 
-  console.log(venue)
+  // Carousel functions for gallery
+  const imagesPerSlide = 4;
+  const totalSlides = Math.ceil(galleryImages.length / imagesPerSlide);
 
-  if (!venue) return (
+  const nextCarouselSlide = () => {
+    setCurrentCarouselIndex((prev) => (prev + 1) % totalSlides);
+  };
+
+  const prevCarouselSlide = () => {
+    setCurrentCarouselIndex((prev) => (prev - 1 + totalSlides) % totalSlides);
+  };
+
+  const getCurrentSlideImages = () => {
+    const startIndex = currentCarouselIndex * imagesPerSlide;
+    return galleryImages.slice(startIndex, startIndex + imagesPerSlide);
+  };
+
+  if (loading) return (
     <div className="flex items-center justify-center h-64 bg-gradient-to-br from-purple-50 via-white to-blue-50">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-2xl mx-4 my-8">
+      <p className="font-medium">{error}</p>
     </div>
   );
 
   return (
-    <>
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
-        {/* Modern Hero Header */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-purple-600 via-blue-600 to-purple-800 py-24">
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* Dynamic Breadcrumb */}
-            <HeroBreadcrumb
-              customBreadcrumbs={[
-                { label: 'Dashboard', path: '/organiser/dashboard', icon: null },
-                { label: 'Venues', path: '/organiser/dashboard/venues', icon: null },
-                { label: venue?.name || 'Venue', path: `/venue/${id}`, isLast: true }
-              ]}
-              showHome={true}
-              className="mb-8"
-            />
-            <div className="text-left">
-              <div className="inline-flex items-center space-x-2 bg-white/10 px-4 py-2 rounded-full mb-6">
-                <BuildingLibraryIcon className="h-5 w-5 text-white" />
-                <span className="font-medium text-white">Live Music Venue</span>
-              </div>
-              <h1 className="text-5xl md:text-7xl font-black text-white mb-4 leading-tight">
-                {venue.name}
-              </h1>
-              <div className="flex flex-wrap items-center gap-6 text-white/90 text-lg mb-4">
-                <div className="flex items-center space-x-2">
-                  <MapPinIcon className="h-5 w-5 text-purple-300" />
-                  <span>{venue.location}</span>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+      <HeroSection
+        title={venue?.name}
+        subtitle="Live Music Venue"
+        image={(venue?.main_picture || venue?.venue_picture || venue?.image) ? 
+          ((venue.main_picture || venue.venue_picture || venue.image)?.startsWith('http') 
+            ? (venue.main_picture || venue.venue_picture || venue.image)
+            : `${API_BASE_URL}${venue.main_picture || venue.venue_picture || venue.image}`) 
+          : null}
+        fallbackIcon={BuildingLibraryIcon}
+        fallbackText="Venue Photo Coming Soon"
+        breadcrumbs={[
+          { label: 'Venues', path: '/venues', icon: null },
+          { label: venue?.name || 'Venue', path: `/venue/${id}`, isLast: true }
+        ]}
+        onShare={handleShare}
+        onFavorite={handleFavoriteToggle}
+        isFavorite={isFavorite}
+        stats={[
+          { icon: MapPinIcon, text: venue?.location || 'Location TBD' },
+          { icon: UsersIcon, text: `${venue?.capacity || 0} Capacity` }
+        ]}
+        rating="4.7"
+        ratingText="Venue Rating"
+        ctaText={isVenueOwner ? null : "Book Venue"}
+        ctaIcon={isVenueOwner ? null : CalendarDaysIcon}
+        onCtaClick={isVenueOwner ? null : () => console.log('Book venue clicked')}
+      />
+
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="relative -mt-32 mb-8 bg-white rounded-2xl shadow-2xl overflow-hidden border border-purple-100">
+          {/* Enhanced Venue Header */}
+          <div className="p-8 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-blue-50">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                          <div className="flex-1">
+                <div className="flex items-center gap-4 mb-4">
+                  {isEditingName ? (
+                    <input
+                      type="text"
+                      value={editedVenueName}
+                      onChange={(e) => setEditedVenueName(e.target.value)}
+                      className="text-4xl font-bold text-gray-900 bg-white border-2 border-purple-300 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                      placeholder="Enter venue name"
+                    />
+                  ) : (
+                    <h1 className="text-4xl font-bold text-gray-900">{venue?.name}</h1>
+                  )}
+                  <button 
+                    onClick={handleFavoriteToggle}
+                    className={`p-2 rounded-full transition-all duration-300 hover:scale-110 ${
+                      isFavorite 
+                        ? 'bg-red-100 text-red-600' 
+                        : 'bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-500'
+                    }`}
+                  >
+                    <HeartIconOutline className={`h-6 w-6 ${isFavorite ? 'fill-current' : ''}`} />
+                  </button>
                 </div>
-                {venue.capacity && (
-                  <div className="flex items-center space-x-2">
-                    <UsersIcon className="h-5 w-5 text-purple-300" />
-                    <span>{venue.capacity} capacity</span>
+                <div className="flex flex-wrap items-center gap-6 text-gray-600 mb-4">
+                  {isEditingDetails ? (
+                    <>
+                      <div className="flex items-center">
+                        <MapPinIcon className="h-5 w-5 mr-2 text-purple-500" />
+                        <LoadScript googleMapsApiKey={googleMapsApiKey} libraries={libraries}>
+                          <Autocomplete
+                            onLoad={(autoC) => (autocompleteRef.current = autoC)}
+                            onPlaceChanged={onPlaceChanged}
+                          >
+                            <input
+                              type="text"
+                              value={editedVenueDetails.location}
+                              onChange={(e) => setEditedVenueDetails(prev => ({ ...prev, location: e.target.value }))}
+                              className="font-medium bg-white border-2 border-purple-300 rounded-lg px-3 py-1 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                              placeholder="Start typing address..."
+                            />
+                          </Autocomplete>
+                        </LoadScript>
+                      </div>
+                      <div className="flex items-center">
+                        <UsersIcon className="h-5 w-5 mr-2 text-blue-500" />
+                        <select
+                          value={editedVenueDetails.capacity}
+                          onChange={(e) => setEditedVenueDetails(prev => ({ ...prev, capacity: e.target.value }))}
+                          className="font-medium bg-white border-2 border-purple-300 rounded-lg px-3 py-1 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                        >
+                          {capacityOptions.map((capacity) => (
+                            <option key={capacity} value={capacity}>
+                              {capacity}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="ml-1">Capacity</span>
+                      </div>
+                      <div className="flex items-center">
+                        <BuildingLibraryIcon className="h-5 w-5 mr-2 text-purple-500" />
+                        <select
+                          value={editedVenueDetails.category}
+                          onChange={(e) => setEditedVenueDetails(prev => ({ ...prev, category: e.target.value }))}
+                          className="font-medium bg-white border-2 border-purple-300 rounded-lg px-3 py-1 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                        >
+                          {venueCategories.map((category) => (
+                            <option key={category} value={category}>
+                              {category}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center">
+                        <MapPinIcon className="h-5 w-5 mr-2 text-purple-500" />
+                        <span className="font-medium">{venue?.location}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <UsersIcon className="h-5 w-5 mr-2 text-blue-500" />
+                        <span className="font-medium">{venue?.capacity} Capacity</span>
+                      </div>
+                      <div className="flex items-center">
+                        <BuildingLibraryIcon className="h-5 w-5 mr-2 text-purple-500" />
+                        <span className="font-medium">{venue?.category || 'Live Music Venue'}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <span className="inline-flex items-center bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-medium px-4 py-2 rounded-full shadow-md">
+                  <SparklesIcon className="h-4 w-4 mr-2" />
+                  Premium Venue
+                </span>
+                
+
+                      </div>
+              
+              {/* Enhanced Action Card */}
+              <div className="mt-6 lg:mt-0 lg:ml-8">
+                <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 p-6 rounded-2xl min-w-[250px] shadow-lg">
+                  <div className="mb-6 text-center">
+                    <p className="text-4xl font-black text-gray-900 mb-1">★ 4.9</p>
+                    <p className="text-sm text-gray-600 bg-white px-3 py-1 rounded-full inline-block">venue rating</p>
                   </div>
-                )}
+
+                  {isVenueOwner ? (
+                    isEditingName ? (
+                      <div className="flex gap-3">
+                        <button 
+                          onClick={handleSaveVenue}
+                          className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 group"
+                        >
+                          <SparklesIcon className="h-5 w-5 mr-2" />
+                          <span>Save</span>
+                        </button>
+                        <button 
+                          onClick={handleCancelEdit}
+                          className="flex-1 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 group"
+                        >
+                          <XMarkIcon className="h-5 w-5 mr-2" />
+                          <span>Cancel</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={handleEditVenue}
+                        className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 group"
+                      >
+                        <SparklesIcon className="h-5 w-5 mr-2" />
+                        <span>Edit</span>
+                        <ArrowTopRightOnSquareIcon className="h-5 w-5 ml-2 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300" />
+                      </button>
+                    )
+                  ) : (
+                    <button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 group">
+                      <SparklesIcon className="h-5 w-5 mr-2" />
+                      <span>Book Venue</span>
+                      <ArrowTopRightOnSquareIcon className="h-5 w-5 ml-2 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300" />
+                    </button>
+                  )}
+
+                  {/* Additional CTA */}
+                  <button 
+                    onClick={handleShare}
+                    className="w-full mt-3 bg-white hover:bg-gray-50 border border-purple-200 hover:border-purple-300 text-purple-700 font-medium py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center"
+                  >
+                    <ShareIcon className="h-5 w-5 mr-2" />
+                    <span>Share Venue</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        {/* Main Content with Sidebar Layout */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="flex gap-8">
-            {/* Main Content Card */}
-            <div className="flex-1 space-y-8">
-              {/* Venue Details Card */}
-              <div className="bg-white/90 backdrop-blur-lg border border-purple-200 rounded-2xl p-8 shadow-sm">
-                <div className="flex items-center space-x-3 mb-8">
-                  <div className="p-3 bg-gradient-to-br from-purple-400 to-purple-200 rounded-xl">
-                    <BuildingLibraryIcon className="h-6 w-6 text-purple-700" />
+
+          {/* Venue Details Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 p-8">
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* About */}
+              {venue?.description && (
+                <div>
+                  <h2 className="text-2xl font-semibold text-gray-900 mb-4">About the Venue</h2>
+                  <div className="prose max-w-none">
+                    <p className="text-gray-700 whitespace-pre-line leading-relaxed">
+                      {venue.description}
+                    </p>
                   </div>
-                  <h2 className="text-3xl font-bold text-purple-700">Venue Details</h2>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-6">
-                    <div className="p-4 rounded-xl bg-purple-50 border border-purple-100">
-                      <div className="flex items-start space-x-4">
-                        <div className="p-2 bg-purple-200 rounded-lg">
-                          <MapPinIcon className="h-5 w-5 text-purple-400" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-purple-700 mb-1">Address</h4>
-                          <p className="text-purple-500">{venue.address}</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="p-4 rounded-xl bg-purple-50 border border-purple-100">
-                      <div className="flex items-start space-x-4">
-                        <div className="p-2 bg-purple-100 rounded-lg">
-                          <UsersIcon className="h-5 w-5 text-purple-400" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-purple-700 mb-1">Capacity</h4>
-                          <p className="text-purple-600">{venue.capacity} people</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-6">
-                    <div className="p-4 rounded-xl bg-purple-50 border border-purple-100">
-                      <div className="flex items-start space-x-4">
-                        <div className="p-2 bg-purple-100 rounded-lg">
-                          <PhoneIcon className="h-5 w-5 text-purple-400" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-purple-700 mb-1">Phone</h4>
-                          <p className="text-purple-600">{venue.phone_number}</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="p-4 rounded-xl bg-pink-50 border border-pink-100">
-                      <div className="flex items-start space-x-4">
-                        <div className="p-2 bg-pink-100 rounded-lg">
-                          <EnvelopeIcon className="h-5 w-5 text-pink-400" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-pink-700 mb-1">Email</h4>
-                          <p className="text-pink-600">{venue.contact_email}</p>
-                        </div>
-                      </div>
-                    </div>
-                    {venue.website && (
-                      <div className="p-4 rounded-xl bg-cyan-50 border border-cyan-100">
-                        <div className="flex items-start space-x-4">
-                          <div className="p-2 bg-cyan-100 rounded-lg">
-                            <GlobeAltIcon className="h-5 w-5 text-cyan-400" />
+              )}
+
+              {/* Venue Gallery - Only show to owner */}
+              {isVenueOwner && (
+                <div>
+                  <h2 className="text-2xl font-semibold text-gray-900 mb-6">Venue Gallery</h2>
+                  {galleryImages.length > 0 ? (
+                    <div className="bg-white border border-gray-200 rounded-xl p-6">
+                      <div className="grid grid-cols-4 gap-4 mb-6">
+                        {galleryImages.slice(0, 8).map((image, index) => (
+                          <div 
+                            key={index}
+                            className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group shadow-md hover:shadow-xl transition-all duration-300"
+                            onClick={() => openGallery(index)}
+                          >
+                            <img
+                              src={image.startsWith('http') ? image : `${API_BASE_URL}${image}`}
+                              alt={`Gallery ${index + 1}`}
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                           </div>
+                        ))}
+                      </div>
+                      
+                      {/* View More Accordion */}
+                      {galleryImages.length > 8 && (
+                        <div className="border-t border-gray-200 pt-6">
+                          <details className="group">
+                            <summary className="flex items-center justify-between cursor-pointer text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200">
+                              <span>View All {galleryImages.length} Photos</span>
+                              <ChevronDownIcon className="h-5 w-5 group-open:rotate-180 transition-transform duration-200" />
+                            </summary>
+                            <div className="mt-4 grid grid-cols-4 gap-4">
+                              {galleryImages.slice(8).map((image, index) => (
+                                <div 
+                                  key={index + 8}
+                                  className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group shadow-md hover:shadow-xl transition-all duration-300"
+                                  onClick={() => openGallery(index + 8)}
+                                >
+                                  <img
+                                    src={image.startsWith('http') ? image : `${API_BASE_URL}${image}`}
+                                    alt={`Gallery ${index + 9}`}
+                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="bg-white border border-gray-200 rounded-xl p-6">
+                      <div className="text-center py-12">
+                        <PhotoIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No Gallery Images</h3>
+                        <p className="text-gray-600 mb-6">This venue doesn't have any gallery images yet.</p>
+                        <button
+                          onClick={() => setIsGalleryUploadModalOpen(true)}
+                          className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center mx-auto shadow-lg hover:shadow-xl hover:scale-105"
+                        >
+                          <PhotoIcon className="h-5 w-5 mr-2" />
+                          Add Gallery Images
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Upcoming Events */}
+              <div>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-6">Upcoming Events</h2>
+                {events.length > 0 ? (
+                  <div className="space-y-4">
+                    {events.slice(0, 3).map(event => (
+                      <Link 
+                        key={event.id}
+                        to={`/event/${event.id}`}
+                        className="block bg-white hover:bg-gray-50 border border-gray-200 rounded-xl p-6 transition-all duration-300 hover:shadow-lg group"
+                      >
+                        <div className="flex items-center justify-between">
                           <div className="flex-1">
-                            <h4 className="font-semibold text-cyan-700 mb-1">Website</h4>
-                            <a 
-                              href={venue.website} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-cyan-600 hover:text-cyan-700 flex items-center space-x-2"
-                            >
-                              <span>{venue.website}</span>
-                              <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                            </a>
+                            <h3 className="text-lg font-semibold text-gray-900 group-hover:text-purple-600 transition-colors duration-300">
+                              {event.name}
+                            </h3>
+                            <div className="flex items-center text-sm text-gray-600 mt-2">
+                              <CalendarDaysIcon className="h-4 w-4 mr-2" />
+                              {new Date(event.date).toLocaleDateString()} at {event.time}
+                            </div>
+                            {event.artist && (
+                              <div className="flex items-center text-sm text-gray-600 mt-1">
+                                <MusicalNoteIcon className="h-4 w-4 mr-2" />
+                                {event.artist.name}
+                              </div>
+                            )}
                           </div>
+                          <ArrowTopRightOnSquareIcon className="h-5 w-5 text-gray-400 group-hover:text-purple-600 transition-colors duration-300" />
                         </div>
-                      </div>
-                    )}
+                      </Link>
+                    ))}
                   </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-8">
+                      <CalendarDaysIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Upcoming Events</h3>
+                      <p className="text-gray-600">This venue hasn't scheduled any events yet.</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Venue Map */}
+              <div>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-6">Location</h2>
+                <div className="bg-white border border-gray-200 rounded-xl p-6">
+                  {venue?.latitude && venue?.longitude ? (
+                    <VenueMap venue={venue} />
+                  ) : (
+                    <div>
+                      <p className="text-gray-500 text-center py-8">No location coordinates available for this venue.</p>
+                      <p className="text-sm text-gray-400 text-center">Latitude: {venue?.latitude || 'Not set'}</p>
+                      <p className="text-sm text-gray-400 text-center">Longitude: {venue?.longitude || 'Not set'}</p>
+                      {/* Test map with mock data */}
+                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                        <p className="text-sm text-gray-600 mb-2">Test Map (Mock Data):</p>
+                        <VenueMap venue={{
+                          name: "Test Venue",
+                          latitude: -25.4658,
+                          longitude: 30.9853
+                        }} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-              {/* Gallery Section */}
-              {allImages.length > 0 && (
-                <div className="bg-white/90 backdrop-blur-lg border border-pink-100 rounded-2xl p-8 shadow-sm">
-                  <div className="flex items-center space-x-3 mb-8">
-                    <div className="p-3 bg-gradient-to-br from-pink-200 to-purple-200 rounded-xl">
-                      <SparklesIcon className="h-6 w-6 text-pink-700" />
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* Contact Info */}
+              {(venue?.contact_email || venue?.phone_number) && (
+                <div className="bg-white border border-gray-200 p-6 rounded-xl">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Get in Touch</h3>
+                  <div className="space-y-3">
+                    {venue?.contact_email && (
+                      <a href={`mailto:${venue.contact_email}`} className="flex items-center text-purple-600 hover:text-purple-700 transition-colors duration-200">
+                        <ArrowTopRightOnSquareIcon className="h-4 w-4 mr-2" />
+                        Email Venue
+                      </a>
+                    )}
+                    {venue?.phone_number && (
+                      <a href={`tel:${venue.phone_number}`} className="flex items-center text-purple-600 hover:text-purple-700 transition-colors duration-200">
+                        <ArrowTopRightOnSquareIcon className="h-4 w-4 mr-2" />
+                        Call Venue
+                      </a>
+                      )}
                     </div>
-                    <h2 className="text-3xl font-bold text-pink-700">Gallery</h2>
-                    <div className="flex-1"></div>
-                    <span className="bg-pink-200 text-pink-700 px-3 py-1 rounded-full text-sm">
-                      {allImages.length} images
-                    </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Gallery Modal */}
+      {galleryModalOpen && galleryImages.length > 0 && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+          <div className="relative max-w-4xl w-full">
+            <button
+              onClick={closeGallery}
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors duration-200"
+            >
+              <XMarkIcon className="h-8 w-8" />
+            </button>
+
+            <div className="relative">
+              <img
+                src={galleryImages[selectedImageIndex]?.startsWith('http') ? galleryImages[selectedImageIndex] : `${API_BASE_URL}${galleryImages[selectedImageIndex]}`}
+                alt={`Gallery ${selectedImageIndex + 1}`}
+                className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
+              />
+              
+              {galleryImages.length > 1 && (
+              <>
+                <button
+                  onClick={prevImage}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors duration-200"
+                >
+                    <ChevronLeftIcon className="h-6 w-6" />
+                </button>
+                <button
+                  onClick={nextImage}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors duration-200"
+                >
+                    <ChevronRightIcon className="h-6 w-6" />
+                </button>
+              </>
+            )}
+            </div>
+
+            <div className="text-center text-white mt-4">
+              <span className="text-sm">{selectedImageIndex + 1} of {galleryImages.length}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gallery Upload Modal */}
+      {isGalleryUploadModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">Upload Venue Gallery</h2>
+                <button
+                  onClick={closeGalleryUploadModal}
+                  className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {galleryFilePreviews.length === 0 ? (
+                /* File Selection Area */
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-400 transition-colors">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={(e) => handleGalleryFileSelection(e.target.files)}
+                    className="hidden"
+                    id="venue-gallery-upload"
+                    disabled={uploadingGallery}
+                  />
+                  <label htmlFor="venue-gallery-upload" className="cursor-pointer">
+                    <PhotoIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    <p className="text-sm text-gray-600 mb-2">
+                      <span className="font-medium text-purple-600">Click to select photos</span> or drag and drop
+                    </p>
+                    <p className="text-xs text-gray-500">PNG, JPG, GIF, WebP up to 5MB each</p>
+                  </label>
+                </div>
+              ) : (
+                /* File Previews */
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-gray-900">
+                      Selected Photos ({galleryFilePreviews.length})
+                    </h4>
+                    <button
+                      onClick={() => {
+                        setSelectedGalleryFiles([]);
+                        setGalleryFilePreviews([]);
+                      }}
+                      className="text-sm text-gray-500 hover:text-gray-700"
+                      disabled={uploadingGallery}
+                    >
+                      Clear All
+                    </button>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {allImages.map((image, index) => (
-                      <div 
-                        key={index}
-                        className="relative aspect-square rounded-xl overflow-hidden cursor-pointer group border border-pink-100 hover:border-pink-300 transition-all duration-300"
-                        onClick={() => openGallery(index)}
-                      >
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {galleryFilePreviews.map((preview, index) => (
+                      <div key={index} className="relative group">
                         <img
-                          src={image}
-                          alt={`${venue.name} - Image ${index + 1}`}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          src={preview}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-32 object-cover rounded-lg"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-yellow-100 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
-                          <div className="bg-white/40 backdrop-blur-sm rounded-full p-3 transform scale-75 group-hover:scale-100 transition-transform duration-300">
-                            <SparklesIcon className="h-6 w-6 text-pink-700" />
-                          </div>
-                        </div>
-                        <div className="absolute top-2 right-2">
-                          <span className="bg-white/70 backdrop-blur-sm text-pink-700 text-xs px-2 py-1 rounded-full">
-                            {index + 1}
-                          </span>
-                        </div>
+                        <button
+                          onClick={() => removeGalleryPreview(index)}
+                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                          disabled={uploadingGallery}
+                        >
+                          <XMarkIcon className="h-4 w-4" />
+                        </button>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-              {/* Map Section */}
-              <div className="bg-white/90 backdrop-blur-lg border border-purple-100 rounded-2xl p-8 shadow-sm">
-                <div className="flex items-center space-x-3 mb-8">
-                  <div className="p-3 bg-gradient-to-br from-purple-200 to-purple-300 rounded-xl">
-                    <MapPinIcon className="h-6 w-6 text-purple-700" />
-                  </div>
-                  <h2 className="text-3xl font-bold text-purple-700">Location & Directions</h2>
-                </div>
-                <div className="w-full h-80 rounded-xl overflow-hidden border border-purple-100">
-                  <GoogleMapComponent
-                    gigs={[
-                      {
-                        id: venue.id,
-                        name: venue.name,
-                        venue: {
-                          name: venue.name,
-                          address: venue.address
-                        }
-                      }
-                    ]}
-                    apiKey={'AIzaSyDVfOS0l8Tv59v8WTgUO231X2FtmBQCc2Y'}
-                  />
-                </div>
-                <div className="mt-6 p-4 bg-purple-50 rounded-xl border border-purple-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <MapPinIcon className="h-5 w-5 text-purple-400" />
-                      <span className="text-purple-700">{venue.address}</span>
-                    </div>
-                    <button className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-4 py-2 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2 hover:scale-105">
-                      <span>Get Directions</span>
-                      <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            {/* Sidebar */}
-            <div className="w-80 flex-shrink-0 space-y-8 hidden lg:block">
-              {/* Quick Actions */}
-              <div className="bg-white/90 backdrop-blur-lg border border-purple-100 rounded-2xl p-6 shadow-sm sticky top-8">
-                <div className="flex items-center space-x-3 mb-6">
-                  <div className="p-2 bg-gradient-to-br from-purple-200 to-purple-300 rounded-lg">
-                    <MusicalNoteIcon className="h-5 w-5 text-purple-700" />
-                  </div>
-                  <h3 className="text-xl font-bold text-purple-700">Quick Actions</h3>
-                </div>
-                <div className="space-y-4">
-                  <Link 
-                    to="/organiser/dashboard/events/new"
-                    className="w-full bg-gradient-to-r from-purple-400 to-pink-400 hover:from-purple-500 hover:to-pink-500 text-white px-4 py-3 rounded-xl font-medium transition-all duration-300 flex items-center space-x-3 hover:scale-105 group"
-                  >
-                    <PlusIcon className="h-5 w-5 group-hover:rotate-90 transition-transform duration-300" />
-                    <span>Create Event</span>
-                  </Link>
-                  <Link 
-                    to={`/organiser/dashboard/venues/edit/${id}`}
-                    className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 px-4 py-3 rounded-xl font-medium transition-all duration-300 flex items-center space-x-3 border border-purple-100 hover:border-purple-300 group"
-                  >
-                    <BuildingLibraryIcon className="h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
-                    <span>Edit Venue</span>
-                  </Link>
-                </div>
-              </div>
-              {/* Other Venues */}
-              <div className="bg-white/90 backdrop-blur-lg border border-blue-100 rounded-2xl p-6 shadow-sm">
-                <div className="flex items-center space-x-3 mb-6">
-                  <div className="p-2 bg-gradient-to-br from-blue-200 to-cyan-200 rounded-lg">
-                    <BuildingLibraryIcon className="h-5 w-5 text-blue-700" />
-                  </div>
-                  <h3 className="text-xl font-bold text-blue-700">Your Other Venues</h3>
-                </div>
-                
-                  {error && (
-                    <div className="text-center py-8 bg-red-900/20 border border-red-500/30 rounded-xl">
-                      <p className="text-red-300 mb-3">{error}</p>
-                      <Link 
-                        to="/organiser/dashboard/events/new" 
-                        className="text-purple-400 hover:text-purple-300 transition-colors duration-300 flex items-center justify-center space-x-2"
-                      >
-                        <PlusIcon className="h-4 w-4" />
-                        <span>Create Event</span>
-                      </Link>
-                    </div>
-                  )}
-                  
-                  {venues && venues.length > 0 ? (
-                    <div className="space-y-3 max-h-96 overflow-y-auto">
-                      {venues.slice(0, 5).map((otherVenue) => (
-                        <Link 
-                          key={otherVenue.id}
-                          to={`/organiser/dashboard/venues/${otherVenue.id}`}
-                          className="block p-4 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-100 hover:border-purple-300 transition-all duration-300 group"
-                        >
-                          <div className="flex items-start space-x-3">
-                            <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                              <BuildingLibraryIcon className="h-5 w-5 text-white" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-semibold text-gray-900 truncate group-hover:text-purple-700 transition-colors duration-300">
-                                {otherVenue.name}
-                              </h4>
-                              <p className="text-sm text-gray-600 mt-1 truncate group-hover:text-purple-600 transition-colors duration-300">
-                                {otherVenue.location}
-                              </p>
-                              {otherVenue.capacity && (
-                                <div className="flex items-center space-x-2 mt-2">
-                                  <UsersIcon className="h-3 w-3 text-gray-500" />
-                                  <p className="text-xs text-gray-500">Cap: {otherVenue.capacity}</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </Link>
-                      ))}
-                      
-                      {venues.length > 5 && (
-                        <div className="text-center pt-4">
-                          <Link 
-                            to="/organiser/dashboard/venues"
-                            className="text-blue-400 hover:text-blue-300 text-sm transition-colors duration-300"
-                          >
-                            View all {venues.length} venues →
-                          </Link>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 bg-purple-50 rounded-xl border border-purple-100">
-                      <BuildingLibraryIcon className="h-12 w-12 text-purple-400 mx-auto mb-3" />
-                      <p className="text-gray-600 mb-4">No other venues yet</p>
-                      <Link 
-                        to="/organiser/dashboard/venues/new"
-                        className="inline-flex items-center space-x-2 bg-purple-100 hover:bg-purple-200 text-purple-700 px-4 py-2 rounded-lg transition-colors duration-300"
-                      >
-                        <PlusIcon className="h-4 w-4" />
-                        <span>Add New Venue</span>
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      {/* Enhanced Gallery Modal */}
-      {galleryModalOpen && allImages.length > 0 && (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="relative w-full max-w-6xl max-h-full">
-            
-            {/* Close Button */}
-            <button
-              onClick={closeGallery}
-              className="absolute top-6 right-6 z-10 bg-gray-900/80 backdrop-blur-sm text-white p-3 rounded-full hover:bg-red-600/80 transition-all duration-300 hover:scale-110 group"
-            >
-              <XMarkIcon className="h-6 w-6 group-hover:rotate-90 transition-transform duration-300" />
-            </button>
-
-            {/* Navigation Buttons */}
-            {allImages.length > 1 && (
-              <>
-                <button
-                  onClick={prevImage}
-                  className="absolute left-6 top-1/2 transform -translate-y-1/2 z-10 bg-gray-900/80 backdrop-blur-sm text-white p-3 rounded-full hover:bg-purple-600/80 transition-all duration-300 hover:scale-110 group"
-                >
-                  <ChevronLeftIcon className="h-6 w-6 group-hover:-translate-x-1 transition-transform duration-300" />
-                </button>
-                <button
-                  onClick={nextImage}
-                  className="absolute right-6 top-1/2 transform -translate-y-1/2 z-10 bg-gray-900/80 backdrop-blur-sm text-white p-3 rounded-full hover:bg-purple-600/80 transition-all duration-300 hover:scale-110 group"
-                >
-                  <ChevronRightIcon className="h-6 w-6 group-hover:translate-x-1 transition-transform duration-300" />
-                </button>
-              </>
-            )}
-
-            {/* Image Container */}
-            <div className="relative w-full h-full flex items-center justify-center">
-              <img
-                src={allImages[selectedImageIndex]}
-                alt={`${venue.name} - Image ${selectedImageIndex + 1}`}
-                className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl border border-gray-700"
-              />
-              
-              {/* Image Gradient Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/20 rounded-2xl pointer-events-none"></div>
             </div>
 
-            {/* Enhanced Image Counter & Info */}
-            <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center space-x-4">
-              <div className="bg-gray-900/80 backdrop-blur-sm text-white px-6 py-3 rounded-full border border-gray-700">
-                <div className="flex items-center space-x-3">
-                  <SparklesIcon className="h-5 w-5 text-purple-400" />
-                  <span className="font-medium">{selectedImageIndex + 1} of {allImages.length}</span>
-                </div>
-              </div>
-              
-              {/* Share Button */}
-              <button className="bg-gray-900/80 backdrop-blur-sm text-white p-3 rounded-full border border-gray-700 hover:bg-purple-600/80 transition-all duration-300 hover:scale-110 group">
-                <ShareIcon className="h-5 w-5 group-hover:rotate-12 transition-transform duration-300" />
+            <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
+              <button
+                onClick={closeGalleryUploadModal}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-200"
+                disabled={uploadingGallery}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleGalleryUpload}
+                disabled={selectedGalleryFiles.length === 0 || uploadingGallery}
+                className={`px-6 py-2 rounded-lg font-medium transition-all duration-300 ${
+                  selectedGalleryFiles.length === 0 || uploadingGallery
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl hover:scale-105'
+                }`}
+              >
+                {uploadingGallery ? 'Uploading...' : 'Upload Gallery'}
               </button>
             </div>
-
-            {/* Image Thumbnails */}
-            {allImages.length > 1 && (
-              <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex space-x-2 max-w-md overflow-x-auto">
-                {allImages.map((image, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedImageIndex(index)}
-                    className={`relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-300 hover:scale-110 ${
-                      index === selectedImageIndex 
-                        ? 'border-purple-500 ring-2 ring-purple-500/50' 
-                        : 'border-gray-600 hover:border-gray-400'
-                    }`}
-                  >
-                    <img
-                      src={image}
-                      alt={`Thumbnail ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                    {index === selectedImageIndex && (
-                      <div className="absolute inset-0 bg-purple-500/20"></div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

@@ -33,11 +33,7 @@ exports.events = async (req, res) => {
       ]
     });
     
-    if (events.length === 0) {
-      return res.status(404).json({ message: 'No events found' });
-    }
-
-    // If found, return the list of events
+    // Return the list of events (empty array if no events found)
     res.status(200).json(events);
   } catch (err) {
     console.error('Error fetching events:', err);
