@@ -23,114 +23,45 @@ export default function ViewEvents() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const navigate = useNavigate();
-  const token = localStorage.getItem('token'); // or wherever your token is stored
+  const token = localStorage.getItem('token');
 
-  // Hardcoded example events
+  // Fetch events from database
   useEffect(() => {
-    const loadExampleEvents = () => {
-      const today = new Date();
-      const tomorrow = new Date(today);
-      tomorrow.setDate(today.getDate() + 1);
-      
-      const exampleEvents = [
-        {
-          id: 1,
-          name: "Electric Nights Festival",
-          description: "A spectacular electronic music festival featuring top DJs from around the world. Experience mind-blowing visuals and beats that will keep you dancing all night long.",
-          date: today.toISOString().split('T')[0],
-          time: "18:00",
-          category: "festival",
-          price: 250,
-          poster: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&h=300&fit=crop",
-          venue: { name: "Cape Town Stadium" }
-        },
-        {
-          id: 2,
-          name: "Jazz Under the Stars",
-          description: "An intimate evening of smooth jazz with renowned local and international artists. Enjoy cocktails and great music under the beautiful starlit sky.",
-          date: tomorrow.toISOString().split('T')[0],
-          time: "19:30",
-          category: "concert",
-          price: 0,
-          poster: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&h=300&fit=crop",
-          venue: { name: "V&A Waterfront Amphitheatre" }
-        },
-        {
-          id: 3,
-          name: "Comedy Central Live",
-          description: "Get ready to laugh until your sides hurt! Top comedians bring their best material for an unforgettable night of comedy and entertainment.",
-          date: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          time: "20:00",
-          category: "comedy",
-          price: 180,
-          poster: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=500&h=300&fit=crop",
-          venue: { name: "Baxter Theatre" }
-        },
-        {
-          id: 4,
-          name: "Art & Wine Exhibition",
-          description: "Discover contemporary African art while enjoying premium wines. Meet the artists, learn about their inspiration, and take home a piece of culture.",
-          date: new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          time: "17:00",
-          category: "exhibition",
-          price: 0,
-          poster: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=500&h=300&fit=crop",
-          venue: { name: "Zeitz Museum" }
-        },
-        {
-          id: 5,
-          name: "Tech Innovation Summit",
-          description: "Join industry leaders and innovators for a day of groundbreaking talks about the future of technology, AI, and digital transformation in Africa.",
-          date: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          time: "09:00",
-          category: "conference",
-          price: 450,
-          poster: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=500&h=300&fit=crop",
-          venue: { name: "Cape Town International Convention Centre" }
-        },
-        {
-          id: 6,
-          name: "Shakespeare in the Park",
-          description: "A magical outdoor performance of Hamlet in the beautiful Kirstenbosch Gardens. Bring a picnic and enjoy classical theater in a stunning natural setting.",
-          date: new Date(today.getTime() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          time: "16:00",
-          category: "theater",
-          price: 120,
-          poster: "https://images.unsplash.com/photo-1507924538820-ede94a04019d?w=500&h=300&fit=crop",
-          venue: { name: "Kirstenbosch Botanical Garden" }
-        },
-        {
-          id: 7,
-          name: "Rugby Championship Final",
-          description: "The ultimate showdown! Two powerhouse teams battle it out for the championship title. Experience the passion, skill, and excitement of South African rugby.",
-          date: new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          time: "15:00",
-          category: "sports",
-          price: 320,
-          poster: "https://images.unsplash.com/photo-1551958219-acbc608c6377?w=500&h=300&fit=crop",
-          venue: { name: "DHL Stadium" }
-        },
-        {
-          id: 8,
-          name: "Indie Music Showcase",
-          description: "Discover the next big thing in indie music! Local bands and solo artists showcase their original compositions in an intimate venue setting.",
-          date: new Date(today.getTime() + 21 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          time: "20:30",
-          category: "concert",
-          price: 85,
-          poster: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=500&h=300&fit=crop",
-          venue: { name: "The Assembly" }
-        }
-      ];
-
-      console.log('Loading example events:', exampleEvents);
-      setEvents(exampleEvents);
-      setLoading(false);
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(`${API_BASE_URL}/api/events`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        
+        // Transform the data to match the expected format
+        const transformedEvents = response.data.map(event => ({
+          id: event.id,
+          name: event.name || event.event_name,
+          description: event.description,
+          date: event.date || event.event_date,
+          time: event.time,
+          category: event.category || 'concert', // Default category
+          price: event.price || event.ticket_price || 0,
+          poster: event.poster,
+          venue: event.venue || { name: event.venue_name || 'TBD' }
+        }));
+        
+        console.log('Fetched events from database:', transformedEvents);
+        setEvents(transformedEvents);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching events:', err);
+        setError(err.response?.data?.message || 'Failed to fetch events');
+      } finally {
+        setLoading(false);
+      }
     };
 
-    // Simulate loading time
-    setTimeout(loadExampleEvents, 100);
-  }, []);
+    fetchEvents();
+  }, [token]);
 
   // Helper function to check if event is upcoming (today or later)
   const isUpcoming = (eventDate) => {
