@@ -2,6 +2,7 @@
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
 import Layout from './components/Layout';
+import './utils/consoleErrorFixer'; // Import error fixer utility
 
 /* Owners */
 import AdminDashboard from "./pages/AdminDashboard";
@@ -43,6 +44,9 @@ import EditVenue from "./pages/Organiser/Dashboard/Venues/EditVenue";
 import GalleryTest from "./components/GalleryTest";
 
 function App() {
+  // Add debugging for navigation
+  console.log('App component rendered');
+
   return (
     <Router>
       <Routes>
@@ -50,12 +54,13 @@ function App() {
         <Route path="/" element={<Layout><Home /></Layout>} />
         <Route path="/about" element={<Layout><AboutUs /></Layout>} />
         <Route path="/artists" element={<Layout><Artists /></Layout>} />
-        <Route path="/Artists/:artist_id" element={<Layout><ShowArtist /></Layout>} />
+        <Route path="/artists/:artist_id" element={<Layout><ShowArtist /></Layout>} />
         <Route path="/artist-registration" element={<Layout><ArtistRegistration /></Layout>} />
         <Route path="/contact" element={<Layout><Contact /></Layout>} />
         <Route path="/events" element={<Layout><Events /></Layout>} />
         <Route path="/venues" element={<Layout><Venues /></Layout>} />
-        <Route path="/Event/Registration" element={<Layout><EventRegistration /></Layout>} />
+        <Route path="/venue/:id" element={<Layout><ViewVenue /></Layout>} />
+        <Route path="/event/registration" element={<Layout><EventRegistration /></Layout>} />
         <Route path="/events/:id" element={<Layout><ShowEvent /></Layout>} />
         <Route path="/events/" element={<Layout><ViewEvents /></Layout>} />
 

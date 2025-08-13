@@ -45,17 +45,17 @@ const Header = () => {
   // Navigation items with icons
   const navigationItems = [
     { name: 'Home', href: '/', icon: HomeIcon },
-    { name: 'Events', href: '/Events', icon: CalendarDaysIcon },
-    { name: 'Artists', href: '/Artists', icon: MicrophoneIcon },
+    { name: 'Events', href: '/events', icon: CalendarDaysIcon },
+    { name: 'Artists', href: '/artists', icon: MicrophoneIcon },
     { name: 'About', href: '/about', icon: InformationCircleIcon },
-    { name: 'Contact', href: '/Contact', icon: PhoneIcon },
+    { name: 'Contact', href: '/contact', icon: PhoneIcon },
   ];
 
   const isActiveLink = (href) => {
     if (href === '/') {
       return location.pathname === '/';
     }
-    return location.pathname.startsWith(href);
+    return location.pathname.toLowerCase().startsWith(href.toLowerCase());
   };
 
   const getDashboardLink = () => {

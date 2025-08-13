@@ -2,9 +2,20 @@ import { Link } from 'react-router-dom';
 import { MapPinIcon, StarIcon, UsersIcon, CalendarIcon } from '@heroicons/react/24/outline';
 
 const VenueCard = ({ venue, who }) => {
+  // Determine the correct route based on who
+  const getVenueRoute = () => {
+    if (who === 'artists') {
+      return `/artists/dashboard/venue/${venue.id}`;
+    } else if (who === 'organiser') {
+      return `/organiser/dashboard/venues/${venue.id}`;
+    } else {
+      return `/venue/${venue.id}`; // public venue route
+    }
+  };
+
   return (
     <Link 
-      to={`/${who}/venue/${venue.id}`}
+      to={getVenueRoute()}
       className="group block rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 border border-gray-100"
     >
       {/* Image with gradient overlay */}

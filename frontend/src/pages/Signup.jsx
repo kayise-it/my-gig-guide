@@ -18,6 +18,7 @@ export default function Signup() {
     role: ''
   });
   const [aclTrusts, setAclTrusts] = useState([]);
+  const [isLoadingAclTrusts, setIsLoadingAclTrusts] = useState(true);
   const token = localStorage.getItem('token');
 
   const [errors, setErrors] = useState({});
@@ -35,6 +36,7 @@ export default function Signup() {
   useEffect(() => {
     // Fetching ACL trusts from the API
     const fetchAclTrusts = async () => {
+      setIsLoadingAclTrusts(true);
       try {
         const response = await axios.get(`${API_BASE_URL}/api/acl-trusts`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
@@ -42,6 +44,8 @@ export default function Signup() {
         setAclTrusts(response.data);
       } catch (error) {
         console.error("Failed to fetch ACL trusts:", error);
+      } finally {
+        setIsLoadingAclTrusts(false);
       }
     };
 
@@ -91,7 +95,7 @@ export default function Signup() {
       navigate('/login'); // Redirect to login after successful signup
     } catch (error) {
       console.error('Signup error:', error.response?.data);
-      
+
       if (error.response?.data?.errors) {
         // Handle field-specific errors from backend
         setErrors(error.response.data.errors);
@@ -108,8 +112,6 @@ export default function Signup() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      
-      <h1>Thando Hlophe</h1>
       <div className="flex items-center space-x-4 max-auto">
         <Link to="/" className="flex gap-2 text-2xl font-bold text-indigo-600 mx-auto">
           <FiMusic className="text-purple-500 text-4xl" />
@@ -149,43 +151,42 @@ export default function Signup() {
                   <FaUser className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-  id="username"
-  name="username"
-  type="text"
-  autoComplete="username"
-  value={formData.username}
-  onChange={(e) => {
-    const newUsername = e.target.value;
-    handleChange(e); // Update form data
-    
-    // Validate on each change
-    const validationErrors = validateUsername(newUsername);
-    
-    if (validationErrors) {
-      setErrors({
-        ...errors,
-        username: validationErrors.join(', ')
-      });
-    } else {
-      // Clear error if valid
-      const { username, ...restErrors } = errors;
-      setErrors(restErrors);
-    }
-  }}
-  onBlur={(e) => {
-    // Additional validation on blur
-    const validationErrors = validateUsername(e.target.value);
-    if (validationErrors) {
-      setErrors({
-        ...errors,
-        username: validationErrors.join(', ')
-      });
-    }
-  }}
-  className={`block w-full pl-10 pr-3 py-2 border ${
-    errors.username ? 'border-red-300' : 'border-gray-300'
-  } rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-/>
+                  id="username"
+                  name="username"
+                  type="text"
+                  autoComplete="username"
+                  value={formData.username}
+                  onChange={(e) => {
+                    const newUsername = e.target.value;
+                    handleChange(e); // Update form data
+
+                    // Validate on each change
+                    const validationErrors = validateUsername(newUsername);
+
+                    if (validationErrors) {
+                      setErrors({
+                        ...errors,
+                        username: validationErrors.join(', ')
+                      });
+                    } else {
+                      // Clear error if valid
+                      const { username, ...restErrors } = errors;
+                      setErrors(restErrors);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // Additional validation on blur
+                    const validationErrors = validateUsername(e.target.value);
+                    if (validationErrors) {
+                      setErrors({
+                        ...errors,
+                        username: validationErrors.join(', ')
+                      });
+                    }
+                  }}
+                  className={`block w-full pl-10 pr-3 py-2 border ${errors.username ? 'border-red-300' : 'border-gray-300'
+                    } rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                />
               </div>
               {errors.username && (
                 <p className="mt-2 text-sm text-red-600">{errors.username}</p>
@@ -242,8 +243,11 @@ export default function Signup() {
 
             {/* Role Selection */}
             <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700 flex items-center gap-2">
                 Account Type
+                {isLoadingAclTrusts && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+                )}
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -254,10 +258,11 @@ export default function Signup() {
                   name="role"
                   value={formData.role}
                   onChange={handleChange}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  disabled={isLoadingAclTrusts}
+                  className={`block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${isLoadingAclTrusts ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 >
-                  <option value="">Select a role</option>
-                  {aclTrusts.map((trust) => (
+                  <option value="">{isLoadingAclTrusts ? 'Loading account types...' : 'Select a role'}</option>
+                  {!isLoadingAclTrusts && aclTrusts.map((trust) => (
                     <option key={trust.acl_id} value={trust.acl_id}>
                       {trust.acl_display}
                     </option>

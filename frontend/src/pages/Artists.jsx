@@ -140,7 +140,7 @@ export default function ArtistPage() {
                       </span>
                     </div>
                     <a
-                      href={`/Artists/${artist.id}`}
+                      href={`/artists/${artist.id}`}
                       className="inline-flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-2 rounded-xl transition-all duration-300 font-medium text-sm hover:scale-105 group"
                     >
                       <span>View Profile</span>

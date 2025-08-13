@@ -17,10 +17,27 @@ const GalleryImage = ({
     const imageUrl = React.useMemo(() => {
         if (!image) return 'https://via.placeholder.com/300x300/E5E7EB/9CA3AF?text=No+Image';
         if (image.startsWith('http')) return image;
+        
         // Ensure the path starts with /
         const cleanPath = image.startsWith('/') ? image : `/${image}`;
-        // Fix the path for current artist folder structure
-        const correctedPath = cleanPath.replace('/artists/events/', '/artists/3_Thando_9144/events/');
+        
+        // Fix the malformed paths from database
+        // Database has: /artists/events/events/1_kamal_lamb/gallery/...
+        // Should be: /artists/3_Thando_8146/events/1_kamal_lamb/gallery/...
+        let correctedPath = cleanPath;
+        
+        // Remove duplicate "events" and fix the artist path
+        if (correctedPath.includes('/artists/events/events/')) {
+            correctedPath = correctedPath.replace('/artists/events/events/', '/artists/3_Thando_8146/events/');
+        }
+        
+        // If the path already contains the correct structure, use it as is
+        if (correctedPath.includes('/artists/3_Thando_8146/') || correctedPath.includes('/organiser/')) {
+            return `http://localhost:5173${correctedPath}`;
+        }
+        
+        // Fallback to the old structure if needed
+        correctedPath = correctedPath.replace('/artists/events/', '/artists/3_Thando_8146/events/');
         return `http://localhost:5173${correctedPath}`;
     }, [image]);
 
@@ -28,6 +45,7 @@ const GalleryImage = ({
     React.useEffect(() => {
         if (index === 0 && !image?.startsWith('http')) {
             console.log(`GalleryImage loading:`, imageUrl);
+            console.log(`Original image path:`, image);
         }
     }, [image, imageUrl, index]);
     

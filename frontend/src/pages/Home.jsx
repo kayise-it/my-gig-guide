@@ -11,7 +11,8 @@ import {
   StarIcon,
   GlobeAltIcon
 } from '@heroicons/react/24/outline';
-import LiveEventsMap from '../components/Map/LiveEventsMap';
+// Temporarily comment out the map component to test navigation
+// import LiveEventsMap from '../components/Map/LiveEventsMap';
 
 const Home = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -151,7 +152,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Live Events Map Section */}
+      {/* Temporarily replace map section with simple content */}
       <section className="py-16 bg-gradient-to-br from-purple-50 via-white to-blue-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -171,24 +172,9 @@ const Home = () => {
             </p>
           </div>
 
-          {/* Map Container */}
-          <div className="relative">
-            <LiveEventsMap />
-            
-            {/* Map Legend */}
-            <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm border border-purple-200 rounded-xl p-4 shadow-sm">
-              <h4 className="font-semibold text-gray-900 mb-3">Map Legend</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center">
-                  <div className="w-3 h-3 bg-purple-500 rounded-full mr-3"></div>
-                  <span className="text-gray-700">Your Location</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-3 h-3 bg-purple-600 rounded-full mr-3"></div>
-                  <span className="text-gray-700">Event Venues</span>
-                </div>
-              </div>
-            </div>
+          {/* Simple placeholder instead of map */}
+          <div className="bg-white border border-purple-100 rounded-xl p-8 text-center shadow-sm">
+            <p className="text-gray-600">Map temporarily disabled for testing navigation</p>
           </div>
 
           {/* Quick Stats */}

@@ -91,6 +91,15 @@ const CreateEvent = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState(new Set());
 
+  // Get today's date in YYYY-MM-DD format for date input min attribute
+  const getTodayDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const handlePosterSelect = (file) => {
     setSelectedPosterFile(file);
     // Create preview
@@ -206,6 +215,16 @@ const CreateEvent = () => {
       }
       if (field === 'date' && !formData.date) {
         stepErrors.date = 'Event date is required';
+      }
+      if (field === 'date' && formData.date) {
+        // Validate that event date is not in the past
+        const selectedDate = new Date(formData.date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+        
+        if (selectedDate < today) {
+          stepErrors.date = 'Event date cannot be in the past';
+        }
       }
       if (field === 'time' && !formData.time) {
         stepErrors.time = 'Event time is required';
@@ -324,6 +343,17 @@ const CreateEvent = () => {
     if (!formData.time) newErrors.time = 'Event time is required';
     if (!formData.owner_id) newErrors.owner_id = 'Owner ID is required';
     if (!formData.owner_type) newErrors.owner_type = 'Owner type is required';
+    
+    // Validate that event date is not in the past
+    if (formData.date) {
+      const selectedDate = new Date(formData.date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+      
+      if (selectedDate < today) {
+        newErrors.date = 'Event date cannot be in the past';
+      }
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -454,9 +484,11 @@ const CreateEvent = () => {
                     id="date"
                     value={formData.date}
                     onChange={handleChange}
+                    min={getTodayDate()}
                     className={`w-full px-4 py-3 border ${errors.date ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-indigo-500'} rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all`}
                   />
                   {errors.date && <p className="mt-2 text-sm text-red-600">{errors.date}</p>}
+                  <p className="mt-1 text-sm text-gray-500">Events can only be scheduled for today or future dates</p>
                 </div>
 
                 <div>
