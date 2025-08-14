@@ -36,6 +36,12 @@ app.use('/artists', express.static(path.join(__dirname, '../frontend/public/arti
 app.use('/organisers', express.static(path.join(__dirname, '../frontend/public/organiser')));
 app.use('/venues', express.static(path.join(__dirname, '../frontend/public/venues')));
 
+// Also expose static assets under /api/* so Nginx proxy for /api serves them correctly
+app.use('/api/files', express.static(path.join(__dirname, '../frontend/public')));
+app.use('/api/artists', express.static(path.join(__dirname, '../frontend/public/artists')));
+app.use('/api/organisers', express.static(path.join(__dirname, '../frontend/public/organiser')));
+app.use('/api/venues', express.static(path.join(__dirname, '../frontend/public/venues')));
+
 // Debug static file paths
 console.log('Static file paths:');
 console.log('Artists:', path.join(__dirname, '../frontend/public/artists'));

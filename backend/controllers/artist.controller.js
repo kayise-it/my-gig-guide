@@ -186,7 +186,7 @@ exports.uploadGalleryImages = async (req, res) => {
     await createFolderStructure(settings);
 
     // Create gallery subfolder if it doesn't exist
-    const folderPath = path.resolve(__dirname, "..", settings.path, settings.folder_name);
+    const folderPath = path.resolve(__dirname, "..", "..", settings.path, settings.folder_name);
     const galleryPath = path.join(folderPath, 'gallery');
     
     // Ensure all artist subfolders exist (events, venues, profile, gallery)
@@ -383,7 +383,7 @@ exports.uploadGalleryImage = async (req, res) => {
     await createFolderStructure(settings);
 
     // Create gallery subfolder if it doesn't exist
-    const folderPath = path.resolve(__dirname, "..", settings.path, settings.folder_name);
+    const folderPath = path.resolve(__dirname, "..", "..", settings.path, settings.folder_name);
     const galleryPath = path.join(folderPath, 'gallery');
     
     // Ensure all artist subfolders exist (events, venues, profile, gallery)
@@ -667,8 +667,8 @@ exports.uploadProfilePicture = async (req, res) => {
 
     // Generate unique filename
     const timestamp = Date.now();
-    const fileExtension = originalname.split('.').pop();
-    const filename = `profile_${timestamp}_${originalname}`;
+    const ext = (path.extname(originalname) || '.jpg').toLowerCase();
+    const filename = `profile_picture${ext}`;
 
     // Create folder structure if it doesn't exist
     await createFolderStructure(settings);
@@ -676,7 +676,14 @@ exports.uploadProfilePicture = async (req, res) => {
     // Delete previous profile picture if it exists
     if (existingArtist && existingArtist.profile_picture) {
       try {
-        const previousPicturePath = path.resolve(__dirname, "..", existingArtist.profile_picture);
+        let previousPicturePath = existingArtist.profile_picture;
+        if (previousPicturePath.startsWith('/')) {
+          previousPicturePath = path.resolve(__dirname, '../../frontend/public', previousPicturePath.substring(1));
+        } else if (previousPicturePath.startsWith('../frontend/public/')) {
+          previousPicturePath = path.resolve(__dirname, '../..', previousPicturePath);
+        } else {
+          previousPicturePath = path.resolve(__dirname, '../../frontend/public', previousPicturePath);
+        }
         if (fs.existsSync(previousPicturePath)) {
           fs.unlinkSync(previousPicturePath);
           console.log('Deleted previous profile picture:', previousPicturePath);
@@ -687,16 +694,18 @@ exports.uploadProfilePicture = async (req, res) => {
       }
     }
 
-    // Save the file to disk
-    const folderPath = path.resolve(__dirname, "..", settings.path, settings.folder_name);
-    const filePath = path.join(folderPath, filename);
-    
+    // Save the file to disk in profile folder under frontend/public
+    const folderPath = path.resolve(__dirname, "..", "..", settings.path, settings.folder_name);
+    const profileDir = path.join(folderPath, 'profile');
+    if (!fs.existsSync(profileDir)) {
+      fs.mkdirSync(profileDir, { recursive: true });
+    }
+    const filePath = path.join(profileDir, filename);
     fs.writeFileSync(filePath, buffer);
     console.log('File saved to:', filePath);
 
-    // At this point, settings.path + settings.folder_name points to the right folder.
-    // Save the uploaded file's path in the Artist profile.
-    const profilePicturePath = `${settings.path}${settings.folder_name}/${filename}`;
+    // Public web path used by frontend (nav/profile circle)
+    const profilePicturePath = `/artists/${settings.folder_name}/profile/${filename}`;
     await existingArtist.update({
       profile_picture: profilePicturePath
     });

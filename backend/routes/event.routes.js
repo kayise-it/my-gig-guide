@@ -110,7 +110,7 @@ router.post('/create_event', verifyToken, upload.any(), async (req, res) => {
             // Generate folder path if not provided, using events subfolder
             orgFolder = getUserFolderPath(user, ownerData, userType, 'events');
         }
-        
+
         if (orgFolder) {
             const eventFolderPath = path.join(orgFolder, `${eventId}_${eventFolderName}`);
             const eventPosterPath = path.join(eventFolderPath, 'event_poster');
@@ -130,6 +130,13 @@ router.post('/create_event', verifyToken, upload.any(), async (req, res) => {
             let posterPath = null;
             let galleryPaths = [];
 
+            // Determine the correct user folder name for building public URLs
+            // If orgFolder ends with ".../<userFolder>/events", use the parent folder name
+            const orgFolderBaseName = path.basename(orgFolder);
+            const userFolderName = orgFolderBaseName === 'events'
+                ? path.basename(path.dirname(orgFolder))
+                : orgFolderBaseName;
+
             // Handle poster upload
             if (req.files && req.files.length > 0) {
                 const posterFile = req.files.find(file => file.fieldname === 'poster');
@@ -139,7 +146,8 @@ router.post('/create_event', verifyToken, upload.any(), async (req, res) => {
                     const posterFullPath = path.join(eventPosterPath, posterFileName);
                     
                     fs.writeFileSync(posterFullPath, posterFile.buffer);
-                    posterPath = path.join(`/${userType}`, path.basename(orgFolder), 'events', `${eventId}_${eventFolderName}`, 'event_poster', posterFileName);
+                    // Prefix with /api so assets are accessible via backend static under /api
+                    posterPath = path.join(`/api/${userType}`, userFolderName, 'events', `${eventId}_${eventFolderName}`, 'event_poster', posterFileName);
                 }
 
                 // Handle gallery uploads
@@ -151,7 +159,8 @@ router.post('/create_event', verifyToken, upload.any(), async (req, res) => {
                     const galleryFullPath = path.join(eventGalleryPath, galleryFileName);
                     
                     fs.writeFileSync(galleryFullPath, galleryFile.buffer);
-                    const galleryPath = path.join(`/${userType}`, path.basename(orgFolder), 'events', `${eventId}_${eventFolderName}`, 'gallery', galleryFileName);
+                    // Prefix with /api so assets are accessible via backend static under /api
+                    const galleryPath = path.join(`/api/${userType}`, userFolderName, 'events', `${eventId}_${eventFolderName}`, 'gallery', galleryFileName);
                     galleryPaths.push(galleryPath);
                 }
             }
@@ -209,6 +218,12 @@ router.put('/edit/:id', verifyToken, upload.any(), async (req, res) => {
             const eventPosterPath = path.join(eventFolderPath, 'event_poster');
             const eventGalleryPath = path.join(eventFolderPath, 'gallery');
 
+            // Determine the correct user folder name for building public URLs
+            const orgFolderBaseName = path.basename(orgFolder);
+            const userFolderName = orgFolderBaseName === 'events'
+                ? path.basename(path.dirname(orgFolder))
+                : orgFolderBaseName;
+
             // Create directories if they don't exist
             if (!fs.existsSync(eventFolderPath)) {
                 fs.mkdirSync(eventFolderPath, { recursive: true });
@@ -228,7 +243,8 @@ router.put('/edit/:id', verifyToken, upload.any(), async (req, res) => {
                 const posterFullPath = path.join(eventPosterPath, posterFileName);
                 
                 fs.writeFileSync(posterFullPath, posterFile.buffer);
-                event.poster = path.join(`/${userType}`, path.basename(orgFolder), 'events', `${event.id}_${eventFolderName}`, 'event_poster', posterFileName);
+                // Prefix with /api so assets are accessible via backend static under /api
+                event.poster = path.join(`/api/${userType}`, userFolderName, 'events', `${event.id}_${eventFolderName}`, 'event_poster', posterFileName);
             }
 
             // Handle new gallery uploads
@@ -244,7 +260,8 @@ router.put('/edit/:id', verifyToken, upload.any(), async (req, res) => {
                     const galleryFullPath = path.join(eventGalleryPath, galleryFileName);
                     
                     fs.writeFileSync(galleryFullPath, galleryFile.buffer);
-                    const galleryPath = path.join(`/${userType}`, path.basename(orgFolder), 'events', `${event.id}_${eventFolderName}`, 'gallery', galleryFileName);
+                    // Prefix with /api so assets are accessible via backend static under /api
+                    const galleryPath = path.join(`/api/${userType}`, userFolderName, 'events', `${event.id}_${eventFolderName}`, 'gallery', galleryFileName);
                     newGalleryPaths.push(galleryPath);
                 }
 

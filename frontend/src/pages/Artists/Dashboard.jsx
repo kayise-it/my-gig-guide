@@ -293,10 +293,19 @@ export default function ArtistDashboard() {
 
       // ✅ Update artistData with new profile picture (this triggers re-render)
       if (response.status === 200) {
-        setArtistData((prev) => ({
-          ...prev,
-          profile_picture: response.data.path
-        }));
+        const newPath = response.data.profile_picture || response.data.path;
+        if (newPath) {
+          setArtistData((prev) => ({
+            ...prev,
+            profile_picture: newPath
+          }));
+          // Optionally refresh localStorage user for header/avatar consumers
+          try {
+            const user = JSON.parse(localStorage.getItem('user')) || {};
+            user.profile_picture = newPath;
+            localStorage.setItem('user', JSON.stringify(user));
+          } catch (_) {}
+        }
       }
     } catch (error) {
       console.error("Error uploading profile picture:", error);

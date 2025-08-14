@@ -14,6 +14,7 @@ async function createFolderStructure(settings) {
         // Resolve the full path on disk (not just relative to backend)
         // settings.path is "frontend/public/artists/" so we need to go up two levels from backend/helpers to reach project root
         const fullPath = path.resolve(__dirname, '..', '..', settings.path, settings.folder_name);
+        console.log("Full path to be created:", fullPath);
         
         console.log("🔧 Creating folder structure:");
         console.log("  - Settings path:", settings.path);

@@ -12,9 +12,12 @@ export default function ArtistProfileCard({
   onSaveProfilePicture, // Add this new prop for saving
   artistSettings,
 }) {
-  // Remove "../frontend" from the profile_picture path if present
-  const profilePicture = artistData.profile_picture
-    ? artistData.profile_picture.replace(/^(\.\.\/frontend)/, '')
+  // Compute absolute URL for profile picture
+  const profilePath = artistData.profile_picture || '';
+  const profileUrl = profilePath
+    ? (profilePath.startsWith('http')
+        ? `${profilePath}?t=${Date.now()}`
+        : `${window.location.origin}${profilePath}?t=${Date.now()}`)
     : '';
   return (
     <>
@@ -32,7 +35,7 @@ export default function ArtistProfileCard({
                 >
                   {artistData.profile_picture ? (
                     <img
-                        src={`${profilePicture}?t=${new Date().getTime()}`} // ✅ reloads the image on update
+                        src={profileUrl}
                       alt="Profile"
                       className="h-full w-full object-cover"
                     />

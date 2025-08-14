@@ -24,7 +24,7 @@ import {
   PencilIcon
 } from '@heroicons/react/24/outline';
 import API_BASE_URL from '../../api/config';
-import GalleryImage from '../../components/GalleryImage';
+import UniversalGallery from '../../components/Gallery/UniversalGallery';
 import ArtistMiniCard from '../../components/Artist/ArtistMiniCard';
 import EnhancedVenueCard from '../../components/Venue/EnhancedVenueCard';
 import { HeroBreadcrumb } from '../../components/UI/DynamicBreadcrumb';
@@ -400,27 +400,9 @@ const ShowEvent = () => {
                 {event.poster ? (
                     <div className="relative w-full h-full">
                         <img
-                            src={event.poster.startsWith('http') ? event.poster : (() => {
-                                let posterPath = event.poster;
-                                
-                                // Remove extra spaces and fix the path
-                                posterPath = posterPath.replace(/\s+/g, '');
-                                
-                                // Fix the artist ID from 3_Thando_9144 to 3_Thando_8146
-                                posterPath = posterPath.replace('/artists/3_Thando_9144/', '/artists/3_Thando_8146/');
-                                
-                                // If the path doesn't include the event folder structure, add it
-                                if (posterPath.includes('/events/event_poster/')) {
-                                    // Extract the event name from the poster filename
-                                    const posterFileName = posterPath.split('/').pop();
-                                    const eventName = posterFileName.replace('event_poster_', '').replace('.jpg', '').replace('.png', '').replace('.jpeg', '');
-                                    posterPath = posterPath.replace('/events/event_poster/', `/events/1_kamal_lamb/event_poster/`);
-                                }
-                                
-                                const finalUrl = `http://localhost:5173${posterPath}`;
-                                console.log('Poster URL:', finalUrl);
-                                return finalUrl;
-                            })()}
+                            src={event.poster.startsWith('http') 
+                                ? event.poster 
+                                : `${window.location.origin}${event.poster}?t=${Date.now()}`}
                             alt={event.name}
                             className="absolute inset-0 w-full h-full object-cover transform hover:scale-105 transition-transform duration-700"
                             onError={(e) => {
@@ -744,119 +726,8 @@ const ShowEvent = () => {
                                 </div>
                             </div>
                         </div>
-
-                        {/* Full Width Gallery Section */}
-                        {hasRealGallery ? (
-                            <div>
-                                <div className="flex items-center justify-between mb-6">
-                                    <h2 className="text-3xl font-bold text-gray-900 flex items-center">
-                                        <SparklesIcon className="h-8 w-8 text-purple-600 mr-3" />
-                                        Event Gallery
-                                    </h2>
-                                    <div className="flex items-center space-x-3">
-                                        <span className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium">
-                                            {galleryImages.length} photos
-                                        </span>
-                                        <div className="flex space-x-2">
-                                            <button
-                                                onClick={prevCarouselSlide}
-                                                disabled={totalSlides <= 1}
-                                                className="bg-white border border-purple-200 hover:border-purple-300 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed p-2 rounded-full transition-all duration-300 hover:scale-110 shadow-md"
-                                            >
-                                                <ChevronLeftIcon className="h-5 w-5 text-purple-600" />
-                                            </button>
-                                            <button
-                                                onClick={nextCarouselSlide}
-                                                disabled={totalSlides <= 1}
-                                                className="bg-white border border-purple-200 hover:border-purple-300 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed p-2 rounded-full transition-all duration-300 hover:scale-110 shadow-md"
-                                            >
-                                                <ChevronRightIcon className="h-5 w-5 text-purple-600" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                                                 {/* Carousel Container */}
-                                 <div className="relative overflow-hidden">
-                                     {/* Carousel Slides */}
-                                     <div className="relative h-32 mb-4">
-                                         <div 
-                                             className="flex transition-transform duration-500 ease-in-out h-full"
-                                             style={{ transform: `translateX(-${currentCarouselIndex * 100}%)` }}
-                                         >
-                                             {Array.from({ length: totalSlides }).map((_, slideIndex) => (
-                                                 <div key={slideIndex} className="w-full flex-shrink-0 grid grid-cols-5 gap-3 h-full">
-                                                     {galleryImages.slice(slideIndex * 5, (slideIndex + 1) * 5).map((image, imageIndex) => {
-                                                         const actualIndex = slideIndex * 5 + imageIndex;
-                                                         return (
-                                                             <GalleryImage
-                                                                 key={actualIndex}
-                                                                 image={image}
-                                                                 index={actualIndex}
-                                                                 alt={`Event gallery ${actualIndex + 1}`}
-                                                                 onClick={() => openGallery(actualIndex)}
-                                                                 size="small"
-                                                                 aspectRatio="square"
-                                                                 showNumber={true}
-                                                                 showHoverIcon={true}
-                                                                 className="h-full w-full object-cover"
-                                                             />
-                                                         );
-                                                     })}
-                                                     {/* Fill empty slots to always show 5 images */}
-                                                     {Array.from({ length: 5 - galleryImages.slice(slideIndex * 5, (slideIndex + 1) * 5).length }).map((_, emptyIndex) => (
-                                                         <GalleryPlaceholder 
-                                                             key={`empty-${emptyIndex}`} 
-                                                             size="full"
-                                                             className="h-full w-full"
-                                                         />
-                                                     ))}
-                                                 </div>
-                                             ))}
-                                         </div>
-                                     </div>
-
-                                    {/* Carousel Indicators */}
-                                    {totalSlides > 1 && (
-                                        <div className="flex justify-center space-x-2">
-                                            {Array.from({ length: totalSlides }).map((_, index) => (
-                                                <button
-                                                    key={index}
-                                                    onClick={() => goToCarouselSlide(index)}
-                                                    className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                                                        index === currentCarouselIndex
-                                                            ? 'bg-gradient-to-r from-purple-600 to-blue-600 scale-125'
-                                                            : 'bg-gray-300 hover:bg-purple-300'
-                                                    }`}
-                                                />
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {/* Slide Counter */}
-                                    <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full shadow-md">
-                                        <span className="text-sm font-medium text-purple-700">
-                                            {currentCarouselIndex + 1} of {totalSlides}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            // No gallery message
-                            <div className="text-center py-12">
-                                <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-2xl p-8 shadow-lg">
-                                    <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <SparklesIcon className="h-8 w-8 text-white" />
-                                    </div>
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No Gallery Available</h3>
-                                    <p className="text-gray-600">This event doesn't have any gallery images yet.</p>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
-
-             
 
                 {/* Enhanced Gallery Modal */}
                 {isGalleryOpen && (
@@ -891,13 +762,9 @@ const ShowEvent = () => {
                             {/* Image Display */}
                             <div className="relative">
                                 <img
-                                    src={galleryImages[selectedImageIndex]?.startsWith('http') ? galleryImages[selectedImageIndex] : (() => {
-                                        const imagePath = galleryImages[selectedImageIndex];
-                                        if (imagePath?.includes('/artists/events/events/')) {
-                                            return `http://localhost:5173${imagePath.replace('/artists/events/events/', '/artists/3_Thando_8146/events/')}`;
-                                        }
-                                        return `http://localhost:5173${imagePath?.replace('/artists/events/', '/artists/3_Thando_8146/events/')}`;
-                                    })()}
+                                    src={galleryImages[selectedImageIndex]?.startsWith('http') 
+                                        ? galleryImages[selectedImageIndex] 
+                                        : `${window.location.origin}${galleryImages[selectedImageIndex]}?t=${Date.now()}`}
                                     alt={`Gallery image ${selectedImageIndex + 1}`}
                                     className="w-full h-auto max-h-[80vh] object-contain rounded-2xl shadow-2xl"
                                 />

@@ -183,11 +183,34 @@ exports.createVenue = async (req, res) => {
 
     const createdVenue = await Venue.create(venueData);
 
+    // Ensure base venue folders exist even if no files uploaded yet
+    try {
+      const baseFolderPath = path.resolve(__dirname, "..", "..", settings.path, settings.folder_name);
+      const venuesPath = path.join(baseFolderPath, 'venues');
+      if (!fs.existsSync(venuesPath)) {
+        fs.mkdirSync(venuesPath, { recursive: true });
+        console.log('Created venues folder:', venuesPath);
+      }
+      const venueFolderName = `${createdVenue.id}_${slugify(req.body.name || 'venue')}`;
+      const venueFolderPath = path.join(venuesPath, venueFolderName);
+      if (!fs.existsSync(venueFolderPath)) {
+        fs.mkdirSync(venueFolderPath, { recursive: true });
+        console.log('Created venue folder:', venueFolderPath);
+      }
+      const galleryPath = path.join(venueFolderPath, 'gallery');
+      if (!fs.existsSync(galleryPath)) {
+        fs.mkdirSync(galleryPath, { recursive: true });
+        console.log('Created venue gallery folder:', galleryPath);
+      }
+    } catch (makeDirErr) {
+      console.warn('Failed to pre-create venue folders:', makeDirErr.message);
+    }
+
     // Handle main picture upload using the same pattern
     let mainPicturePath = null;
     if (req.file) {
       // Create venues subfolder if it doesn't exist
-      const folderPath = path.resolve(__dirname, "..", settings.path, settings.folder_name);
+      const folderPath = path.resolve(__dirname, "..", "..", settings.path, settings.folder_name);
       const venuesPath = path.join(folderPath, 'venues');
       
       if (!fs.existsSync(venuesPath)) {
@@ -338,7 +361,7 @@ exports.updateVenue = async (req, res) => {
     // Handle main picture upload if provided
     if (req.file) {
       // Create venues subfolder if it doesn't exist
-      const folderPath = path.resolve(__dirname, "..", settings.path, settings.folder_name);
+      const folderPath = path.resolve(__dirname, "..", "..", settings.path, settings.folder_name);
       const venuesPath = path.join(folderPath, 'venues');
       
       if (!fs.existsSync(venuesPath)) {
@@ -429,7 +452,7 @@ exports.uploadVenueGallery = async (req, res) => {
     await createFolderStructure(settings);
 
     // Create venue gallery subfolder
-    const folderPath = path.resolve(__dirname, "..", settings.path, settings.folder_name);
+    const folderPath = path.resolve(__dirname, "..", "..", settings.path, settings.folder_name);
     const venuesPath = path.join(folderPath, 'venues');
     const venueFolderName = `${venueId}_${slugify(venue.name || 'venue')}`;
     const venueFolderPath = path.join(venuesPath, venueFolderName);
@@ -465,9 +488,9 @@ exports.uploadVenueGallery = async (req, res) => {
         const { originalname, mimetype, size, buffer } = file;
 
         // Validate file type
-        const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
         if (!allowedMimeTypes.includes(mimetype)) {
-          errors.push(`Invalid file type for ${originalname}. Please upload an image (JPEG, PNG, GIF, or WebP).`);
+          errors.push(`Invalid file type for ${originalname}. Please upload an image (JPEG, PNG, GIF, WebP, or SVG).`);
           continue;
         }
 

@@ -25,6 +25,19 @@ const Header = () => {
   const location = useLocation();
   const dropdownRef = useRef(null);
 
+  // Derive avatar URL from currentUser or localStorage
+  const getAvatarUrl = () => {
+    try {
+      const path = currentUser?.profile_picture || (JSON.parse(localStorage.getItem('user'))?.profile_picture) || '';
+      if (!path) return '';
+      const base = path.startsWith('http') ? path : `${window.location.origin}${path}`;
+      return `${base}?t=${Date.now()}`;
+    } catch (_) {
+      return '';
+    }
+  };
+  const avatarUrl = getAvatarUrl();
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -115,8 +128,12 @@ const Header = () => {
                   className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                 >
                   <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
-                      <UserIcon className="h-4 w-4 text-white" />
+                    <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <UserIcon className="h-4 w-4 text-white" />
+                      )}
                     </div>
                     <div className="hidden md:block text-left">
                       <p className="text-sm font-medium text-gray-900">

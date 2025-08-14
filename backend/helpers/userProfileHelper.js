@@ -19,8 +19,9 @@ function generateUserFolderPath(user, roleData, userType) {
     try {
         if (roleData && roleData.settings) {
             const settings = JSON.parse(roleData.settings);
-            // settings.path examples: "../frontend/public/artists/" or "../frontend/public/organiser/"
-            const baseResolved = path.resolve(__dirname, '..', settings.path);
+            // settings.path may be "frontend/public/..." or "../frontend/public/..."
+            const projectRoot = path.resolve(__dirname, '..', '..');
+            const baseResolved = path.resolve(projectRoot, settings.path);
             return {
                 path: settings.path,
                 folder_name: settings.folder_name,
@@ -33,9 +34,10 @@ function generateUserFolderPath(user, roleData, userType) {
     const rolePrefix = userType === 'artists' ? '3' : '4';
     const rand4 = Math.floor(Math.random() * 9000 + 1000);
     const folderName = `${rolePrefix}_${user.username}_${rand4}`;
-    const basePath = path.resolve(__dirname, '..', `../frontend/public/${userType}`);
+    const projectRoot = path.resolve(__dirname, '..', '..');
+    const basePath = path.resolve(projectRoot, `frontend/public/${userType}`);
     return {
-        path: `../frontend/public/${userType}/`,
+        path: `frontend/public/${userType}/`,
         folder_name: folderName,
         fullPath: path.join(basePath, folderName)
     };
@@ -76,7 +78,8 @@ function getUserFolderPath(user, roleData, userType, subFolder = null) {
     try {
         // Parse existing settings from the database
         const settings = JSON.parse(roleData.settings);
-        const basePath = path.resolve(__dirname, "..", settings.path);
+        const projectRoot = path.resolve(__dirname, '..', '..');
+        const basePath = path.resolve(projectRoot, settings.path);
         const fullPath = path.join(basePath, settings.folder_name);
         
         // Create all required subfolders if they don't exist

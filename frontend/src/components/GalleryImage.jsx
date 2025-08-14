@@ -11,35 +11,28 @@ const GalleryImage = ({
     size = "medium", // small, medium, large
     showNumber = true,
     showHoverIcon = true,
-    aspectRatio = "square" // square, wide, tall
+    aspectRatio = "square", // square, wide, tall
+    baseArtistFolder = null
 }) => {
     // Handle image URL construction
     const imageUrl = React.useMemo(() => {
         if (!image) return 'https://via.placeholder.com/300x300/E5E7EB/9CA3AF?text=No+Image';
-        if (image.startsWith('http')) return image;
-        
-        // Ensure the path starts with /
-        const cleanPath = image.startsWith('/') ? image : `/${image}`;
-        
-        // Fix the malformed paths from database
-        // Database has: /artists/events/events/1_kamal_lamb/gallery/...
-        // Should be: /artists/3_Thando_8146/events/1_kamal_lamb/gallery/...
-        let correctedPath = cleanPath;
-        
-        // Remove duplicate "events" and fix the artist path
-        if (correctedPath.includes('/artists/events/events/')) {
-            correctedPath = correctedPath.replace('/artists/events/events/', '/artists/3_Thando_8146/events/');
+        const raw = String(image).trim();
+        if (raw.startsWith('http')) return `${raw}?t=${Date.now()}`;
+
+        // Normalize and fix common issues
+        let p = raw.replace(/\\/g, '/');
+        // Strip any '../frontend/public' prefixes
+        p = p.replace(/^\.\.\/frontend\/public\/?/i, '/');
+        // Ensure leading slash
+        if (!p.startsWith('/')) p = `/${p}`;
+        // If missing artist folder in path, inject it when available
+        if (baseArtistFolder) {
+            p = p.replace('/artists/events/events/', `/artists/${baseArtistFolder}/events/`);
+            p = p.replace('/artists/events/', `/artists/${baseArtistFolder}/events/`);
         }
-        
-        // If the path already contains the correct structure, use it as is
-        if (correctedPath.includes('/artists/3_Thando_8146/') || correctedPath.includes('/organiser/')) {
-            return `http://localhost:5173${correctedPath}`;
-        }
-        
-        // Fallback to the old structure if needed
-        correctedPath = correctedPath.replace('/artists/events/', '/artists/3_Thando_8146/events/');
-        return `http://localhost:5173${correctedPath}`;
-    }, [image]);
+        return `${window.location.origin}${encodeURI(p)}?t=${Date.now()}`;
+    }, [image, baseArtistFolder]);
 
     // Debug logging for first image only (if needed)
     React.useEffect(() => {
