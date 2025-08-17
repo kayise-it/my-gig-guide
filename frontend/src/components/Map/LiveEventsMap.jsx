@@ -16,76 +16,100 @@ function LiveEventsMap({ events = [] }) {
   const [userLocation, setUserLocation] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [mapError, setMapError] = useState(null);
 
   // Helper function to format event date
   const formatEventDate = (eventDate) => {
-    const date = new Date(eventDate);
-    const now = new Date();
-    const diffTime = date - now;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Tomorrow';
-    if (diffDays < 7) return `In ${diffDays} days`;
-    return date.toLocaleDateString();
+    try {
+      const date = new Date(eventDate);
+      if (isNaN(date.getTime())) return 'Date TBD';
+      
+      const now = new Date();
+      const diffTime = date - now;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 0) return 'Today';
+      if (diffDays === 1) return 'Tomorrow';
+      if (diffDays < 7) return `In ${diffDays} days`;
+      return date.toLocaleDateString();
+    } catch (error) {
+      console.error('Error formatting event date:', error);
+      return 'Date TBD';
+    }
   };
 
   // Filter events that have venue coordinates (memoized to prevent infinite loops)
-  const eventsWithCoordinates = useMemo(() => 
-    events.filter(event => 
-      event.venue && 
-      event.venue.latitude && 
-      event.venue.longitude &&
-      !isNaN(parseFloat(event.venue.latitude)) && 
-      !isNaN(parseFloat(event.venue.longitude))
-    ), [events]
-  );
+  const eventsWithCoordinates = useMemo(() => {
+    try {
+      return events.filter(event => 
+        event && 
+        event.venue && 
+        event.venue.latitude && 
+        event.venue.longitude &&
+        !isNaN(parseFloat(event.venue.latitude)) && 
+        !isNaN(parseFloat(event.venue.longitude))
+      );
+    } catch (error) {
+      console.error('Error filtering events with coordinates:', error);
+      return [];
+    }
+  }, [events]);
 
   // Calculate optimal zoom level (memoized)
   const optimalZoom = useMemo(() => {
-    if (eventsWithCoordinates.length === 0) return 12;
-    if (eventsWithCoordinates.length === 1) return 14;
-    
-    // Calculate the spread of venues
-    const lats = eventsWithCoordinates.map(event => parseFloat(event.venue.latitude));
-    const lngs = eventsWithCoordinates.map(event => parseFloat(event.venue.longitude));
-    
-    const latSpread = Math.max(...lats) - Math.min(...lats);
-    const lngSpread = Math.max(...lngs) - Math.min(...lngs);
-    const maxSpread = Math.max(latSpread, lngSpread);
-    
-    // Return zoom level based on spread
-    if (maxSpread > 1) return 8;      // Very spread out
-    if (maxSpread > 0.5) return 9;    // Spread out
-    if (maxSpread > 0.1) return 10;   // Medium spread
-    if (maxSpread > 0.05) return 11;  // Close together
-    return 12;                        // Very close together
+    try {
+      if (eventsWithCoordinates.length === 0) return 12;
+      if (eventsWithCoordinates.length === 1) return 14;
+      
+      // Calculate the spread of venues
+      const lats = eventsWithCoordinates.map(event => parseFloat(event.venue.latitude));
+      const lngs = eventsWithCoordinates.map(event => parseFloat(event.venue.longitude));
+      
+      const latSpread = Math.max(...lats) - Math.min(...lats);
+      const lngSpread = Math.max(...lngs) - Math.min(...lngs);
+      const maxSpread = Math.max(latSpread, lngSpread);
+      
+      // Return zoom level based on spread
+      if (maxSpread > 1) return 8;      // Very spread out
+      if (maxSpread > 0.5) return 9;    // Spread out
+      if (maxSpread > 0.1) return 10;   // Medium spread
+      if (maxSpread > 0.05) return 11;  // Close together
+      return 12;                        // Very close together
+    } catch (error) {
+      console.error('Error calculating optimal zoom:', error);
+      return 12;
+    }
   }, [eventsWithCoordinates]);
 
   // Calculate center based on venue locations
   useEffect(() => {
-    if (eventsWithCoordinates.length > 0) {
-      // Calculate average center of all venue locations
-      const totalLat = eventsWithCoordinates.reduce((sum, event) => 
-        sum + parseFloat(event.venue.latitude), 0
-      );
-      const totalLng = eventsWithCoordinates.reduce((sum, event) => 
-        sum + parseFloat(event.venue.longitude), 0
-      );
-      
-      const avgLat = totalLat / eventsWithCoordinates.length;
-      const avgLng = totalLng / eventsWithCoordinates.length;
-      
-      setCenter({ lat: avgLat, lng: avgLng });
-    } else {
-      // If no events with coordinates, use a default location (Johannesburg)
+    try {
+      if (eventsWithCoordinates.length > 0) {
+        // Calculate average center of all venue locations
+        const totalLat = eventsWithCoordinates.reduce((sum, event) => 
+          sum + parseFloat(event.venue.latitude), 0
+        );
+        const totalLng = eventsWithCoordinates.reduce((sum, event) => 
+          sum + parseFloat(event.venue.longitude), 0
+        );
+        
+        const avgLat = totalLat / eventsWithCoordinates.length;
+        const avgLng = totalLng / eventsWithCoordinates.length;
+        
+        setCenter({ lat: avgLat, lng: avgLng });
+      } else {
+        // If no events with coordinates, use a default location (Johannesburg)
+        setCenter({ lat: -26.1550, lng: 28.0595 });
+      }
+    } catch (error) {
+      console.error('Error calculating center:', error);
       setCenter({ lat: -26.1550, lng: 28.0595 });
     }
   }, [eventsWithCoordinates]);
 
-  // Get user location separately (for the blue dot only)
-  useEffect(() => {
-    if (navigator.geolocation) {
+  // Get user location only when user interacts with the map
+  const getUserLocation = useCallback(() => {
+    if (navigator.geolocation && !userLocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const userPos = {
@@ -100,19 +124,47 @@ function LiveEventsMap({ events = [] }) {
         }
       );
     }
-  }, []);
+  }, [userLocation]);
 
   const onLoad = useCallback(() => {
     setIsLoaded(true);
+    setMapError(null);
   }, []);
 
   const onUnmount = useCallback(() => {
     setIsLoaded(false);
   }, []);
 
+  const onError = useCallback((error) => {
+    console.error('Google Maps error:', error);
+    setMapError('Failed to load map. Please check your internet connection.');
+  }, []);
+
   // Check if API key is available
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDVfOS0l8Tv59v8WTgUO231X2FtmBQCc2Y';
   const hasValidApiKey = apiKey && apiKey !== 'YOUR_GOOGLE_MAPS_API_KEY_HERE' && apiKey !== 'YOUR_API_KEY_HERE';
+
+  // Show error state if map failed to load
+  if (mapError) {
+    return (
+      <div className="w-full h-96 rounded-2xl overflow-hidden shadow-sm border border-purple-100 relative bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 mb-2">
+            <svg className="h-8 w-8 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <p className="text-gray-600 text-sm">{mapError}</p>
+          <button
+            onClick={() => setMapError(null)}
+            className="mt-2 text-purple-600 hover:text-purple-700 text-sm underline"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-96 rounded-2xl overflow-hidden shadow-sm border border-purple-100 relative">
@@ -129,9 +181,9 @@ function LiveEventsMap({ events = [] }) {
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <rect x="3" y="4" width="18" height="18" rx="1" fill="#ffffff"/>
                 <rect x="3" y="2" width="18" height="4" fill="#ffffff"/>
-                <line x1="8" y1="2" x2="8" y2="6" stroke="#7c3aed" stroke-width="1"/>
-                <line x1="16" y1="2" x2="16" y2="6" stroke="#7c3aed" stroke-width="1"/>
-                <line x1="3" y1="10" x2="21" y2="10" stroke="#7c3aed" stroke-width="1"/>
+                <line x1="8" y1="2" x2="8" y2="6" stroke="#7c3aed" strokeWidth="1"/>
+                <line x1="16" y1="2" x2="16" y2="6" stroke="#7c3aed" strokeWidth="1"/>
+                <line x1="3" y1="10" x2="21" y2="10" stroke="#7c3aed" strokeWidth="1"/>
                 <circle cx="12" cy="15" r="1" fill="#7c3aed"/>
               </svg>
             </div>
@@ -140,10 +192,22 @@ function LiveEventsMap({ events = [] }) {
         </div>
       </div>
 
+      {/* Location Button */}
+      <button
+        onClick={getUserLocation}
+        className="absolute top-4 right-4 z-10 bg-white rounded-lg shadow-lg p-2 border border-gray-200 hover:bg-gray-50 transition-colors duration-200"
+        title="Get my location"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#3b82f6"/>
+        </svg>
+      </button>
+
       {hasValidApiKey ? (
         <LoadScript 
           googleMapsApiKey={apiKey}
           libraries={libraries}
+          onError={onError}
         >
         <GoogleMap
           mapContainerStyle={containerStyle}
@@ -203,13 +267,13 @@ function LiveEventsMap({ events = [] }) {
               icon={{
                 url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="3" y="4" width="18" height="18" rx="2" fill="#7c3aed" stroke="#ffffff" stroke-width="2"/>
+                    <rect x="3" y="4" width="18" height="18" rx="2" fill="#7c3aed" stroke="#ffffff" strokeWidth="2"/>
                     <rect x="3" y="2" width="18" height="4" fill="#7c3aed"/>
-                    <line x1="8" y1="2" x2="8" y2="6" stroke="#ffffff" stroke-width="1"/>
-                    <line x1="16" y1="2" x2="16" y2="6" stroke="#ffffff" stroke-width="1"/>
-                    <line x1="3" y1="10" x2="21" y2="10" stroke="#ffffff" stroke-width="1"/>
+                    <line x1="8" y1="2" x2="8" y2="6" stroke="#ffffff" strokeWidth="1"/>
+                    <line x1="16" y1="2" x2="16" y2="6" stroke="#ffffff" strokeWidth="1"/>
+                    <line x1="3" y1="10" x2="21" y2="10" stroke="#ffffff" strokeWidth="1"/>
                     <circle cx="12" cy="15" r="2" fill="#ffffff"/>
-                    <path d="M12 13 L12 17 M10 15 L14 15" stroke="#7c3aed" stroke-width="1" stroke-linecap="round"/>
+                    <path d="M12 13 L12 17 M10 15 L14 15" stroke="#7c3aed" strokeWidth="1" strokeLinecap="round"/>
                   </svg>
                 `),
                 scaledSize: new window.google.maps.Size(24, 24),

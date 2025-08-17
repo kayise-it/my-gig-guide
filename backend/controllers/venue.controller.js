@@ -140,27 +140,19 @@ exports.createVenue = async (req, res) => {
       return res.status(400).json({ message: 'User not found' });
     }
 
-    // Use the same pattern as artist gallery upload for settings
-    let settings;
-    if (ownerData && ownerData.settings) {
-      // Use existing folder settings
-      const existingSettings = JSON.parse(ownerData.settings);
-      settings = existingSettings;
-    } else {
-      // Generate new folder name only if no settings exist
-      const role = req.body.owner_type === 'artist' ? 3 : 4;
-      const folderName = `${role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
-      settings = await createOrUpdateUserProfileSettings({
-        role: role,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        contact_email: user.contact_email,
-        phone_number: user.phone_number,
-        folderName,
-        userId: user.id
-      });
-    }
+    // Get or create settings - function will handle existing settings automatically
+    const role = req.body.owner_type === 'artist' ? 3 : 4;
+    const folderName = `${role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
+    const settings = await createOrUpdateUserProfileSettings({
+      role: role,
+      name: user.name,
+      username: user.username,
+      email: user.email,
+      contact_email: user.contact_email,
+      phone_number: user.phone_number,
+      folderName,
+      userId: user.id
+    });
 
     // Create folder structure if it doesn't exist
     await createFolderStructure(settings);
@@ -292,27 +284,19 @@ exports.updateVenue = async (req, res) => {
       return res.status(400).json({ message: 'User not found' });
     }
 
-    // Use the same pattern as artist gallery upload for settings
-    let settings;
-    if (ownerData && ownerData.settings) {
-      // Use existing folder settings
-      const existingSettings = JSON.parse(ownerData.settings);
-      settings = existingSettings;
-    } else {
-      // Generate new folder name only if no settings exist
-      const role = req.body.owner_type === 'artist' ? 3 : 4;
-      const folderName = `${role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
-      settings = await createOrUpdateUserProfileSettings({
-        role: role,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        contact_email: user.contact_email,
-        phone_number: user.phone_number,
-        folderName,
-        userId: user.id
-      });
-    }
+    // Get or create settings - function will handle existing settings automatically
+    const role = req.body.owner_type === 'artist' ? 3 : 4;
+    const folderName = `${role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
+    const settings = await createOrUpdateUserProfileSettings({
+      role: role,
+      name: user.name,
+      username: user.username,
+      email: user.email,
+      contact_email: user.contact_email,
+      phone_number: user.phone_number,
+      folderName,
+      userId: user.id
+    });
 
     // Create folder structure if it doesn't exist
     await createFolderStructure(settings);
@@ -403,27 +387,19 @@ exports.uploadVenueGallery = async (req, res) => {
     const user = await User.findByPk(venue.userId);
     const ownerData = venue.owner_type === 'artist' ? await Artist.findByPk(venue.owner_id) : await Organiser.findByPk(venue.owner_id);
 
-    // Use the same pattern as artist gallery upload for settings
-    let settings;
-    if (ownerData && ownerData.settings) {
-      // Use existing folder settings
-      const existingSettings = JSON.parse(ownerData.settings);
-      settings = existingSettings;
-    } else {
-      // Generate new folder name only if no settings exist
-      const role = venue.owner_type === 'artist' ? 3 : 4;
-      const folderName = `${role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
-      settings = await createOrUpdateUserProfileSettings({
-        role: role,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        contact_email: user.contact_email,
-        phone_number: user.phone_number,
-        folderName,
-        userId: user.id
-      });
-    }
+    // Get or create settings - function will handle existing settings automatically
+    const role = venue.owner_type === 'artist' ? 3 : 4;
+    const folderName = `${role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
+    const settings = await createOrUpdateUserProfileSettings({
+      role: role,
+      name: user.name,
+      username: user.username,
+      email: user.email,
+      contact_email: user.contact_email,
+      phone_number: user.phone_number,
+      folderName,
+      userId: user.id
+    });
 
     // Create folder structure if it doesn't exist
     await createFolderStructure(settings);

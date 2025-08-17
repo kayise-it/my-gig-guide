@@ -9,7 +9,19 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const token = localStorage.getItem('token');
-        const user = JSON.parse(localStorage.getItem('user'));
+        let user = null;
+        
+        try {
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                user = JSON.parse(userStr);
+            }
+        } catch (error) {
+            console.error('Error parsing user from localStorage:', error);
+            // Clear invalid data
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+        }
 
         if (token && user) {
             setCurrentUser(user);

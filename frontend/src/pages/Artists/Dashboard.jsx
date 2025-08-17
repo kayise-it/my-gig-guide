@@ -72,6 +72,7 @@ export default function ArtistDashboard() {
   const [uploadingImages, setUploadingImages] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [filePreviews, setFilePreviews] = useState([]);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
   const navigate = useNavigate();
 
   const handleSaveModalProfilePicture = async (file) => {
@@ -100,13 +101,41 @@ export default function ArtistDashboard() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      if (response.data.gallery) {
-        const galleryImages = JSON.parse(response.data.gallery);
-        setGallery(galleryImages.map(img => ({
-          url: img.startsWith('../frontend/public/') ? img.replace('../frontend/public/', '/') : img,
-          originalPath: img
-        })));
+      console.log('Gallery data from server:', response.data.gallery);
+      
+      if (response.data.gallery && response.data.gallery.trim() !== '') {
+        try {
+          const galleryImages = JSON.parse(response.data.gallery);
+          console.log('Parsed gallery images:', galleryImages);
+          
+          const formattedGallery = galleryImages.map(img => {
+            // Handle different path formats
+            let url = img;
+            if (img.startsWith('../frontend/public/')) {
+              // Convert relative file system path to web path
+              url = img.replace('../frontend/public/', '/');
+            } else if (img.startsWith('/artists/')) {
+              // Already a web path, use as is
+              url = img;
+            } else if (!img.startsWith('http')) {
+              // Assume it's a relative path and add leading slash
+              url = `/${img}`;
+            }
+            
+            return {
+              url: url,
+              originalPath: img
+            };
+          });
+          
+          console.log('Formatted gallery:', formattedGallery);
+          setGallery(formattedGallery);
+        } catch (parseError) {
+          console.error('Error parsing gallery JSON:', parseError);
+          setGallery([]);
+        }
       } else {
+        console.log('No gallery data found, setting empty array');
         setGallery([]);
       }
     } catch (error) {
@@ -169,8 +198,24 @@ export default function ArtistDashboard() {
       );
 
       if (response.status === 200) {
-        await fetchGallery(); // Refresh gallery
+        // Force immediate gallery refresh with cache busting
+        setGalleryRefreshKey(prev => prev + 1);
+        
+        // Wait a moment for the server to process, then fetch updated gallery
+        setTimeout(async () => {
+          await fetchGallery();
+        }, 500);
+        
         closeUploadModal();
+        
+        // Show success feedback
+        setUploadSuccess(true);
+        console.log('Gallery images uploaded successfully!');
+        
+        // Hide success message after 3 seconds
+        setTimeout(() => {
+          setUploadSuccess(false);
+        }, 3000);
       }
     } catch (error) {
       console.error('Error uploading images:', error);
@@ -190,15 +235,20 @@ export default function ArtistDashboard() {
     setIsUploadModalOpen(false);
     setSelectedFiles([]);
     setFilePreviews([]);
+    setUploadSuccess(false);
   };
 
   const handleDeleteImage = async (imagePath) => {
+    if (!confirm('Are you sure you want to delete this image?')) {
+      return;
+    }
+
     try {
       const token = localStorage.getItem('token');
       const user = JSON.parse(localStorage.getItem('user'));
       
       const response = await axios.delete(
-        `${API_BASE_URL}/api/artists/deleteGalleryImage/${user.id}`,
+        `${API_BASE_URL}/api/artists/galleryDelete/${user.id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
           data: { imagePath }
@@ -207,9 +257,11 @@ export default function ArtistDashboard() {
 
       if (response.status === 200) {
         await fetchGallery(); // Refresh gallery
+        console.log('Image deleted successfully');
       }
     } catch (error) {
       console.error('Error deleting image:', error);
+      alert('Failed to delete image. Please try again.');
     }
   };
 
@@ -258,6 +310,13 @@ export default function ArtistDashboard() {
 
     fetchAllData();
   }, []);
+
+  // Separate useEffect to handle gallery refresh when refresh key changes
+  useEffect(() => {
+    if (galleryRefreshKey > 0) {
+      fetchGallery();
+    }
+  }, [galleryRefreshKey]);
 
 
   function formatDateToDDMMYYYY(dateInput) {
@@ -373,6 +432,24 @@ export default function ArtistDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Success Notification */}
+      {uploadSuccess && (
+        <div className="fixed top-4 right-4 z-50 bg-green-50 border border-green-200 rounded-lg p-4 shadow-lg">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-green-800">
+                Gallery images uploaded successfully!
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <PageHeader HeaderName="Artist Dashboard" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <DashboardBreadCrumb breadcrumbs={breadcrumbs} />
@@ -437,6 +514,17 @@ export default function ArtistDashboard() {
                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center">
                           <PhotoIcon className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
+                        {/* Delete Button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteImage(image.originalPath);
+                          }}
+                          className="absolute top-1 right-1 bg-red-500 bg-opacity-80 text-white p-1 rounded-full hover:bg-opacity-100 transition-all opacity-0 group-hover:opacity-100"
+                          title="Delete image"
+                        >
+                          <TrashIcon className="h-3 w-3" />
+                        </button>
                       </div>
                     ))}
                   </div>

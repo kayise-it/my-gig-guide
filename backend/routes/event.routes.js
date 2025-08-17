@@ -139,7 +139,11 @@ router.post('/create_event', verifyToken, upload.any(), async (req, res) => {
                     const posterFullPath = path.join(eventPosterPath, posterFileName);
                     
                     fs.writeFileSync(posterFullPath, posterFile.buffer);
-                    posterPath = path.join(`/${userType}`, path.basename(orgFolder), 'events', `${eventId}_${eventFolderName}`, 'event_poster', posterFileName);
+                    
+                    // Construct the correct web path for the database
+                    // Extract the folder name from the orgFolder path
+                    const folderName = path.basename(path.dirname(orgFolder)); // Get the artist folder name (e.g., "3_Thando_8146")
+                    posterPath = `/${userType}/${folderName}/events/${eventId}_${eventFolderName}/event_poster/${posterFileName}`;
                 }
 
                 // Handle gallery uploads
@@ -151,7 +155,10 @@ router.post('/create_event', verifyToken, upload.any(), async (req, res) => {
                     const galleryFullPath = path.join(eventGalleryPath, galleryFileName);
                     
                     fs.writeFileSync(galleryFullPath, galleryFile.buffer);
-                    const galleryPath = path.join(`/${userType}`, path.basename(orgFolder), 'events', `${eventId}_${eventFolderName}`, 'gallery', galleryFileName);
+                    
+                    // Construct the correct web path for the database
+                    const folderName = path.basename(path.dirname(orgFolder)); // Get the artist folder name (e.g., "3_Thando_8146")
+                    const galleryPath = `/${userType}/${folderName}/events/${eventId}_${eventFolderName}/gallery/${galleryFileName}`;
                     galleryPaths.push(galleryPath);
                 }
             }
@@ -228,7 +235,10 @@ router.put('/edit/:id', verifyToken, upload.any(), async (req, res) => {
                 const posterFullPath = path.join(eventPosterPath, posterFileName);
                 
                 fs.writeFileSync(posterFullPath, posterFile.buffer);
-                event.poster = path.join(`/${userType}`, path.basename(orgFolder), 'events', `${event.id}_${eventFolderName}`, 'event_poster', posterFileName);
+                
+                // Construct the correct web path for the database
+                const folderName = path.basename(path.dirname(orgFolder)); // Get the artist folder name (e.g., "3_Thando_8146")
+                event.poster = `/${userType}/${folderName}/events/${event.id}_${eventFolderName}/event_poster/${posterFileName}`;
             }
 
             // Handle new gallery uploads
@@ -244,7 +254,10 @@ router.put('/edit/:id', verifyToken, upload.any(), async (req, res) => {
                     const galleryFullPath = path.join(eventGalleryPath, galleryFileName);
                     
                     fs.writeFileSync(galleryFullPath, galleryFile.buffer);
-                    const galleryPath = path.join(`/${userType}`, path.basename(orgFolder), 'events', `${event.id}_${eventFolderName}`, 'gallery', galleryFileName);
+                    
+                    // Construct the correct web path for the database
+                    const folderName = path.basename(path.dirname(orgFolder)); // Get the artist folder name (e.g., "3_Thando_8146")
+                    const galleryPath = `/${userType}/${folderName}/events/${event.id}_${eventFolderName}/gallery/${galleryFileName}`;
                     newGalleryPaths.push(galleryPath);
                 }
 

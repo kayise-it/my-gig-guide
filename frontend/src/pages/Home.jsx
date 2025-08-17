@@ -174,21 +174,6 @@ const Home = () => {
           {/* Map Container */}
           <div className="relative">
             <LiveEventsMap />
-            
-            {/* Map Legend */}
-            <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm border border-purple-200 rounded-xl p-4 shadow-sm">
-              <h4 className="font-semibold text-gray-900 mb-3">Map Legend</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center">
-                  <div className="w-3 h-3 bg-purple-500 rounded-full mr-3"></div>
-                  <span className="text-gray-700">Your Location</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-3 h-3 bg-purple-600 rounded-full mr-3"></div>
-                  <span className="text-gray-700">Event Venues</span>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Quick Stats */}

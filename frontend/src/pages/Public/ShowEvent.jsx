@@ -3,25 +3,25 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import favoriteService from '../../api/favoriteService';
-import { 
-  CalendarIcon, 
-  MapPinIcon, 
-  EnvelopeIcon, 
-  PhoneIcon, 
-  LinkIcon, 
-  UserIcon,
-  HeartIcon,
-  ShareIcon,
-  SparklesIcon,
-  TicketIcon,
-  UsersIcon,
-  ClockIcon,
-  ArrowTopRightOnSquareIcon,
-  XMarkIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  BuildingLibraryIcon,
-  PencilIcon
+import {
+    CalendarIcon,
+    MapPinIcon,
+    EnvelopeIcon,
+    PhoneIcon,
+    LinkIcon,
+    UserIcon,
+    HeartIcon,
+    ShareIcon,
+    SparklesIcon,
+    TicketIcon,
+    UsersIcon,
+    ClockIcon,
+    ArrowTopRightOnSquareIcon,
+    XMarkIcon,
+    ChevronLeftIcon,
+    ChevronRightIcon,
+    BuildingLibraryIcon,
+    PencilIcon
 } from '@heroicons/react/24/outline';
 import API_BASE_URL from '../../api/config';
 import GalleryImage from '../../components/GalleryImage';
@@ -48,21 +48,28 @@ const ShowEvent = () => {
     const [currentCarouselIndex, setCurrentCarouselIndex] = React.useState(0);
     const [isFavorite, setIsFavorite] = React.useState(false);
     const [favoriteLoading, setFavoriteLoading] = React.useState(false);
+    // Function to get settings for current user from the settings column of their user type (artist or organiser) table
+    const getUserSettings = React.useCallback(() => {
+        
+        return currentUser;
+    }, [currentUser]);
+    
+    console.log('User settings:', getUserSettings());
 
     // Check if current user is the event owner
     const isEventOwner = React.useMemo(() => {
         if (!isAuthenticated || !currentUser || !event) return false;
-        
+
         // Check if user is the artist owner
         if (event.owner_type === 'artist' && currentUser.artist_id === event.owner_id) {
             return true;
         }
-        
+
         // Check if user is the organiser owner
         if (event.owner_type === 'organiser' && currentUser.organiser_id === event.owner_id) {
             return true;
         }
-        
+
         return false;
     }, [isAuthenticated, currentUser, event]);
 
@@ -92,13 +99,13 @@ const ShowEvent = () => {
             try {
                 console.log('Fetching event with ID:', id);
                 console.log('API URL:', `${API_BASE_URL}/api/events/${id}`);
-                
+
                 const response = await axios.get(`${API_BASE_URL}/api/events/${id}`);
                 const eventData = response.data.event;
                 console.log('Raw event data received:', eventData);
                 console.log('Gallery data:', eventData.gallery);
                 setEvent(eventData);
-                
+
                 // Determine creator type and fetch creator details
                 if (eventData.owner_type === 'artist') {
                     setCreatorType('artist');
@@ -107,7 +114,7 @@ const ShowEvent = () => {
                     setCreatorType('organiser');
                     await fetchCreatorDetails('organisers', eventData.owner_id);
                 }
-                
+
                 // Fetch venue details if venue_id exists
                 if (eventData.venue_id) {
                     try {
@@ -117,7 +124,7 @@ const ShowEvent = () => {
                         // Continue without venue data - page will still work
                     }
                 }
-                
+
             } catch (err) {
                 console.error('Error fetching event:', err);
                 console.error('Error response:', err.response);
@@ -180,7 +187,7 @@ const ShowEvent = () => {
 
     // Check if we have real gallery images (not test images)
     const hasRealGallery = galleryImages.length > 0;
-    
+
     // Log event loading for debugging if needed
     React.useEffect(() => {
         if (event) {
@@ -220,14 +227,14 @@ const ShowEvent = () => {
                     <p className="text-gray-700 text-lg font-medium">Loading event details...</p>
                     <div className="mt-4 flex justify-center space-x-1">
                         <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                     </div>
                 </div>
             </div>
         );
     }
-    
+
     // Render error state
     if (error) {
         return (
@@ -239,7 +246,7 @@ const ShowEvent = () => {
             </div>
         );
     }
-    
+
     // Render not found state
     if (!event) {
         return (
@@ -292,7 +299,7 @@ const ShowEvent = () => {
         }
 
         setFavoriteLoading(true);
-        
+
         try {
             // Determine the favorite type based on event owner
             const favoriteType = event.owner_type; // 'artist' or 'organiser'
@@ -340,7 +347,7 @@ const ShowEvent = () => {
     // Carousel functions
     const imagesPerSlide = 5; // Changed to 5 to match the grid layout
     const totalSlides = Math.ceil(galleryImages.length / imagesPerSlide);
-    
+
     const nextCarouselSlide = () => {
         setCurrentCarouselIndex((prev) => {
             if (prev >= totalSlides - 1) {
@@ -376,24 +383,22 @@ const ShowEvent = () => {
             <div className="relative w-full h-[500px] overflow-hidden">
                 {/* Floating Action Buttons */}
                 <div className="absolute top-6 right-6 z-20 flex space-x-3">
-                    <button 
+                    <button
                         onClick={handleShare}
                         className="bg-white/90 backdrop-blur-sm text-gray-700 p-3 rounded-full shadow-lg hover:shadow-xl hover:bg-purple-100 transition-all duration-300 hover:scale-110 group"
                     >
                         <ShareIcon className="h-5 w-5 group-hover:text-purple-600 transition-colors duration-300" />
                     </button>
-                    <button 
+                    <button
                         onClick={handleInterestToggle}
                         disabled={favoriteLoading}
-                        className={`backdrop-blur-sm p-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 group ${
-                            isFavorite 
-                                ? 'bg-red-500 text-white hover:bg-red-600' 
-                                : 'bg-white/90 text-gray-700 hover:bg-red-50 hover:text-red-500'
-                        } ${favoriteLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`backdrop-blur-sm p-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 group ${isFavorite
+                            ? 'bg-red-500 text-white hover:bg-red-600'
+                            : 'bg-white/90 text-gray-700 hover:bg-red-50 hover:text-red-500'
+                            } ${favoriteLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                        <HeartIcon className={`h-5 w-5 transition-all duration-300 ${
-                            isFavorite ? 'fill-current' : 'group-hover:fill-current'
-                        }`} />
+                        <HeartIcon className={`h-5 w-5 transition-all duration-300 ${isFavorite ? 'fill-current' : 'group-hover:fill-current'
+                            }`} />
                     </button>
                 </div>
 
@@ -402,23 +407,57 @@ const ShowEvent = () => {
                         <img
                             src={event.poster.startsWith('http') ? event.poster : (() => {
                                 let posterPath = event.poster;
-                                
+
                                 // Remove extra spaces and fix the path
                                 posterPath = posterPath.replace(/\s+/g, '');
-                                
+
                                 // Fix the artist ID from 3_Thando_9144 to 3_Thando_8146
                                 posterPath = posterPath.replace('/artists/3_Thando_9144/', '/artists/3_Thando_8146/');
+
+                                // Handle different path formats
+                                console.log('Original poster path:', posterPath);
                                 
-                                // If the path doesn't include the event folder structure, add it
-                                if (posterPath.includes('/events/event_poster/')) {
-                                    // Extract the event name from the poster filename
+                                if (posterPath.startsWith('/artists/') && posterPath.includes('/events/')) {
+                                    // Path is already in the correct format, just add the base URL
+                                    const finalUrl = `http://localhost:5173${posterPath}`;
+                                    console.log('Poster URL:', finalUrl);
+                                    return finalUrl;
+                                } else if (posterPath.includes('/artists/events/events/')) {
+                                    // Fix duplicate events in path
+                                    const fixedPath = posterPath.replace('/artists/events/events/', '/artists/3_Thando_8146/events/');
+                                    const finalUrl = `http://localhost:5173${fixedPath}`;
+                                    console.log('Poster URL (fixed duplicate events):', finalUrl);
+                                    return finalUrl;
+                                } else if (posterPath.includes('/events/events/')) {
+                                    // Fix duplicate events in path (without artists prefix)
+                                    const fixedPath = posterPath.replace('/events/events/', '/artists/3_Thando_8146/events/');
+                                    const finalUrl = `http://localhost:5173${fixedPath}`;
+                                    console.log('Poster URL (fixed duplicate events no artists):', finalUrl);
+                                    return finalUrl;
+                                } else if (posterPath.includes('/events/event_poster/')) {
+                                    // Handle legacy format - extract event info from filename
                                     const posterFileName = posterPath.split('/').pop();
-                                    const eventName = posterFileName.replace('event_poster_', '').replace('.jpg', '').replace('.png', '').replace('.jpeg', '');
-                                    posterPath = posterPath.replace('/events/event_poster/', `/events/1_kamal_lamb/event_poster/`);
+                                    
+                                    // Try to extract event folder from the path if possible
+                                    const pathParts = posterPath.split('/');
+                                    const eventsIndex = pathParts.indexOf('events');
+                                    if (eventsIndex !== -1 && pathParts[eventsIndex + 1]) {
+                                        const eventFolder = pathParts[eventsIndex + 1];
+                                        posterPath = `/artists/3_Thando_8146/events/${eventFolder}/event_poster/${posterFileName}`;
+                                    } else {
+                                        // Fallback: try to construct from event data
+                                        const eventFolder = event.event_folder || `5_freya_ball`; // fallback
+                                        posterPath = `/artists/3_Thando_8146/events/${eventFolder}/event_poster/${posterFileName}`;
+                                    }
+                                    
+                                    const finalUrl = `http://localhost:5173${posterPath}`;
+                                    console.log('Poster URL (constructed):', finalUrl);
+                                    return finalUrl;
                                 }
-                                
+
+                                // Fallback - just add base URL
                                 const finalUrl = `http://localhost:5173${posterPath}`;
-                                console.log('Poster URL:', finalUrl);
+                                console.log('Poster URL (fallback):', finalUrl);
                                 return finalUrl;
                             })()}
                             alt={event.name}
@@ -445,7 +484,7 @@ const ShowEvent = () => {
                         </div>
                     </div>
                 )}
-                
+
                 {/* Enhanced Content Overlay */}
                 <div className="absolute inset-0 flex items-end">
                     <div className="p-8 w-full">
@@ -459,7 +498,7 @@ const ShowEvent = () => {
                                 showHome={true}
                             />
                         </div>
-                        
+
                         <div className="max-w-6xl mx-auto">
                             <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between">
                                 <div className="flex-1 mb-6 lg:mb-0">
@@ -520,16 +559,82 @@ const ShowEvent = () => {
                     <div className="p-8 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-blue-50">
                         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                             <div className="flex-1">
+                                <div className="diplayPosterPic rounded overflow-hidden relative h-[100px] w-[100px]" >
+                                    <img
+                                        src={event.poster.startsWith('http') ? event.poster : (() => {
+                                            let posterPath = event.poster;
+
+                                            // Remove extra spaces and fix the path
+                                            posterPath = posterPath.replace(/\s+/g, '');
+
+                                            // Fix the artist ID from 3_Thando_9144 to 3_Thando_8146
+                                            posterPath = posterPath.replace('/artists/3_Thando_9144/', '/artists/3_Thando_8146/');
+
+                                            // Handle different path formats
+                                            console.log('Original poster path (section 2):', posterPath);
+                                            
+                                            if (posterPath.startsWith('/artists/') && posterPath.includes('/events/')) {
+                                                // Path is already in the correct format, just add the base URL
+                                                const finalUrl = `http://localhost:5173${posterPath}`;
+                                                console.log('Poster URL (section 2):', finalUrl);
+                                                return finalUrl;
+                                            } else if (posterPath.includes('/artists/events/events/')) {
+                                                // Fix duplicate events in path
+                                                const fixedPath = posterPath.replace('/artists/events/events/', '/artists/3_Thando_8146/events/');
+                                                const finalUrl = `http://localhost:5173${fixedPath}`;
+                                                console.log('Poster URL (section 2, fixed duplicate events):', finalUrl);
+                                                return finalUrl;
+                                            } else if (posterPath.includes('/events/events/')) {
+                                                // Fix duplicate events in path (without artists prefix)
+                                                const fixedPath = posterPath.replace('/events/events/', '/artists/3_Thando_8146/events/');
+                                                const finalUrl = `http://localhost:5173${fixedPath}`;
+                                                console.log('Poster URL (section 2, fixed duplicate events no artists):', finalUrl);
+                                                return finalUrl;
+                                            } else if (posterPath.includes('/events/event_poster/')) {
+                                                // Handle legacy format - extract event info from filename
+                                                const posterFileName = posterPath.split('/').pop();
+                                                
+                                                // Try to extract event folder from the path if possible
+                                                const pathParts = posterPath.split('/');
+                                                const eventsIndex = pathParts.indexOf('events');
+                                                if (eventsIndex !== -1 && pathParts[eventsIndex + 1]) {
+                                                    const eventFolder = pathParts[eventsIndex + 1];
+                                                    posterPath = `/artists/3_Thando_8146/events/${eventFolder}/event_poster/${posterFileName}`;
+                                                } else {
+                                                    // Fallback: try to construct from event data
+                                                    const eventFolder = event.event_folder || `5_freya_ball`; // fallback
+                                                    posterPath = `/artists/3_Thando_8146/events/${eventFolder}/event_poster/${posterFileName}`;
+                                                }
+                                                
+                                                const finalUrl = `http://localhost:5173${posterPath}`;
+                                                console.log('Poster URL (constructed section 2):', finalUrl);
+                                                return finalUrl;
+                                            }
+
+                                            // Fallback - just add base URL
+                                            const finalUrl = `http://localhost:5173${posterPath}`;
+                                            console.log('Poster URL (fallback section 2):', finalUrl);
+                                            return finalUrl;
+                                        })()}
+                                        alt={event.name}
+                                        className="absolute inset-0 w-full h-full object-cover transform hover:scale-105 transition-transform duration-700"
+                                        onError={(e) => {
+                                            console.log('Poster image failed to load:', e.target.src);
+                                            e.target.style.display = 'none';
+                                        }}
+                                    />
+
+
+                                </div>
                                 <div className="flex items-center gap-4 mb-4">
                                     <h1 className="text-4xl font-bold text-gray-900">{event.name}</h1>
-                                    <button 
+                                    <button
                                         onClick={handleInterestToggle}
                                         disabled={favoriteLoading}
-                                        className={`p-2 rounded-full transition-all duration-300 hover:scale-110 ${
-                                            isFavorite 
-                                                ? 'bg-red-100 text-red-600' 
-                                                : 'bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-500'
-                                        } ${favoriteLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        className={`p-2 rounded-full transition-all duration-300 hover:scale-110 ${isFavorite
+                                            ? 'bg-red-100 text-red-600'
+                                            : 'bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-500'
+                                            } ${favoriteLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     >
                                         <HeartIcon className={`h-6 w-6 ${isFavorite ? 'fill-current' : ''}`} />
                                     </button>
@@ -557,7 +662,7 @@ const ShowEvent = () => {
                                     </span>
                                 )}
                             </div>
-                            
+
                             {/* Enhanced Price and Action Card */}
                             <div className="mt-6 lg:mt-0 lg:ml-8">
                                 <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 p-6 rounded-2xl min-w-[250px] shadow-lg">
@@ -575,7 +680,7 @@ const ShowEvent = () => {
 
                                     {isEventOwner ? (
                                         // Edit button for event owner
-                                        <button 
+                                        <button
                                             onClick={handleEdit}
                                             className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 group"
                                         >
@@ -612,7 +717,7 @@ const ShowEvent = () => {
                                     )}
 
                                     {/* Additional CTA */}
-                                    <button 
+                                    <button
                                         onClick={handleShare}
                                         className="w-full mt-3 bg-white hover:bg-gray-50 border border-purple-200 hover:border-purple-300 text-purple-700 font-medium py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center"
                                     >
@@ -648,36 +753,36 @@ const ShowEvent = () => {
                                         Event Location
                                     </h2>
                                 </div>
-                                
 
-                                    {venue ? (
-                                        <div className="space-y-6 h-full">
-                                            {/* Enhanced Venue Card */}
-                                            {venue && (
-                                                <div className="mb-6">
-                                                    <EnhancedVenueCard venue={venue} showActions={true} showStats={true} />
-                                                </div>
-                                            )}
-                                            
-                                            {/* Get Directions Button */}
-                                            {venue && venue.address && (
-                                                <button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-300 flex items-center justify-center space-x-2 hover:scale-105 shadow-md">
-                                                    <MapPinIcon className="h-5 w-5" />
-                                                    <span>Get Directions</span>
-                                                    <ArrowTopRightOnSquareIcon className="h-5 w-5" />
-                                                </button>
-                                            )}
 
-                                            {/* Live Events Map */}
-                                            <div className="mt-6 flex-1">
-                                                <LiveEventsMap events={safeEvent ? [safeEvent] : []} />
+                                {venue ? (
+                                    <div className="space-y-6 h-full">
+                                        {/* Enhanced Venue Card */}
+                                        {venue && (
+                                            <div className="mb-6">
+                                                <EnhancedVenueCard venue={venue} showActions={true} showStats={true} />
                                             </div>
-                                        </div>
-                                    ) : (
-                                        <div className="h-full">
+                                        )}
+
+                                        {/* Get Directions Button */}
+                                        {venue && venue.address && (
+                                            <button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-300 flex items-center justify-center space-x-2 hover:scale-105 shadow-md">
+                                                <MapPinIcon className="h-5 w-5" />
+                                                <span>Get Directions</span>
+                                                <ArrowTopRightOnSquareIcon className="h-5 w-5" />
+                                            </button>
+                                        )}
+
+                                        {/* Live Events Map */}
+                                        <div className="mt-6 flex-1">
                                             <LiveEventsMap events={safeEvent ? [safeEvent] : []} />
                                         </div>
-                                    )}
+                                    </div>
+                                ) : (
+                                    <div className="h-full">
+                                        <LiveEventsMap events={safeEvent ? [safeEvent] : []} />
+                                    </div>
+                                )}
                             </div>
 
                             {/* Quick Details Sidebar */}
@@ -698,7 +803,7 @@ const ShowEvent = () => {
                                             </div>
                                             <span className="font-bold text-gray-900">{eventDate}</span>
                                         </div>
-                                        
+
                                         <div className="flex items-center justify-between p-3 bg-white/70 rounded-xl">
                                             <div className="flex items-center">
                                                 <ClockIcon className="h-5 w-5 mr-3 text-blue-600" />
@@ -706,7 +811,7 @@ const ShowEvent = () => {
                                             </div>
                                             <span className="font-bold text-gray-900">{event.time}</span>
                                         </div>
-                                        
+
                                         {event.category && (
                                             <div className="flex items-center justify-between p-3 bg-white/70 rounded-xl">
                                                 <div className="flex items-center">
@@ -716,7 +821,7 @@ const ShowEvent = () => {
                                                 <span className="font-bold text-gray-900">{event.category}</span>
                                             </div>
                                         )}
-                                        
+
                                         {event.capacity && (
                                             <div className="flex items-center justify-between p-3 bg-white/70 rounded-xl">
                                                 <div className="flex items-center">
@@ -726,17 +831,16 @@ const ShowEvent = () => {
                                                 <span className="font-bold text-gray-900">{event.capacity} people</span>
                                             </div>
                                         )}
-                                        
+
                                         <div className="flex items-center justify-between p-3 bg-white/70 rounded-xl">
                                             <div className="flex items-center">
                                                 <TicketIcon className="h-5 w-5 mr-3 text-yellow-600" />
                                                 <span className="text-gray-700 font-medium">Status</span>
                                             </div>
-                                            <span className={`font-bold px-3 py-1 rounded-full text-sm ${
-                                                event.status === 'active' ? 'bg-green-100 text-green-700' :
+                                            <span className={`font-bold px-3 py-1 rounded-full text-sm ${event.status === 'active' ? 'bg-green-100 text-green-700' :
                                                 event.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                                                'bg-blue-100 text-blue-700'
-                                            }`}>
+                                                    'bg-blue-100 text-blue-700'
+                                                }`}>
                                                 {event.status || 'Scheduled'}
                                             </span>
                                         </div>
@@ -775,46 +879,46 @@ const ShowEvent = () => {
                                         </div>
                                     </div>
                                 </div>
-                                
-                                                                 {/* Carousel Container */}
-                                 <div className="relative overflow-hidden">
-                                     {/* Carousel Slides */}
-                                     <div className="relative h-32 mb-4">
-                                         <div 
-                                             className="flex transition-transform duration-500 ease-in-out h-full"
-                                             style={{ transform: `translateX(-${currentCarouselIndex * 100}%)` }}
-                                         >
-                                             {Array.from({ length: totalSlides }).map((_, slideIndex) => (
-                                                 <div key={slideIndex} className="w-full flex-shrink-0 grid grid-cols-5 gap-3 h-full">
-                                                     {galleryImages.slice(slideIndex * 5, (slideIndex + 1) * 5).map((image, imageIndex) => {
-                                                         const actualIndex = slideIndex * 5 + imageIndex;
-                                                         return (
-                                                             <GalleryImage
-                                                                 key={actualIndex}
-                                                                 image={image}
-                                                                 index={actualIndex}
-                                                                 alt={`Event gallery ${actualIndex + 1}`}
-                                                                 onClick={() => openGallery(actualIndex)}
-                                                                 size="small"
-                                                                 aspectRatio="square"
-                                                                 showNumber={true}
-                                                                 showHoverIcon={true}
-                                                                 className="h-full w-full object-cover"
-                                                             />
-                                                         );
-                                                     })}
-                                                     {/* Fill empty slots to always show 5 images */}
-                                                     {Array.from({ length: 5 - galleryImages.slice(slideIndex * 5, (slideIndex + 1) * 5).length }).map((_, emptyIndex) => (
-                                                         <GalleryPlaceholder 
-                                                             key={`empty-${emptyIndex}`} 
-                                                             size="full"
-                                                             className="h-full w-full"
-                                                         />
-                                                     ))}
-                                                 </div>
-                                             ))}
-                                         </div>
-                                     </div>
+
+                                {/* Carousel Container */}
+                                <div className="relative overflow-hidden">
+                                    {/* Carousel Slides */}
+                                    <div className="relative h-32 mb-4">
+                                        <div
+                                            className="flex transition-transform duration-500 ease-in-out h-full"
+                                            style={{ transform: `translateX(-${currentCarouselIndex * 100}%)` }}
+                                        >
+                                            {Array.from({ length: totalSlides }).map((_, slideIndex) => (
+                                                <div key={slideIndex} className="w-full flex-shrink-0 grid grid-cols-5 gap-3 h-full">
+                                                    {galleryImages.slice(slideIndex * 5, (slideIndex + 1) * 5).map((image, imageIndex) => {
+                                                        const actualIndex = slideIndex * 5 + imageIndex;
+                                                        return (
+                                                            <GalleryImage
+                                                                key={actualIndex}
+                                                                image={image}
+                                                                index={actualIndex}
+                                                                alt={`Event gallery ${actualIndex + 1}`}
+                                                                onClick={() => openGallery(actualIndex)}
+                                                                size="small"
+                                                                aspectRatio="square"
+                                                                showNumber={true}
+                                                                showHoverIcon={true}
+                                                                className="h-full w-full object-cover"
+                                                            />
+                                                        );
+                                                    })}
+                                                    {/* Fill empty slots to always show 5 images */}
+                                                    {Array.from({ length: 5 - galleryImages.slice(slideIndex * 5, (slideIndex + 1) * 5).length }).map((_, emptyIndex) => (
+                                                        <GalleryPlaceholder
+                                                            key={`empty-${emptyIndex}`}
+                                                            size="full"
+                                                            className="h-full w-full"
+                                                        />
+                                                    ))}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
 
                                     {/* Carousel Indicators */}
                                     {totalSlides > 1 && (
@@ -823,11 +927,10 @@ const ShowEvent = () => {
                                                 <button
                                                     key={index}
                                                     onClick={() => goToCarouselSlide(index)}
-                                                    className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                                                        index === currentCarouselIndex
-                                                            ? 'bg-gradient-to-r from-purple-600 to-blue-600 scale-125'
-                                                            : 'bg-gray-300 hover:bg-purple-300'
-                                                    }`}
+                                                    className={`w-3 h-3 rounded-full transition-all duration-300 ${index === currentCarouselIndex
+                                                        ? 'bg-gradient-to-r from-purple-600 to-blue-600 scale-125'
+                                                        : 'bg-gray-300 hover:bg-purple-300'
+                                                        }`}
                                                 />
                                             ))}
                                         </div>
@@ -856,7 +959,7 @@ const ShowEvent = () => {
                     </div>
                 </div>
 
-             
+
 
                 {/* Enhanced Gallery Modal */}
                 {isGalleryOpen && (
@@ -893,15 +996,31 @@ const ShowEvent = () => {
                                 <img
                                     src={galleryImages[selectedImageIndex]?.startsWith('http') ? galleryImages[selectedImageIndex] : (() => {
                                         const imagePath = galleryImages[selectedImageIndex];
-                                        if (imagePath?.includes('/artists/events/events/')) {
+                                        
+                                        // Handle different path formats
+                                        console.log('Gallery image path:', imagePath);
+                                        
+                                        if (imagePath?.startsWith('/artists/') && imagePath.includes('/events/')) {
+                                            // Path is already in the correct format, just add the base URL
+                                            return `http://localhost:5173${imagePath}`;
+                                        } else if (imagePath?.includes('/artists/events/events/')) {
+                                            // Handle legacy format with duplicate events
                                             return `http://localhost:5173${imagePath.replace('/artists/events/events/', '/artists/3_Thando_8146/events/')}`;
+                                        } else if (imagePath?.includes('/artists/events/')) {
+                                            // Handle legacy format
+                                            return `http://localhost:5173${imagePath.replace('/artists/events/', '/artists/3_Thando_8146/events/')}`;
+                                        } else if (imagePath?.includes('/events/events/')) {
+                                            // Handle another duplicate events format
+                                            return `http://localhost:5173${imagePath.replace('/events/events/', '/artists/3_Thando_8146/events/')}`;
                                         }
-                                        return `http://localhost:5173${imagePath?.replace('/artists/events/', '/artists/3_Thando_8146/events/')}`;
+                                        
+                                        // Fallback - just add base URL
+                                        return `http://localhost:5173${imagePath}`;
                                     })()}
                                     alt={`Gallery image ${selectedImageIndex + 1}`}
                                     className="w-full h-auto max-h-[80vh] object-contain rounded-2xl shadow-2xl"
                                 />
-                                
+
                                 {/* Image Counter */}
                                 <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-sm text-gray-700 px-6 py-3 rounded-full shadow-lg">
                                     <span className="font-medium">{selectedImageIndex + 1} of {galleryImages.length}</span>

@@ -2,6 +2,7 @@
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
 import Layout from './components/Layout';
+import './utils/consoleErrorFixer'; // Import error fixer utility
 
 /* Owners */
 import AdminDashboard from "./pages/AdminDashboard";

@@ -43,9 +43,33 @@ export default function ViewEvents() {
     // Remove extra spaces and fix the path
     let cleanPath = posterPath.replace(/\s+/g, '');
     
-    // Fix common path issues based on your actual file structure
+    // Fix the artist ID from 3_Thando_9144 to 3_Thando_8146
     cleanPath = cleanPath.replace('/artists/3_Thando_9144/', '/artists/3_Thando_8146/');
-    cleanPath = cleanPath.replace('/events/event_poster/', '/events/1_kamal_lamb/event_poster/');
+    
+    // Handle different path formats
+    if (cleanPath.startsWith('/artists/') && cleanPath.includes('/events/')) {
+      // Path is already in the correct format
+      return cleanPath;
+    } else if (cleanPath.includes('/artists/events/events/')) {
+      // Fix duplicate events in path
+      cleanPath = cleanPath.replace('/artists/events/events/', '/artists/3_Thando_8146/events/');
+      return cleanPath;
+    } else if (cleanPath.includes('/events/events/')) {
+      // Fix duplicate events in path (without artists prefix)
+      cleanPath = cleanPath.replace('/events/events/', '/artists/3_Thando_8146/events/');
+      return cleanPath;
+    } else if (cleanPath.includes('/events/event_poster/')) {
+      // Handle legacy format - extract event folder from path if possible
+      const pathParts = cleanPath.split('/');
+      const eventsIndex = pathParts.indexOf('events');
+      if (eventsIndex !== -1 && pathParts[eventsIndex + 1]) {
+        const eventFolder = pathParts[eventsIndex + 1];
+        cleanPath = `/artists/3_Thando_8146/events/${eventFolder}/event_poster/${pathParts[pathParts.length - 1]}`;
+      } else {
+        // Fallback to hardcoded path
+        cleanPath = cleanPath.replace('/events/event_poster/', '/events/5_freya_ball/event_poster/');
+      }
+    }
     
     // Ensure path starts with forward slash
     if (!cleanPath.startsWith('/')) {
@@ -60,11 +84,9 @@ export default function ViewEvents() {
     const fetchEvents = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${API_BASE_URL}/api/events`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
+        const response = await axios.get(`${API_BASE_URL}/api/events`);
+        
+        console.log('Raw response data:', response.data);
         
         // Transform the data to match the expected format
         const transformedEvents = response.data.map(event => ({
@@ -98,10 +120,20 @@ export default function ViewEvents() {
 
   // Helper function to check if event is upcoming (today or later)
   const isUpcoming = (eventDate) => {
+    if (!eventDate) return false;
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Set to start of today
     const eventDateTime = new Date(eventDate);
     eventDateTime.setHours(0, 0, 0, 0); // Set to start of event day
+    
+    console.log('Date comparison:', {
+      eventDate,
+      eventDateTime: eventDateTime.toISOString(),
+      today: today.toISOString(),
+      isUpcoming: eventDateTime >= today
+    });
+    
     return eventDateTime >= today;
   };
 
@@ -112,6 +144,17 @@ export default function ViewEvents() {
       (event.venue?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || event.category === categoryFilter;
     const matchesDateFilter = showPastEvents || isUpcoming(event.date);
+    
+    // Debug logging for each event
+    console.log(`Event "${event.name}":`, {
+      matchesSearch,
+      matchesCategory,
+      matchesDateFilter,
+      date: event.date,
+      isUpcoming: isUpcoming(event.date),
+      showPastEvents
+    });
+    
     return matchesSearch && matchesCategory && matchesDateFilter;
   });
 

@@ -8,6 +8,11 @@ const ProfilePictureModal = ({ isOpen, onClose, initialImage, onSave, settings }
   const fileInputRef = useRef(null);
   const [rawFile, setRawFile] = useState(null);
 
+  // Update image state when initialImage prop changes
+  React.useEffect(() => {
+    setImage(initialImage);
+  }, [initialImage]);
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {

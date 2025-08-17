@@ -10,5 +10,10 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'), // Allows import from "@/components/..."
     },
   },
+  server: {
+    port: 5173,
+    host: true,
+  },
+  publicDir: 'public', // Ensure public directory is served correctly
 });
 

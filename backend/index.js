@@ -14,6 +14,7 @@ const organiserRoutes = require('./routes/organiser.routes');
 const venueRoutes = require('./routes/venue.routes');
 const favoriteRoutes = require('./routes/favorites.routes');
 const aclRoutes = require('./routes/acl_trust.routes.js');
+const healthRoutes = require('./routes/health.routes');
 
 const app = express();
 
@@ -58,6 +59,7 @@ app.use('/api/venue', venueRoutes);     // Events routes
 app.use('/api/favorites', favoriteRoutes);     // Favorite routes
 app.use('/api/notifications', require('./routes/notification.routes')); // Notification routes
 app.use('/api/', aclRoutes);          // ACL routes
+app.use('/api', healthRoutes);        // Health check routes
 
 // Database connection
 db.sequelize.authenticate()

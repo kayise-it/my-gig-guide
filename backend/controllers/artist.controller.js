@@ -162,25 +162,18 @@ exports.uploadGalleryImages = async (req, res) => {
       }
     });
 
-    let settings;
-    if (existingArtist && existingArtist.settings) {
-      // Use existing folder settings
-      const existingSettings = JSON.parse(existingArtist.settings);
-      settings = existingSettings;
-    } else {
-      // Generate new folder name only if no settings exist
-      const folderName = `${user.role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
-      settings = await createOrUpdateUserProfileSettings({
-        role: user.role,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        contact_email: user.contact_email,
-        phone_number: user.phone_number,
-        folderName,
-        userId: user.id
-      });
-    }
+    // Get or create settings - function will handle existing settings automatically
+    const folderName = `${user.role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
+    const settings = await createOrUpdateUserProfileSettings({
+      role: user.role,
+      name: user.name,
+      username: user.username,
+      email: user.email,
+      contact_email: user.contact_email,
+      phone_number: user.phone_number,
+      folderName,
+      userId: user.id
+    });
 
     // Create folder structure if it doesn't exist
     await createFolderStructure(settings);
@@ -355,25 +348,18 @@ exports.uploadGalleryImage = async (req, res) => {
       }
     });
 
-    let settings;
-    if (existingArtist && existingArtist.settings) {
-      // Use existing folder settings
-      const existingSettings = JSON.parse(existingArtist.settings);
-      settings = existingSettings;
-    } else {
-      // Generate new folder name only if no settings exist
-      const folderName = `${user.role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
-      settings = await createOrUpdateUserProfileSettings({
-        role: user.role,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        contact_email: user.contact_email,
-        phone_number: user.phone_number,
-        folderName,
-        userId: user.id
-      });
-    }
+    // Get or create settings - function will handle existing settings automatically
+    const folderName = `${user.role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
+    const settings = await createOrUpdateUserProfileSettings({
+      role: user.role,
+      name: user.name,
+      username: user.username,
+      email: user.email,
+      contact_email: user.contact_email,
+      phone_number: user.phone_number,
+      folderName,
+      userId: user.id
+    });
 
     // Generate unique filename
     const timestamp = Date.now();
@@ -645,25 +631,18 @@ exports.uploadProfilePicture = async (req, res) => {
       }
     });
 
-    let settings;
-    if (existingArtist && existingArtist.settings) {
-      // Use existing folder settings
-      const existingSettings = JSON.parse(existingArtist.settings);
-      settings = existingSettings;
-    } else {
-      // Generate new folder name only if no settings exist
-      const folderName = `${user.role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
-      settings = await createOrUpdateUserProfileSettings({
-        role: user.role,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        contact_email: user.contact_email,
-        phone_number: user.phone_number,
-        folderName,
-        userId: user.id
-      });
-    }
+    // Get or create settings - function will handle existing settings automatically
+    const folderName = `${user.role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
+    const settings = await createOrUpdateUserProfileSettings({
+      role: user.role,
+      name: user.name,
+      username: user.username,
+      email: user.email,
+      contact_email: user.contact_email,
+      phone_number: user.phone_number,
+      folderName,
+      userId: user.id
+    });
 
     // Generate unique filename
     const timestamp = Date.now();

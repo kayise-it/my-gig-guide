@@ -143,7 +143,23 @@ async function createOrUpdateUserProfileSettings({
 }) {
   let model, profileData, settings;
 
-  // Decide if it's an artist or organiser
+  // Check if a profile already exists for this user FIRST
+  const existingProfile = role === '3' || role === 3 
+    ? await Artist.findOne({ where: { userId } })
+    : await Organiser.findOne({ where: { userId } });
+
+  // If profile exists and has valid settings, return existing settings
+  if (existingProfile && existingProfile.settings && existingProfile.settings.trim() !== '') {
+    try {
+      const existingSettings = JSON.parse(existingProfile.settings);
+      console.log(`Using existing settings for userId ${userId}:`, existingSettings.folder_name);
+      return existingSettings;
+    } catch (error) {
+      console.error('Error parsing existing settings, will create new ones:', error);
+    }
+  }
+
+  // Only create new settings if profile doesn't exist or has no settings
   if (role === '3' || role === 3) {
     // Artist
     settings = {
@@ -160,7 +176,7 @@ async function createOrUpdateUserProfileSettings({
       userId
     };
 
-    console.log(settings);
+    console.log('Creating new artist settings:', settings);
 
   } else if (role === '4' || role === 4) {
     // Organiser
@@ -178,28 +194,22 @@ async function createOrUpdateUserProfileSettings({
       userId
     };
 
+    console.log('Creating new organiser settings:', settings);
+
   } else {
     // Not artist or organiser, do nothing
     return null;
   }
 
-  console.log("asdadads"+model);
-  // Check if a profile already exists for this user
-  const existingProfile = await model.findOne({ where: { userId } });
-
   if (existingProfile) {
-    // If settings are missing or empty, update them
-    if (!existingProfile.settings || existingProfile.settings.trim() === '') {
-      await existingProfile.update(
-        { settings: JSON.stringify(settings) },
-        transaction ? { transaction } : {}
-      );
-      console.log(`Updated settings for userId ${userId}`);
-    } else {
-      console.log(`Profile already has settings for userId ${userId}`);
-    }
+    // Update existing profile with new settings
+    await existingProfile.update(
+      { settings: JSON.stringify(settings) },
+      transaction ? { transaction } : {}
+    );
+    console.log(`Updated settings for userId ${userId}`);
   } else {
-    // If no profile exists, create one
+    // Create new profile
     await model.create(profileData, transaction ? { transaction } : {});
     console.log(`Created new profile for userId ${userId}`);
   }

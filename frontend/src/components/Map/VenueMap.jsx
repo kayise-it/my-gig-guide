@@ -13,6 +13,9 @@ function VenueMap({ venue }) {
   const [center, setCenter] = useState({ lat: -25.4658, lng: 30.9853 }); // Default to Mbombela
   const [marker, setMarker] = useState(null);
 
+  // Get API key from environment variable
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDVfOS0l8Tv59v8WTgUO231X2FtmBQCc2Y';
+
   useEffect(() => {
     if (venue?.latitude && venue?.longitude) {
       const latLng = {
@@ -33,7 +36,7 @@ function VenueMap({ venue }) {
 
   return (
     <div className="relative">
-      <LoadScript googleMapsApiKey="AIzaSyDVfOS0l8Tv59v8WTgUO231X2FtmBQCc2Y" libraries={libraries}>
+      <LoadScript googleMapsApiKey={apiKey} libraries={libraries}>
         <GoogleMap
           mapContainerStyle={containerStyle}
           center={center}
@@ -59,6 +62,16 @@ function VenueMap({ venue }) {
             <Marker 
               position={marker}
               title={venue?.name}
+              icon={{
+                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="10" fill="#ef4444" stroke="#ffffff" strokeWidth="2"/>
+                    <circle cx="12" cy="12" r="4" fill="#ffffff"/>
+                  </svg>
+                `),
+                scaledSize: window.google?.maps ? new window.google.maps.Size(32, 32) : null,
+                anchor: window.google?.maps ? new window.google.maps.Point(16, 16) : null
+              }}
             />
           )}
         </GoogleMap>

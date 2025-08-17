@@ -8,8 +8,34 @@ const EventCard = ({ event, navigate }) => {
     if (!posterPath || posterPath === 'null' || posterPath === '') return null;
     
     let cleanPath = posterPath.replace(/\s+/g, '');
+    
+    // Fix the artist ID from 3_Thando_9144 to 3_Thando_8146
     cleanPath = cleanPath.replace('/artists/3_Thando_9144/', '/artists/3_Thando_8146/');
-    cleanPath = cleanPath.replace('/events/event_poster/', '/events/1_kamal_lamb/event_poster/');
+    
+    // Handle different path formats
+    if (cleanPath.startsWith('/artists/') && cleanPath.includes('/events/')) {
+      // Path is already in the correct format
+      return cleanPath;
+    } else if (cleanPath.includes('/artists/events/events/')) {
+      // Fix duplicate events in path
+      cleanPath = cleanPath.replace('/artists/events/events/', '/artists/3_Thando_8146/events/');
+      return cleanPath;
+    } else if (cleanPath.includes('/events/events/')) {
+      // Fix duplicate events in path (without artists prefix)
+      cleanPath = cleanPath.replace('/events/events/', '/artists/3_Thando_8146/events/');
+      return cleanPath;
+    } else if (cleanPath.includes('/events/event_poster/')) {
+      // Handle legacy format - extract event folder from path if possible
+      const pathParts = cleanPath.split('/');
+      const eventsIndex = pathParts.indexOf('events');
+      if (eventsIndex !== -1 && pathParts[eventsIndex + 1]) {
+        const eventFolder = pathParts[eventsIndex + 1];
+        cleanPath = `/artists/3_Thando_8146/events/${eventFolder}/event_poster/${pathParts[pathParts.length - 1]}`;
+      } else {
+        // Fallback to hardcoded path
+        cleanPath = cleanPath.replace('/events/event_poster/', '/events/5_freya_ball/event_poster/');
+      }
+    }
     
     if (!cleanPath.startsWith('/')) {
       cleanPath = '/' + cleanPath;
