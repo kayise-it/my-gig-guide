@@ -18,10 +18,9 @@ import {
   PlayIcon
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
-import axios from 'axios';
-import API_BASE_URL from '../../api/config';
 import EventCard from '../../components/Events/EventCard';
 import LiveEventsMap from '../../components/Map/LiveEventsMap';
+import { fetchFilteredEvents, isUpcoming } from '../../services/eventsService';
 
 export default function ViewEvents() {
   const [events, setEvents] = useState([]);
@@ -36,76 +35,19 @@ export default function ViewEvents() {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
 
-  // Helper function to fix poster URLs
-  const fixPosterUrl = (posterPath) => {
-    if (!posterPath || posterPath === 'null' || posterPath === '') return null;
-    
-    // Remove extra spaces and fix the path
-    let cleanPath = posterPath.replace(/\s+/g, '');
-    
-    // Fix the artist ID from 3_Thando_9144 to 3_Thando_8146
-    cleanPath = cleanPath.replace('/artists/3_Thando_9144/', '/artists/3_Thando_8146/');
-    
-    // Handle different path formats
-    if (cleanPath.startsWith('/artists/') && cleanPath.includes('/events/')) {
-      // Path is already in the correct format
-      return cleanPath;
-    } else if (cleanPath.includes('/artists/events/events/')) {
-      // Fix duplicate events in path
-      cleanPath = cleanPath.replace('/artists/events/events/', '/artists/3_Thando_8146/events/');
-      return cleanPath;
-    } else if (cleanPath.includes('/events/events/')) {
-      // Fix duplicate events in path (without artists prefix)
-      cleanPath = cleanPath.replace('/events/events/', '/artists/3_Thando_8146/events/');
-      return cleanPath;
-    } else if (cleanPath.includes('/events/event_poster/')) {
-      // Handle legacy format - extract event folder from path if possible
-      const pathParts = cleanPath.split('/');
-      const eventsIndex = pathParts.indexOf('events');
-      if (eventsIndex !== -1 && pathParts[eventsIndex + 1]) {
-        const eventFolder = pathParts[eventsIndex + 1];
-        cleanPath = `/artists/3_Thando_8146/events/${eventFolder}/event_poster/${pathParts[pathParts.length - 1]}`;
-      } else {
-        // Fallback to hardcoded path
-        cleanPath = cleanPath.replace('/events/event_poster/', '/events/5_freya_ball/event_poster/');
-      }
-    }
-    
-    // Ensure path starts with forward slash
-    if (!cleanPath.startsWith('/')) {
-      cleanPath = '/' + cleanPath;
-    }
-    
-    return cleanPath;
-  };
-
   // Fetch events from database
   useEffect(() => {
     const fetchEvents = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${API_BASE_URL}/api/events`);
+        const allEvents = await fetchFilteredEvents({
+          searchTerm,
+          category: categoryFilter,
+          showPastEvents,
+          sortBy
+        });
         
-        console.log('Raw response data:', response.data);
-        
-        // Transform the data to match the expected format
-        const transformedEvents = response.data.map(event => ({
-          id: event.id,
-          name: event.name || event.event_name,
-          description: event.description,
-          date: event.date || event.event_date,
-          time: event.time,
-          category: event.category || 'concert', // Default category
-          price: event.price || event.ticket_price || 0,
-          poster: fixPosterUrl(event.poster), // Fix poster URL
-          venue: event.venue || { name: event.venue_name || 'TBD' },
-          rating: Math.floor(Math.random() * 2) + 4, // Random rating for demo
-          attendees: Math.floor(Math.random() * 500) + 50 // Random attendees for demo
-        }));
-        
-        console.log('Fetched events from database:', transformedEvents);
-        console.log('Poster URLs:', transformedEvents.map(e => ({ name: e.name, poster: e.poster, fullUrl: e.poster ? `${API_BASE_URL}${e.poster}` : null })));
-        setEvents(transformedEvents);
+        setEvents(allEvents);
         setError(null);
       } catch (err) {
         console.error('Error fetching events:', err);
@@ -116,67 +58,11 @@ export default function ViewEvents() {
     };
 
     fetchEvents();
-  }, [token]);
-
-  // Helper function to check if event is upcoming (today or later)
-  const isUpcoming = (eventDate) => {
-    if (!eventDate) return false;
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to start of today
-    const eventDateTime = new Date(eventDate);
-    eventDateTime.setHours(0, 0, 0, 0); // Set to start of event day
-    
-    console.log('Date comparison:', {
-      eventDate,
-      eventDateTime: eventDateTime.toISOString(),
-      today: today.toISOString(),
-      isUpcoming: eventDateTime >= today
-    });
-    
-    return eventDateTime >= today;
-  };
-
-  // Filter events based on search, category, and date preferences
-  const filteredEvents = events.filter(event => {
-    const matchesSearch = event.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (event.venue?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || event.category === categoryFilter;
-    const matchesDateFilter = showPastEvents || isUpcoming(event.date);
-    
-    // Debug logging for each event
-    console.log(`Event "${event.name}":`, {
-      matchesSearch,
-      matchesCategory,
-      matchesDateFilter,
-      date: event.date,
-      isUpcoming: isUpcoming(event.date),
-      showPastEvents
-    });
-    
-    return matchesSearch && matchesCategory && matchesDateFilter;
-  });
-
-  // Sort events
-  const sortedEvents = [...filteredEvents].sort((a, b) => {
-    switch (sortBy) {
-      case 'date':
-        return new Date(a.date) - new Date(b.date);
-      case 'price':
-        return (a.price || 0) - (b.price || 0);
-      case 'name':
-        return a.name.localeCompare(b.name);
-      case 'popularity':
-        return (b.attendees || 0) - (a.attendees || 0);
-      default:
-        return new Date(a.date) - new Date(b.date);
-    }
-  });
+  }, [searchTerm, categoryFilter, showPastEvents, sortBy]);
 
   // Featured events (first 3)
-  const featuredEvents = sortedEvents.slice(0, 3);
-  const regularEvents = sortedEvents.slice(3);
+  const featuredEvents = events.slice(0, 3);
+  const regularEvents = events.slice(3);
 
   // Toggle favorite
   const toggleFavorite = (eventId) => {
@@ -326,14 +212,14 @@ export default function ViewEvents() {
                   </label>
                   <div className="space-y-2">
                     {[
-                      { value: 'all', label: 'All Categories', count: sortedEvents.length },
-                      { value: 'concert', label: 'Concerts', count: events.filter(e => e.category === 'concert' && isUpcoming(e.date)).length },
-                      { value: 'festival', label: 'Festivals', count: events.filter(e => e.category === 'festival' && isUpcoming(e.date)).length },
-                      { value: 'comedy', label: 'Comedy', count: events.filter(e => e.category === 'comedy' && isUpcoming(e.date)).length },
-                      { value: 'exhibition', label: 'Exhibitions', count: events.filter(e => e.category === 'exhibition' && isUpcoming(e.date)).length },
-                      { value: 'conference', label: 'Conferences', count: events.filter(e => e.category === 'conference' && isUpcoming(e.date)).length },
-                      { value: 'theater', label: 'Theater', count: events.filter(e => e.category === 'theater' && isUpcoming(e.date)).length },
-                      { value: 'sports', label: 'Sports', count: events.filter(e => e.category === 'sports' && isUpcoming(e.date)).length }
+                      { value: 'all', label: 'All Categories', count: events.length },
+                      { value: 'concert', label: 'Concerts', count: events.filter(e => e.category === 'concert').length },
+                      { value: 'festival', label: 'Festivals', count: events.filter(e => e.category === 'festival').length },
+                      { value: 'comedy', label: 'Comedy', count: events.filter(e => e.category === 'comedy').length },
+                      { value: 'exhibition', label: 'Exhibitions', count: events.filter(e => e.category === 'exhibition').length },
+                      { value: 'conference', label: 'Conferences', count: events.filter(e => e.category === 'conference').length },
+                      { value: 'theater', label: 'Theater', count: events.filter(e => e.category === 'theater').length },
+                      { value: 'sports', label: 'Sports', count: events.filter(e => e.category === 'sports').length }
                     ].map(category => (
                       <label key={category.value} className="flex items-center justify-between p-3 rounded-lg hover:bg-purple-50 cursor-pointer transition-colors duration-200">
                         <div className="flex items-center">

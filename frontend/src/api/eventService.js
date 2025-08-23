@@ -127,5 +127,36 @@ export const eventService = {
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to fetch all events');
     }
+  },
+  uploadEventGallery: async (eventId, files) => {
+    try {
+      const formData = new FormData();
+      files.forEach(file => {
+        formData.append('gallery', file);
+      });
+
+      const response = await axios.post(`${API_URL}/api/events/${eventId}/gallery`, formData, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to upload gallery images');
+    }
+  },
+  deleteEventGalleryImage: async (eventId, imagePath) => {
+    try {
+      const response = await axios.delete(`${API_URL}/api/events/${eventId}/gallery`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        data: { imagePath }
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Failed to delete gallery image');
+    }
   }
 };

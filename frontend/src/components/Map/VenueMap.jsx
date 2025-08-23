@@ -1,20 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
+import { GoogleMap } from '@react-google-maps/api';
+import { useGoogleMaps } from '../../context/GoogleMapsContext';
 
 const containerStyle = {
   width: '100%',
   height: '400px',
 };
 
-// Static libraries array to prevent reloading
-const libraries = ['places'];
+
 
 function VenueMap({ venue }) {
   const [center, setCenter] = useState({ lat: -25.4658, lng: 30.9853 }); // Default to Mbombela
   const [marker, setMarker] = useState(null);
-
-  // Get API key from environment variable
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDVfOS0l8Tv59v8WTgUO231X2FtmBQCc2Y';
+  const { isLoaded, loadError } = useGoogleMaps();
 
   useEffect(() => {
     if (venue?.latitude && venue?.longitude) {
@@ -34,48 +32,71 @@ function VenueMap({ venue }) {
     }
   };
 
+  if (loadError) {
+    return (
+      <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
+        <p>Error loading Google Maps: {loadError.message}</p>
+      </div>
+    );
+  }
+
+  if (!isLoaded) {
+    return (
+      <div className="bg-gray-50 border border-gray-200 text-gray-700 p-4 rounded-lg">
+        <p>Loading Google Maps...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="relative">
-      <LoadScript googleMapsApiKey={apiKey} libraries={libraries}>
-        <GoogleMap
-          mapContainerStyle={containerStyle}
-          center={center}
-          zoom={15}
-          onLoad={onLoad}
-          options={{
-            styles: [
-              {
-                featureType: "poi",
-                elementType: "labels",
-                stylers: [{ visibility: "off" }]
-              }
-            ],
-            zoomControl: true,
-            mapTypeControl: false,
-            scaleControl: true,
-            streetViewControl: false,
-            rotateControl: false,
-            fullscreenControl: true
-          }}
-        >
-          {marker && (
-            <Marker 
-              position={marker}
-              title={venue?.name}
-              icon={{
-                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="12" cy="12" r="10" fill="#ef4444" stroke="#ffffff" strokeWidth="2"/>
-                    <circle cx="12" cy="12" r="4" fill="#ffffff"/>
-                  </svg>
-                `),
-                scaledSize: window.google?.maps ? new window.google.maps.Size(32, 32) : null,
-                anchor: window.google?.maps ? new window.google.maps.Point(16, 16) : null
-              }}
-            />
-          )}
-        </GoogleMap>
-      </LoadScript>
+      <GoogleMap
+        mapContainerStyle={containerStyle}
+        center={center}
+        zoom={15}
+        onLoad={onLoad}
+        options={{
+          styles: [
+            {
+              featureType: "poi",
+              elementType: "labels",
+              stylers: [{ visibility: "off" }]
+            }
+          ],
+          zoomControl: true,
+          mapTypeControl: false,
+          scaleControl: true,
+          streetViewControl: false,
+          rotateControl: false,
+          fullscreenControl: true
+        }}
+      >
+        {marker && window.google?.maps?.marker && (
+          <google-maps-marker
+            position={marker}
+            title={venue?.name}
+          >
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              backgroundColor: '#ef4444',
+              border: '2px solid #ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+            }}>
+              <div style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: '#ffffff'
+              }}></div>
+            </div>
+          </google-maps-marker>
+        )}
+      </GoogleMap>
       
       {/* Map Legend */}
       <div className="absolute top-4 left-4 bg-white bg-opacity-90 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gray-200">

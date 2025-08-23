@@ -1,7 +1,7 @@
 // file: frontend/src/components/Map/GoogleMapComponent.jsx
 
 import React, { useEffect, useState } from 'react';
-import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
+import { GoogleMap, LoadScript } from '@react-google-maps/api';
 
 const containerStyle = {
   width: '100%',
@@ -53,20 +53,30 @@ function GoogleMapComponent({ gigs, apiKey }) {
         zoom={14}
         onLoad={onLoad}
       >
-        {marker && isLoaded && window.google?.maps && (
-          <Marker 
+        {marker && isLoaded && window.google?.maps && window.google.maps.marker && (
+          <google-maps-marker
             position={marker}
-            icon={{
-              url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="12" cy="12" r="10" fill="#3b82f6" stroke="#ffffff" strokeWidth="2"/>
-                  <circle cx="12" cy="12" r="4" fill="#ffffff"/>
-                </svg>
-              `),
-              scaledSize: new window.google.maps.Size(32, 32),
-              anchor: new window.google.maps.Point(16, 16)
-            }}
-          />
+            title="Event Location"
+          >
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              backgroundColor: '#3b82f6',
+              border: '2px solid #ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+            }}>
+              <div style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: '#ffffff'
+              }}></div>
+            </div>
+          </google-maps-marker>
         )}
       </GoogleMap>
     </LoadScript>

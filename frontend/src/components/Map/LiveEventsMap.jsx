@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { GoogleMap, LoadScript, Marker, InfoWindow } from '@react-google-maps/api';
+import { GoogleMap, InfoWindow, Marker } from '@react-google-maps/api';
 import { MapPinIcon, CalendarDaysIcon, ClockIcon, StarIcon } from '@heroicons/react/24/outline';
+import { useGoogleMaps } from '../../context/GoogleMapsContext';
 
 const containerStyle = {
   width: '100%',
@@ -12,11 +13,11 @@ const containerStyle = {
 const libraries = ['places'];
 
 function LiveEventsMap({ events = [] }) {
+  const { isLoaded, loadError, apiKey } = useGoogleMaps();
   const [center, setCenter] = useState({ lat: -26.1550, lng: 28.0595 });
   const [userLocation, setUserLocation] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [mapError, setMapError] = useState(null);
+  const [mapError, setMapError] = useState(loadError);
 
   // Helper function to format event date
   const formatEventDate = (eventDate) => {
@@ -127,12 +128,11 @@ function LiveEventsMap({ events = [] }) {
   }, [userLocation]);
 
   const onLoad = useCallback(() => {
-    setIsLoaded(true);
     setMapError(null);
   }, []);
 
   const onUnmount = useCallback(() => {
-    setIsLoaded(false);
+    // Cleanup if needed
   }, []);
 
   const onError = useCallback((error) => {
@@ -141,7 +141,6 @@ function LiveEventsMap({ events = [] }) {
   }, []);
 
   // Check if API key is available
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDVfOS0l8Tv59v8WTgUO231X2FtmBQCc2Y';
   const hasValidApiKey = apiKey && apiKey !== 'YOUR_GOOGLE_MAPS_API_KEY_HERE' && apiKey !== 'YOUR_API_KEY_HERE';
 
   // Show error state if map failed to load
@@ -161,6 +160,24 @@ function LiveEventsMap({ events = [] }) {
           >
             Try again
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show no events state if no events with coordinates
+  if (eventsWithCoordinates.length === 0) {
+    return (
+      <div className="w-full h-96 rounded-2xl overflow-hidden shadow-sm border border-purple-100 relative bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-gray-400 mb-2">
+            <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+          <p className="text-gray-600 mb-2">No upcoming events found</p>
+          <p className="text-gray-500 text-sm">Check back later for new events</p>
         </div>
       </div>
     );
@@ -203,12 +220,15 @@ function LiveEventsMap({ events = [] }) {
         </svg>
       </button>
 
-      {hasValidApiKey ? (
-        <LoadScript 
-          googleMapsApiKey={apiKey}
-          libraries={libraries}
-          onError={onError}
-        >
+      {!isLoaded ? (
+        // Loading state
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading map...</p>
+          </div>
+        </div>
+      ) : hasValidApiKey ? (
         <GoogleMap
           mapContainerStyle={containerStyle}
           center={center}
@@ -241,39 +261,38 @@ function LiveEventsMap({ events = [] }) {
           }}
         >
           {/* User Location Marker */}
-          {userLocation && isLoaded && window.google && (
+          {userLocation && (
             <Marker
               position={userLocation}
+              title="Your Location"
               icon={{
-                path: window.google.maps.SymbolPath.CIRCLE,
-                scale: 8,
-                fillColor: '#3b82f6',
-                fillOpacity: 1,
-                strokeColor: '#ffffff',
-                strokeWeight: 3,
+                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                  <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="8" cy="8" r="6" fill="#3b82f6" stroke="#ffffff" stroke-width="2"/>
+                  </svg>
+                `),
+                scaledSize: new window.google.maps.Size(16, 16),
+                anchor: new window.google.maps.Point(8, 8)
               }}
             />
           )}
 
           {/* Event Markers */}
-          {isLoaded && window.google && eventsWithCoordinates.map((event) => (
+          {eventsWithCoordinates.map((event) => (
             <Marker
               key={event.id}
               position={{ 
                 lat: parseFloat(event.venue.latitude), 
                 lng: parseFloat(event.venue.longitude) 
               }}
+              title={event.name}
               onClick={() => setSelectedEvent(event)}
               icon={{
                 url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="3" y="4" width="18" height="18" rx="2" fill="#7c3aed" stroke="#ffffff" strokeWidth="2"/>
-                    <rect x="3" y="2" width="18" height="4" fill="#7c3aed"/>
-                    <line x1="8" y1="2" x2="8" y2="6" stroke="#ffffff" strokeWidth="1"/>
-                    <line x1="16" y1="2" x2="16" y2="6" stroke="#ffffff" strokeWidth="1"/>
-                    <line x1="3" y1="10" x2="21" y2="10" stroke="#ffffff" strokeWidth="1"/>
-                    <circle cx="12" cy="15" r="2" fill="#ffffff"/>
-                    <path d="M12 13 L12 17 M10 15 L14 15" stroke="#7c3aed" strokeWidth="1" strokeLinecap="round"/>
+                  <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="2" width="20" height="20" rx="4" fill="#7c3aed" stroke="#ffffff" stroke-width="2"/>
+                    <rect x="4" y="4" width="16" height="4" fill="#7c3aed"/>
+                    <circle cx="12" cy="14" r="2" fill="#ffffff"/>
                   </svg>
                 `),
                 scaledSize: new window.google.maps.Size(24, 24),
@@ -282,34 +301,7 @@ function LiveEventsMap({ events = [] }) {
             />
           ))}
 
-          {/* Fallback markers when Google isn't loaded */}
-          {(!isLoaded || !window.google) && (
-            <>
-              {userLocation && (
-                <Marker
-                  position={userLocation}
-                  title="Your Location"
-                />
-              )}
-              {eventsWithCoordinates.map((event) => (
-                <Marker
-                  key={event.id}
-                  position={{ 
-                    lat: parseFloat(event.venue.latitude), 
-                    lng: parseFloat(event.venue.longitude) 
-                  }}
-                  onClick={() => setSelectedEvent(event)}
-                  title={event.name}
-                  label={{
-                    text: '★',
-                    color: '#7c3aed',
-                    fontSize: '12px',
-                    fontWeight: 'bold'
-                  }}
-                />
-              ))}
-            </>
-          )}
+
 
           {/* Info Window for Selected Event */}
           {selectedEvent && (
@@ -329,14 +321,14 @@ function LiveEventsMap({ events = [] }) {
                   </div>
                   <div className="flex items-center">
                     <CalendarDaysIcon className="h-4 w-4 text-purple-500 mr-2" />
-                    <span>{formatEventDate(selectedEvent.event_date)}</span>
+                    <span>{formatEventDate(selectedEvent.date)}</span>
                   </div>
                   <div className="flex items-center">
                     <ClockIcon className="h-4 w-4 text-purple-500 mr-2" />
-                    <span>{new Date(selectedEvent.event_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    <span>{selectedEvent.time || new Date(selectedEvent.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                   </div>
                   <div className="flex items-center justify-between mt-3">
-                    <span className="font-semibold text-purple-600">R{selectedEvent.ticket_price}</span>
+                    <span className="font-semibold text-purple-600">R{selectedEvent.price || 0}</span>
                     <button className="bg-purple-600 text-white px-3 py-1 rounded-lg text-xs hover:bg-purple-700 transition-colors">
                       View Details
                     </button>
@@ -346,7 +338,6 @@ function LiveEventsMap({ events = [] }) {
             </InfoWindow>
           )}
         </GoogleMap>
-        </LoadScript>
       ) : (
         // Fallback when API key is missing
         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50">

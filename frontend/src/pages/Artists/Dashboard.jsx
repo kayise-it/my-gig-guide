@@ -28,6 +28,7 @@ import ArtistVenuesSection from '../../components/Artist/ArtistVenuesSection';
 import ArtistPreviousEvents from '../../components/Artist/ArtistPreviousEvents';
 import ArtistViewProfile from '../../components/Artist/ArtistViewProfile';
 import ArtistEditForm from '../../components/Artist/ArtistEditForm';
+import GallerySection from '../../components/Artist/GallerySection';
 import API_BASE_URL from '../../api/config';
 import { artistService } from '../../api/artistService';
 
@@ -486,71 +487,16 @@ export default function ArtistDashboard() {
             <ArtistQuickActions artistId={artistData?.userId} />
             
             {/* Compact Gallery Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Gallery</h3>
-                  <button
-                    onClick={() => setIsUploadModalOpen(true)}
-                    className="text-indigo-600 hover:text-indigo-700 text-sm font-medium"
-                  >
-                    Add Photos
-                  </button>
-                </div>
-
-                {gallery.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-2">
-                    {gallery.slice(0, 6).map((image, index) => (
-                      <div key={index} className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100">
-                        <img
-                          src={image.url}
-                          alt={`Gallery ${index + 1}`}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110 cursor-pointer"
-                          onClick={() => {
-                            setSelectedGalleryImage(index);
-                            setIsGalleryModalOpen(true);
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center">
-                          <PhotoIcon className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                        {/* Delete Button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteImage(image.originalPath);
-                          }}
-                          className="absolute top-1 right-1 bg-red-500 bg-opacity-80 text-white p-1 rounded-full hover:bg-opacity-100 transition-all opacity-0 group-hover:opacity-100"
-                          title="Delete image"
-                        >
-                          <TrashIcon className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-6">
-                    <PhotoIcon className="mx-auto h-8 w-8 text-gray-400" />
-                    <p className="mt-2 text-sm text-gray-500">No photos yet</p>
-                    <button
-                      onClick={() => setIsUploadModalOpen(true)}
-                      className="mt-2 text-xs text-indigo-600 hover:text-indigo-700"
-                    >
-                      Upload first photo
-                    </button>
-                  </div>
-                )}
-                
-                {gallery.length > 6 && (
-                  <button
-                    onClick={() => setIsGalleryModalOpen(true)}
-                    className="w-full mt-3 text-center text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-                  >
-                    View all {gallery.length} photos
-                  </button>
-                )}
-              </div>
-            </div>
+            <GallerySection
+              gallery={gallery}
+              onAddPhotos={() => setIsUploadModalOpen(true)}
+              onImageClick={(index) => {
+                setSelectedGalleryImage(index);
+                setIsGalleryModalOpen(true);
+              }}
+              onDeleteImage={handleDeleteImage}
+              onViewAll={() => setIsGalleryModalOpen(true)}
+            />
 
             <ArtistUpcomingEvents events={artistActiveEvents} />
 

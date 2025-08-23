@@ -24,6 +24,8 @@ import {
   TicketIcon
 } from '@heroicons/react/24/outline';
 import HeroSection from '../../components/UI/HeroSection';
+import DisplayPicture from '../../components/UI/DisplayPicture';
+import VenueUpcomingEvents from '../../components/Venue/VenueUpcomingEvents';
 
 
 export default function ShowArtist() {
@@ -50,7 +52,7 @@ export default function ShowArtist() {
 
                 // Fetch artist events
                 try {
-                    const eventsResponse = await axios.get(`${API_BASE_URL}/api/events/artist/${artist_id}`);
+                    const eventsResponse = await axios.get(`${API_BASE_URL}/api/events/owner/artist/${artist_id}`);
                     setEvents(eventsResponse.data.events || []);
                 } catch (eventsError) {
                     console.log('No events found for artist');
@@ -140,6 +142,8 @@ export default function ShowArtist() {
         }
     };
 
+
+
     // Gallery functions
     const openGallery = (index = 0) => {
         setSelectedImageIndex(index);
@@ -181,6 +185,31 @@ export default function ShowArtist() {
         return galleryImages.slice(startIndex, startIndex + imagesPerSlide);
     };
 
+    // Helper function to get the correct image URL
+    const getImageUrl = (imagePath) => {
+        if (!imagePath || imagePath === 'null' || imagePath === '') return null;
+        
+        // If it's already a full URL, return as is
+        if (imagePath.startsWith('http')) {
+            return imagePath;
+        }
+        
+        // Convert relative file system paths to web URLs
+        let cleanPath = imagePath;
+        if (cleanPath.startsWith('../frontend/public/')) {
+            // Remove the ../frontend/public/ prefix and make it a web URL
+            cleanPath = cleanPath.replace('../frontend/public/', '/');
+        }
+        
+        // If it starts with /, it's already a web path
+        if (cleanPath.startsWith('/')) {
+            return cleanPath;
+        }
+        
+        // Default case: assume it's a relative path and add leading slash
+        return `/${cleanPath}`;
+    };
+
     if (loading) return (
         <div className="flex items-center justify-center h-64 bg-gradient-to-br from-purple-50 via-white to-blue-50">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
@@ -197,8 +226,8 @@ export default function ShowArtist() {
         <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
             <HeroSection
                 title={profile?.stage_name || profile?.name}
-                subtitle={profile?.artist_type}
-                image={profile?.profile_picture ? (profile.profile_picture.startsWith('http') ? profile.profile_picture : `${API_BASE_URL}${profile.profile_picture}`) : null}
+                subtitle={profile?.genre || profile?.artist_type}
+                image={getImageUrl(profile?.profile_picture)}
                 fallbackIcon={MusicalNoteIcon}
                 fallbackText="Artist Photo Coming Soon"
                 breadcrumbs={[
@@ -225,6 +254,27 @@ export default function ShowArtist() {
                     <div className="p-8 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-blue-50">
                         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                             <div className="flex-1">
+                                {/* Main Picture */}
+                                <div className="mb-6">
+                                    <div className="relative group">
+                                        <DisplayPicture
+                                            imagePath={profile?.profile_picture}
+                                            alt={profile?.stage_name || profile?.name}
+                                            fallbackIcon={MusicalNoteIcon}
+                                            fallbackText="Artist Photo"
+                                            size="medium"
+                                            id="artist-main-picture"
+                                            showOverlay={true}
+                                        />
+                                        {/* Debug: Show if profile picture exists */}
+                                        {profile?.profile_picture && (
+                                            <div className="mt-2 text-xs text-gray-500">
+                                                Debug: Profile picture path exists
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                
                                 <div className="flex items-center gap-4 mb-4">
                                     <h1 className="text-4xl font-bold text-gray-900">{profile?.stage_name || profile?.name}</h1>
                                     <button 
@@ -326,7 +376,7 @@ export default function ShowArtist() {
                                                     onClick={() => openGallery(currentCarouselIndex * imagesPerSlide + index)}
                                                 >
                                                     <img
-                                                        src={image.startsWith('http') ? image : `${API_BASE_URL}${image}`}
+                                                        src={getImageUrl(image)}
                                                         alt={`Gallery ${index + 1}`}
                                                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                                     />
@@ -370,44 +420,12 @@ export default function ShowArtist() {
                             {/* Upcoming Events */}
                             <div>
                                 <h2 className="text-2xl font-semibold text-gray-900 mb-6">Upcoming Events</h2>
-                                {events.length > 0 ? (
-                                    <div className="space-y-4">
-                                        {events.slice(0, 3).map(event => (
-                                            <Link 
-                                                key={event.id}
-                                                to={`/event/${event.id}`}
-                                                className="block bg-white hover:bg-gray-50 border border-gray-200 rounded-xl p-6 transition-all duration-300 hover:shadow-lg group"
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex-1">
-                                                        <h3 className="text-lg font-semibold text-gray-900 group-hover:text-purple-600 transition-colors duration-300">
-                                                            {event.name}
-                                                        </h3>
-                                                        <div className="flex items-center text-sm text-gray-600 mt-2">
-                                                            <CalendarDaysIcon className="h-4 w-4 mr-2" />
-                                                            {new Date(event.date).toLocaleDateString()} at {event.time}
-                                                        </div>
-                                                        {event.venue && (
-                                                            <div className="flex items-center text-sm text-gray-600 mt-1">
-                                                                <MapPinIcon className="h-4 w-4 mr-2" />
-                                                                {event.venue.name}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <ArrowTopRightOnSquareIcon className="h-5 w-5 text-gray-400 group-hover:text-purple-600 transition-colors duration-300" />
-                                                </div>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-12">
-                                        <div className="bg-gray-50 border border-gray-200 rounded-xl p-8">
-                                            <CalendarDaysIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                                            <h3 className="text-lg font-medium text-gray-900 mb-2">No Upcoming Events</h3>
-                                            <p className="text-gray-600">This artist hasn't scheduled any events yet.</p>
-                                        </div>
-                                    </div>
-                                )}
+                                <VenueUpcomingEvents
+                                    events={events}
+                                    venue={{ name: profile?.stage_name || profile?.name || 'Artist' }}
+                                    maxEvents={3}
+                                    showViewAll={true}
+                                />
                             </div>
                         </div>
 
@@ -473,7 +491,7 @@ export default function ShowArtist() {
                         
                         <div className="relative">
                             <img
-                                src={galleryImages[selectedImageIndex]?.startsWith('http') ? galleryImages[selectedImageIndex] : `${API_BASE_URL}${galleryImages[selectedImageIndex]}`}
+                                src={getImageUrl(galleryImages[selectedImageIndex])}
                                 alt={`Gallery ${selectedImageIndex + 1}`}
                                 className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
                             />
@@ -502,6 +520,8 @@ export default function ShowArtist() {
                     </div>
                 </div>
             )}
+
+
         </div>
     );
 }

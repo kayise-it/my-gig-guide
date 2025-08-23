@@ -2,6 +2,7 @@
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
 import Layout from './components/Layout';
+import { GoogleMapsProvider } from './context/GoogleMapsContext';
 import './utils/consoleErrorFixer'; // Import error fixer utility
 
 /* Owners */
@@ -45,8 +46,9 @@ import GalleryTest from "./components/GalleryTest";
 
 function App() {
   return (
-    <Router>
-      <Routes>
+    <GoogleMapsProvider>
+      <Router>
+        <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Layout><Home /></Layout>} />
         <Route path="/about" element={<Layout><AboutUs /></Layout>} />
@@ -89,8 +91,9 @@ function App() {
         
         {/* Test Routes */}
         <Route path="/gallery-test" element={<Layout><GalleryTest /></Layout>} />
-      </Routes>
-    </Router>
+        </Routes>
+      </Router>
+    </GoogleMapsProvider>
   );
 }
 

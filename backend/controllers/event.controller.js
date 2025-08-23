@@ -284,3 +284,61 @@ exports.updateEventVenue = async (req, res) => {
     res.status(500).json({ message: 'Failed to update event venue', error: error.message });
   }
 };
+
+// Get events for a specific venue
+exports.getEventsByVenue = async (req, res) => {
+  try {
+    const venueId = parseInt(req.params.venueId, 10);
+    
+    if (!venueId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Venue ID is required" 
+      });
+    }
+
+    const events = await Event.findAll({
+      where: {
+        venue_id: venueId,
+        date: {
+          [Op.gte]: new Date(new Date().setHours(0, 0, 0, 0)) // Only get events from today onwards (start of day)
+        }
+      },
+      include: [
+        {
+          model: User,
+          attributes: ["id", "username"],
+          as: 'creator'
+        },
+        {
+          model: Artist,
+          attributes: ["id", "stage_name", "real_name"],
+          as: 'artistOwner'
+        },
+        {
+          model: Organiser,
+          attributes: ["id", "name"],
+          as: 'organiserOwner'
+        },
+        {
+          model: db.venue,
+          attributes: ["id", "name", "address", "latitude", "longitude"],
+          as: 'venue'
+        }
+      ],
+      order: [['date', 'ASC']] // Order by date ascending
+    });
+
+    res.status(200).json({
+      success: true,
+      events: events
+    });
+  } catch (error) {
+    console.error('Error fetching venue events:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch venue events',
+      error: error.message 
+    });
+  }
+};

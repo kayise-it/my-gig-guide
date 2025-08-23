@@ -1,50 +1,9 @@
 import React from 'react';
-import { CalendarIcon, ClockIcon, MapPinIcon, StarIcon } from '@heroicons/react/24/outline';
-import API_BASE_URL from '../../api/config';
+import { CalendarIcon, ClockIcon, MapPinIcon, StarIcon, PhotoIcon } from '@heroicons/react/24/outline';
+import DisplayPicture from '../UI/DisplayPicture';
 
 const EventCard = ({ event, navigate }) => {
-  // Helper function to fix poster URLs
-  const fixPosterUrl = (posterPath) => {
-    if (!posterPath || posterPath === 'null' || posterPath === '') return null;
-    
-    let cleanPath = posterPath.replace(/\s+/g, '');
-    
-    // Fix the artist ID from 3_Thando_9144 to 3_Thando_8146
-    cleanPath = cleanPath.replace('/artists/3_Thando_9144/', '/artists/3_Thando_8146/');
-    
-    // Handle different path formats
-    if (cleanPath.startsWith('/artists/') && cleanPath.includes('/events/')) {
-      // Path is already in the correct format
-      return cleanPath;
-    } else if (cleanPath.includes('/artists/events/events/')) {
-      // Fix duplicate events in path
-      cleanPath = cleanPath.replace('/artists/events/events/', '/artists/3_Thando_8146/events/');
-      return cleanPath;
-    } else if (cleanPath.includes('/events/events/')) {
-      // Fix duplicate events in path (without artists prefix)
-      cleanPath = cleanPath.replace('/events/events/', '/artists/3_Thando_8146/events/');
-      return cleanPath;
-    } else if (cleanPath.includes('/events/event_poster/')) {
-      // Handle legacy format - extract event folder from path if possible
-      const pathParts = cleanPath.split('/');
-      const eventsIndex = pathParts.indexOf('events');
-      if (eventsIndex !== -1 && pathParts[eventsIndex + 1]) {
-        const eventFolder = pathParts[eventsIndex + 1];
-        cleanPath = `/artists/3_Thando_8146/events/${eventFolder}/event_poster/${pathParts[pathParts.length - 1]}`;
-      } else {
-        // Fallback to hardcoded path
-        cleanPath = cleanPath.replace('/events/event_poster/', '/events/5_freya_ball/event_poster/');
-      }
-    }
-    
-    if (!cleanPath.startsWith('/')) {
-      cleanPath = '/' + cleanPath;
-    }
-    
-    return cleanPath;
-  };
 
-  const posterUrl = fixPosterUrl(event.poster);
   const eventDate = new Date(event.date);
 
   return (
@@ -54,21 +13,16 @@ const EventCard = ({ event, navigate }) => {
     >
       {/* Background Image */}
       <div className="relative h-56 overflow-hidden">
-        {posterUrl ? (
-          <img
-            src={posterUrl.startsWith('http') ? posterUrl : `${API_BASE_URL}${posterUrl}`}
-            alt={event.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            onError={(e) => {
-              e.target.style.display = 'none';
-              e.target.parentElement.style.background = 'linear-gradient(to bottom right, #6366f1, #8b5cf6, #ec4899)';
-            }}
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center">
-            <span className="text-white text-lg font-semibold">No Image</span>
-          </div>
-        )}
+        <DisplayPicture
+          imagePath={event.poster}
+          alt={event.name || 'Event'}
+          fallbackIcon={PhotoIcon}
+          fallbackText="No Image"
+          size="custom"
+          containerClassName="w-full h-full"
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          id={`event-card-${event.id}`}
+        />
 
         {/* Price Badge */}
         <div className="absolute top-2 left-2">

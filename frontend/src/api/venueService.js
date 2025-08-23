@@ -41,12 +41,33 @@ export const venueService = {
   },
   updateVenue: async (venueId, venueData, isFormData = false) => {
     try {
-      const headers = { 'Authorization': `Bearer ${localStorage.getItem('token')}` };
-      if (isFormData) headers['Content-Type'] = 'multipart/form-data';
+      const token = localStorage.getItem('token');
+      console.log('🔧 updateVenue called:', {
+        venueId,
+        isFormData,
+        hasToken: !!token,
+        url: `${API_URL}/api/venue/updateVenue/${venueId}`
+      });
+
+      const headers = { 'Authorization': `Bearer ${token}` };
+      if (isFormData) {
+        // Don't set Content-Type for FormData, let axios handle it
+        delete headers['Content-Type'];
+      }
+
+      console.log('📡 Making PUT request to:', `${API_URL}/api/venue/updateVenue/${venueId}`);
+      console.log('📋 Headers:', { ...headers, Authorization: `Bearer ${token?.substring(0, 10)}...` });
+      
       const response = await axios.put(`${API_URL}/api/venue/updateVenue/${venueId}`, venueData, { headers });
+      
+      console.log('✅ updateVenue response:', response.data);
+      
       // Return the venue object directly for easier access
-      return response.data.venue || response.data;
+      return response.data;
     } catch (error) {
+      console.error('❌ updateVenue error:', error);
+      console.error('❌ Response data:', error.response?.data);
+      console.error('❌ Response status:', error.response?.status);
       throw new Error(error.response?.data?.message || 'Failed to update venue');
     }
   },
@@ -135,9 +156,13 @@ export const venueService = {
   },
   getVenueByIdPublic: async (venueId) => {
     try {
+      console.log('Making API call to:', `${API_URL}/api/venue/public/${venueId}`);
       const response = await axios.get(`${API_URL}/api/venue/public/${venueId}`);
+      console.log('API response received:', response.data);
       return response.data;
     } catch (error) {
+      console.error('API call failed:', error);
+      console.error('Error response:', error.response);
       throw new Error(error.response?.data?.message || 'Failed to fetch venue');
     }
   },
@@ -151,6 +176,16 @@ export const venueService = {
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Failed to delete venue');
+    }
+  },
+  getVenueEvents: async (venueId) => {
+    try {
+      const response = await axios.get(`${API_URL}/api/events/venue/${venueId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching venue events:', error);
+      // Return empty events array if no events found or error occurs
+      return { success: true, events: [] };
     }
   }
 

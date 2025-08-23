@@ -8,7 +8,8 @@ const Artist = db.artist;
 const Organiser = db.organiser;
 const User = db.user;
 const {verifyToken } = require("../middleware/auth.middleware");
-const { getUserFolderPath } = require("../helpers/userProfileHelper");
+const { createOrUpdateUserProfileSettings } = require("../helpers/userProfileHelper");
+const createFolderStructure = require("../helpers/createFolderStructure");
 
 // Get all events
 router.get("/", eventController.events);
@@ -426,6 +427,247 @@ router.get("/getAllEventsByOrganiser/:id", verifyToken, eventController.getAllEv
 
 router.get("/by_organiser/:id", verifyToken, eventController.getAllEventsByOrganiser);
 
+// Get events for a specific venue
+router.get('/venue/:venueId', eventController.getEventsByVenue);
 
+// Upload event gallery images
+router.post('/:id/gallery', verifyToken, upload.array('gallery', 10), async (req, res) => {
+    try {
+        const eventId = parseInt(req.params.id);
+        const event = await Event.findByPk(eventId);
+        
+        if (!event) {
+            return res.status(404).json({
+                success: false,
+                message: "Event not found"
+            });
+        }
+
+        // Check if user is the event owner
+        const currentUser = await User.findByPk(req.user.id);
+        if (!currentUser) {
+            return res.status(401).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        // Verify ownership
+        let isOwner = false;
+        if (event.owner_type === 'artist') {
+            const artist = await Artist.findByPk(event.owner_id);
+            isOwner = artist && artist.userId === currentUser.id;
+        } else if (event.owner_type === 'organiser') {
+            const organiser = await Organiser.findByPk(event.owner_id);
+            isOwner = organiser && organiser.userId === currentUser.id;
+        }
+
+        if (!isOwner) {
+            return res.status(403).json({
+                success: false,
+                message: "You can only upload gallery images to your own events"
+            });
+        }
+
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "No files uploaded"
+            });
+        }
+
+        // Get user and owner data
+        const user = await User.findByPk(event.userId);
+        const ownerData = event.owner_type === 'artist' ? await Artist.findByPk(event.owner_id) : await Organiser.findByPk(event.owner_id);
+
+        // Get or create settings - function will handle existing settings automatically
+        const role = event.owner_type === 'artist' ? 3 : 4;
+        const folderName = `${role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
+        const settings = await createOrUpdateUserProfileSettings({
+            role: role,
+            name: user.name,
+            username: user.username,
+            email: user.email,
+            contact_email: user.contact_email,
+            phone_number: user.phone_number,
+            folderName,
+            userId: user.id
+        });
+
+        // Create folder structure if it doesn't exist
+        await createFolderStructure(settings);
+
+        // Create event gallery subfolder
+        const folderPath = path.resolve(__dirname, "..", settings.path, settings.folder_name);
+        const eventsPath = path.join(folderPath, 'events');
+        const eventFolderName = `${eventId}_${event.name.replace(/\s+/g, '_').toLowerCase()}`;
+        const eventFolderPath = path.join(eventsPath, eventFolderName);
+        const galleryPath = path.join(eventFolderPath, 'gallery');
+        
+        if (!fs.existsSync(galleryPath)) {
+            fs.mkdirSync(galleryPath, { recursive: true });
+            console.log('Created event gallery folder:', galleryPath);
+        }
+
+        // Get existing gallery images
+        let existingGallery = [];
+        if (event.gallery) {
+            try {
+                // Try to parse as JSON first (new format)
+                existingGallery = JSON.parse(event.gallery);
+                if (!Array.isArray(existingGallery)) {
+                    existingGallery = [];
+                }
+            } catch (e) {
+                // If JSON parsing fails, try comma-separated format (old format)
+                if (typeof event.gallery === 'string') {
+                    existingGallery = event.gallery.split(',').filter(img => img && img.trim());
+                } else {
+                    existingGallery = [];
+                }
+            }
+        }
+
+        const uploadedImages = [];
+
+        // Process each uploaded file
+        for (let i = 0; i < req.files.length; i++) {
+            const file = req.files[i];
+            const timestamp = Date.now();
+            const fileName = `gallery_${timestamp}_${i}.${file.originalname.split('.').pop()}`;
+            const filePath = path.join(galleryPath, fileName);
+
+            // Write file to disk
+            fs.writeFileSync(filePath, file.buffer);
+
+            // Generate public URL (same pattern as venue gallery)
+            const userType = event.owner_type === 'artist' ? 'artists' : 'organisers';
+            const publicUrl = `/${userType}/${settings.folder_name}/events/${eventFolderName}/gallery/${fileName}`;
+            uploadedImages.push(publicUrl);
+        }
+
+        // Update event with new gallery images
+        const updatedGallery = [...existingGallery, ...uploadedImages];
+        await event.update({
+            gallery: JSON.stringify(updatedGallery)
+        });
+
+        res.status(200).json({
+            success: true,
+            message: "Gallery images uploaded successfully",
+            event: {
+                id: event.id,
+                gallery: updatedGallery
+            }
+        });
+
+    } catch (error) {
+        console.error('Error uploading gallery:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || "Error uploading gallery images"
+        });
+    }
+});
+
+// Delete event gallery image
+router.delete('/:id/gallery', verifyToken, async (req, res) => {
+    try {
+        const eventId = parseInt(req.params.id);
+        const { imagePath } = req.body;
+        
+        const event = await Event.findByPk(eventId);
+        
+        if (!event) {
+            return res.status(404).json({
+                success: false,
+                message: "Event not found"
+            });
+        }
+
+        // Check if user is the event owner
+        const user = await User.findByPk(req.user.id);
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        // Verify ownership
+        let isOwner = false;
+        if (event.owner_type === 'artist') {
+            const artist = await Artist.findByPk(event.owner_id);
+            isOwner = artist && artist.userId === user.id;
+        } else if (event.owner_type === 'organiser') {
+            const organiser = await Organiser.findByPk(event.owner_id);
+            isOwner = organiser && organiser.userId === user.id;
+        }
+
+        if (!isOwner) {
+            return res.status(403).json({
+                success: false,
+                message: "You can only delete gallery images from your own events"
+            });
+        }
+
+        if (!imagePath) {
+            return res.status(400).json({
+                success: false,
+                message: "Image path is required"
+            });
+        }
+
+        // Get existing gallery images
+        let existingGallery = [];
+        if (event.gallery) {
+            try {
+                // Try to parse as JSON first (new format)
+                existingGallery = JSON.parse(event.gallery);
+                if (!Array.isArray(existingGallery)) {
+                    existingGallery = [];
+                }
+            } catch (e) {
+                // If JSON parsing fails, try comma-separated format (old format)
+                if (typeof event.gallery === 'string') {
+                    existingGallery = event.gallery.split(',').filter(img => img && img.trim());
+                } else {
+                    existingGallery = [];
+                }
+            }
+        }
+
+        // Remove the image from the gallery array
+        const updatedGallery = existingGallery.filter(img => img !== imagePath);
+
+        // Delete the file from disk
+        const userType = event.owner_type === 'artist' ? 'artists' : 'organisers';
+        const fullImagePath = path.join(process.env.FRONTEND_PUBLIC_PATH || '/Applications/MAMP/htdocs/my-gig-guide/frontend/public', userType, imagePath.replace(`/${userType}/`, ''));
+        if (fs.existsSync(fullImagePath)) {
+            fs.unlinkSync(fullImagePath);
+        }
+
+        // Update event with updated gallery
+        await event.update({
+            gallery: JSON.stringify(updatedGallery)
+        });
+
+        res.status(200).json({
+            success: true,
+            message: "Gallery image deleted successfully",
+            event: {
+                id: event.id,
+                gallery: updatedGallery
+            }
+        });
+
+    } catch (error) {
+        console.error('Error deleting gallery image:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || "Error deleting gallery image"
+        });
+    }
+});
 
 module.exports = router;

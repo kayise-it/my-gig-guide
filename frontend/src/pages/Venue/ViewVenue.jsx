@@ -4,7 +4,8 @@ import { venueService } from '../../api/venueService';
 import API_BASE_URL from '../../api/config';
 import HeroSection from '../../components/UI/HeroSection';
 import { useAuth } from '../../context/AuthContext';
-import { LoadScript, Autocomplete } from '@react-google-maps/api';
+import { Autocomplete } from '@react-google-maps/api';
+import { useGoogleMaps } from '../../context/GoogleMapsContext';
 import VenueMap from '../../components/Map/VenueMap';
 import { PhotoIcon } from '@heroicons/react/24/outline';
 import { 
@@ -24,6 +25,7 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
   BuildingLibraryIcon,
+  BuildingOfficeIcon,
   CalendarDaysIcon,
   MusicalNoteIcon,
   SparklesIcon,
@@ -31,6 +33,9 @@ import {
   ArrowTopRightOnSquareIcon,
   TicketIcon
 } from '@heroicons/react/24/outline';
+import VenueGallerySection from '../../components/Venue/VenueGallerySection';
+import VenueUpcomingEvents from '../../components/Venue/VenueUpcomingEvents';
+import DisplayPicture from '../../components/UI/DisplayPicture';
 
 
 export default function ViewVenue() {
@@ -61,9 +66,8 @@ export default function ViewVenue() {
   const [uploadingGallery, setUploadingGallery] = useState(false);
 
   // Google Maps configuration
-  const libraries = ['places'];
-  const googleMapsApiKey = 'AIzaSyDVfOS0l8Tv59v8WTgUO231X2FtmBQCc2Y';
   const autocompleteRef = useRef(null);
+  const { isLoaded: mapsLoaded } = useGoogleMaps();
 
   // Venue categories
   const venueCategories = [
@@ -113,25 +117,35 @@ export default function ViewVenue() {
   const fetchVenueData = async () => {
     try {
       setLoading(true);
+      console.log('Fetching venue data for ID:', id);
+      
       const response = await venueService.getVenueByIdPublic(id);
-      console.log('Venue data received:', response.venue);
-      console.log('Venue coordinates:', response.venue?.latitude, response.venue?.longitude);
-      console.log('Venue gallery:', response.venue?.venue_gallery);
-      setVenue(response.venue);
-      setError(null);
+      console.log('Full API response:', response);
+      
+      if (response && response.success && response.venue) {
+        console.log('Venue data received:', response.venue);
+        console.log('Venue coordinates:', response.venue?.latitude, response.venue?.longitude);
+        console.log('Venue gallery:', response.venue?.venue_gallery);
+        setVenue(response.venue);
+        setError(null);
+      } else {
+        console.error('Invalid response format:', response);
+        setError('Invalid venue data received');
+      }
 
-      // Fetch venue events (if you have this endpoint)
+      // Fetch venue events
       try {
-        // const eventsResponse = await venueService.getVenueEvents(id);
-        // setEvents(eventsResponse.events || []);
-        setEvents([]); // Mock data for now
+        const eventsResponse = await venueService.getVenueEvents(id);
+        console.log('Venue events response:', eventsResponse);
+        setEvents(eventsResponse.events || []);
       } catch (eventsError) {
-        console.log('No events found for venue');
+        console.log('No events found for venue:', eventsError);
         setEvents([]);
       }
     } catch (err) {
-      setError('Failed to load venue profile');
       console.error('Error fetching venue:', err);
+      console.error('Error details:', err.message);
+      setError(`Failed to load venue profile: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -182,6 +196,104 @@ export default function ViewVenue() {
     } else {
       navigator.clipboard.writeText(window.location.href);
       alert('Link copied to clipboard!');
+    }
+  };
+
+  // Handle main picture upload
+  const handleMainPictureUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size must be less than 5MB');
+      return;
+    }
+
+    try {
+      // Check authentication first
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('Please log in to upload images');
+        return;
+      }
+
+      if (!currentUser) {
+        alert('User information not available');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('main_picture', file);
+      
+      // Add all required venue fields to the form data
+      formData.append('name', venue.name);
+      formData.append('location', venue.location || '');
+      formData.append('capacity', venue.capacity || '');
+      formData.append('contact_email', venue.contact_email || '');
+      formData.append('phone_number', venue.phone_number || '');
+      formData.append('website', venue.website || '');
+      formData.append('address', venue.address || '');
+      formData.append('latitude', venue.latitude || '');
+      formData.append('longitude', venue.longitude || '');
+      formData.append('userId', venue.userId || currentUser.id);
+      formData.append('owner_id', venue.owner_id);
+      formData.append('owner_type', venue.owner_type);
+
+      console.log('🔧 Uploading main picture with venue data:', {
+        venueId: venue.id,
+        name: venue.name,
+        owner_id: venue.owner_id,
+        owner_type: venue.owner_type,
+        userId: venue.userId || currentUser.id,
+        currentUser: currentUser,
+        hasToken: !!token
+      });
+
+      // Log form data contents
+      console.log('📝 FormData contents:');
+      for (let [key, value] of formData.entries()) {
+        console.log(`  ${key}:`, value);
+      }
+
+      const response = await venueService.updateVenue(venue.id, formData, true);
+      
+      console.log('✅ Upload response:', response);
+      
+      if (response && (response.success || response.venue)) {
+        // Update the venue state with the new main picture
+        const updatedVenue = response.venue || response;
+        setVenue(prevVenue => ({
+          ...prevVenue,
+          main_picture: updatedVenue.main_picture
+        }));
+        alert('Main picture updated successfully!');
+        // Refresh the venue data to get the latest
+        fetchVenueData();
+      } else {
+        console.error('❌ Unexpected response format:', response);
+        alert('Failed to update main picture - invalid response');
+      }
+    } catch (error) {
+      console.error('❌ Error uploading main picture:', error);
+      console.error('❌ Error details:', error.response?.data);
+      console.error('❌ Error status:', error.response?.status);
+      
+      if (error.response?.status === 401) {
+        alert('Authentication failed. Please log in again.');
+      } else if (error.response?.status === 403) {
+        alert('You do not have permission to update this venue.');
+      } else if (error.response?.status === 400) {
+        alert(`Bad request: ${error.response?.data?.message || 'Invalid data provided'}`);
+      } else {
+        alert(`Failed to upload main picture: ${error.message}`);
+      }
     }
   };
 
@@ -467,6 +579,17 @@ export default function ViewVenue() {
     </div>
   );
 
+  // Safety check for venue data
+  if (!venue) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 p-6 rounded-2xl mx-4 my-8">
+          <p className="font-medium">Venue not found or data is missing.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
       <HeroSection
@@ -502,7 +625,42 @@ export default function ViewVenue() {
           {/* Enhanced Venue Header */}
           <div className="p-8 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-blue-50">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                          <div className="flex-1">
+              <div className="flex-1">
+                {/* Main Picture */}
+                <div className="mb-6">
+                  <div className="relative group">
+                    <DisplayPicture
+                      imagePath={venue?.main_picture}
+                      alt={venue?.name || 'Venue'}
+                      fallbackIcon={BuildingOfficeIcon}
+                      fallbackText="No venue photo"
+                      size="medium"
+                      id="venue-main-picture"
+                      showOverlay={true}
+                    />
+                    
+                    {/* Upload Overlay - Only show for venue owners when editing */}
+                    {isVenueOwner && isEditingName && (
+                      <>
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center rounded-xl">
+                          <label htmlFor="main-picture-upload" className="cursor-pointer">
+                            <div className="bg-white/90 backdrop-blur-sm rounded-full p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <PhotoIcon className="h-6 w-6 text-purple-600" />
+                            </div>
+                          </label>
+                        </div>
+                        <input
+                          id="main-picture-upload"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleMainPictureUpload}
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
+                
                 <div className="flex items-center gap-4 mb-4">
                   {isEditingName ? (
                     <input
@@ -531,7 +689,7 @@ export default function ViewVenue() {
                     <>
                       <div className="flex items-center">
                         <MapPinIcon className="h-5 w-5 mr-2 text-purple-500" />
-                        <LoadScript googleMapsApiKey={googleMapsApiKey} libraries={libraries}>
+                        {mapsLoaded ? (
                           <Autocomplete
                             onLoad={(autoC) => (autocompleteRef.current = autoC)}
                             onPlaceChanged={onPlaceChanged}
@@ -544,7 +702,15 @@ export default function ViewVenue() {
                               placeholder="Start typing address..."
                             />
                           </Autocomplete>
-                        </LoadScript>
+                        ) : (
+                          <input
+                            type="text"
+                            value={editedVenueDetails.location}
+                            onChange={(e) => setEditedVenueDetails(prev => ({ ...prev, location: e.target.value }))}
+                            className="font-medium bg-white border-2 border-purple-300 rounded-lg px-3 py-1 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                            placeholder="Enter address manually..."
+                          />
+                        )}
                       </div>
                       <div className="flex items-center">
                         <UsersIcon className="h-5 w-5 mr-2 text-blue-500" />
@@ -674,123 +840,39 @@ export default function ViewVenue() {
                 </div>
               )}
 
-              {/* Venue Gallery - Only show to owner */}
-              {isVenueOwner && (
-                <div>
-                  <h2 className="text-2xl font-semibold text-gray-900 mb-6">Venue Gallery</h2>
-                  {galleryImages.length > 0 ? (
-                    <div className="bg-white border border-gray-200 rounded-xl p-6">
-                      <div className="grid grid-cols-4 gap-4 mb-6">
-                        {galleryImages.slice(0, 8).map((image, index) => (
-                          <div 
-                            key={index}
-                            className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group shadow-md hover:shadow-xl transition-all duration-300"
-                            onClick={() => openGallery(index)}
-                          >
-                            <img
-                              src={image.startsWith('http') ? image : `${API_BASE_URL}${image}`}
-                              alt={`Gallery ${index + 1}`}
-                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                          </div>
-                        ))}
-                      </div>
-                      
-                      {/* View More Accordion */}
-                      {galleryImages.length > 8 && (
-                        <div className="border-t border-gray-200 pt-6">
-                          <details className="group">
-                            <summary className="flex items-center justify-between cursor-pointer text-purple-600 hover:text-purple-700 font-medium transition-colors duration-200">
-                              <span>View All {galleryImages.length} Photos</span>
-                              <ChevronDownIcon className="h-5 w-5 group-open:rotate-180 transition-transform duration-200" />
-                            </summary>
-                            <div className="mt-4 grid grid-cols-4 gap-4">
-                              {galleryImages.slice(8).map((image, index) => (
-                                <div 
-                                  key={index + 8}
-                                  className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group shadow-md hover:shadow-xl transition-all duration-300"
-                                  onClick={() => openGallery(index + 8)}
-                                >
-                                  <img
-                                    src={image.startsWith('http') ? image : `${API_BASE_URL}${image}`}
-                                    alt={`Gallery ${index + 9}`}
-                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                  />
-                                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                                </div>
-                              ))}
-                            </div>
-                          </details>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="bg-white border border-gray-200 rounded-xl p-6">
-                      <div className="text-center py-12">
-                        <PhotoIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No Gallery Images</h3>
-                        <p className="text-gray-600 mb-6">This venue doesn't have any gallery images yet.</p>
-                        <button
-                          onClick={() => setIsGalleryUploadModalOpen(true)}
-                          className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center mx-auto shadow-lg hover:shadow-xl hover:scale-105"
-                        >
-                          <PhotoIcon className="h-5 w-5 mr-2" />
-                          Add Gallery Images
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* Venue Gallery Section */}
+              <VenueGallerySection 
+                venue={venue}
+                isVenueOwner={isVenueOwner}
+                onGalleryUpdate={(updatedGallery) => {
+                  if (updatedGallery) {
+                    // Update local state without full API call
+                    setVenue(prevVenue => ({
+                      ...prevVenue,
+                      venue_gallery: updatedGallery
+                    }));
+                  } else if (updatedGallery === null) {
+                    // Refresh only venue data, not full page
+                    fetchVenueData();
+                  }
+                  // If updatedGallery is undefined, do nothing (prevents unnecessary refreshes)
+                }}
+              />
 
               {/* Upcoming Events */}
-              <div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-6">Upcoming Events</h2>
-                {events.length > 0 ? (
-                  <div className="space-y-4">
-                    {events.slice(0, 3).map(event => (
-                      <Link 
-                        key={event.id}
-                        to={`/event/${event.id}`}
-                        className="block bg-white hover:bg-gray-50 border border-gray-200 rounded-xl p-6 transition-all duration-300 hover:shadow-lg group"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-gray-900 group-hover:text-purple-600 transition-colors duration-300">
-                              {event.name}
-                            </h3>
-                            <div className="flex items-center text-sm text-gray-600 mt-2">
-                              <CalendarDaysIcon className="h-4 w-4 mr-2" />
-                              {new Date(event.date).toLocaleDateString()} at {event.time}
-                            </div>
-                            {event.artist && (
-                              <div className="flex items-center text-sm text-gray-600 mt-1">
-                                <MusicalNoteIcon className="h-4 w-4 mr-2" />
-                                {event.artist.name}
-                              </div>
-                            )}
-                          </div>
-                          <ArrowTopRightOnSquareIcon className="h-5 w-5 text-gray-400 group-hover:text-purple-600 transition-colors duration-300" />
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-8">
-                      <CalendarDaysIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Upcoming Events</h3>
-                      <p className="text-gray-600">This venue hasn't scheduled any events yet.</p>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <VenueUpcomingEvents 
+                events={events}
+                venue={venue}
+                maxEvents={3}
+                showViewAll={true}
+              />
+            </div>
 
-              {/* Venue Map */}
-              <div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-6">Location</h2>
-                <div className="bg-white border border-gray-200 rounded-xl p-6">
+            {/* Sidebar */}
+            <div className="space-y-6">
+               {/* Venue Map */}
+               <div>
+                <div className="bg-white border border-gray-200 rounded-xl">
                   {venue?.latitude && venue?.longitude ? (
                     <VenueMap venue={venue} />
                   ) : (
@@ -811,10 +893,6 @@ export default function ViewVenue() {
                   )}
                 </div>
               </div>
-            </div>
-
-            {/* Sidebar */}
-            <div className="space-y-6">
               {/* Contact Info */}
               {(venue?.contact_email || venue?.phone_number) && (
                 <div className="bg-white border border-gray-200 p-6 rounded-xl">
@@ -853,9 +931,13 @@ export default function ViewVenue() {
 
             <div className="relative">
               <img
-                src={galleryImages[selectedImageIndex]?.startsWith('http') ? galleryImages[selectedImageIndex] : `${API_BASE_URL}${galleryImages[selectedImageIndex]}`}
+                src={galleryImages[selectedImageIndex]?.startsWith('http') ? galleryImages[selectedImageIndex] : galleryImages[selectedImageIndex]}
                 alt={`Gallery ${selectedImageIndex + 1}`}
                 className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
+                onError={(e) => {
+                  console.error('Failed to load modal image:', galleryImages[selectedImageIndex]);
+                  e.target.style.display = 'none';
+                }}
               />
               
               {galleryImages.length > 1 && (

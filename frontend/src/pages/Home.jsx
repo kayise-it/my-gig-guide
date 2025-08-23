@@ -12,10 +12,12 @@ import {
   GlobeAltIcon
 } from '@heroicons/react/24/outline';
 import LiveEventsMap from '../components/Map/LiveEventsMap';
+import { fetchUpcomingEvents } from '../services/eventsService';
 
 const Home = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
+  const [events, setEvents] = useState([]);
   
   // Words to rotate through
   const rotatingWords = ['Events', 'Artists', 'Concerts', 'Festivals'];
@@ -30,6 +32,21 @@ const Home = () => {
     
     return () => clearInterval(interval);
   }, [rotatingWords.length]);
+
+  // Fetch events for the map
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const upcomingEvents = await fetchUpcomingEvents(10);
+        setEvents(upcomingEvents);
+      } catch (err) {
+        console.error('Error fetching events:', err);
+        // Don't set error state - let the map component handle it
+      }
+    };
+
+    fetchEvents();
+  }, []);
 
   // Sample upcoming events
   const upcomingEvents = [
@@ -173,22 +190,22 @@ const Home = () => {
 
           {/* Map Container */}
           <div className="relative">
-            <LiveEventsMap />
+            <LiveEventsMap events={events} />
           </div>
 
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
             <div className="bg-white border border-purple-100 rounded-xl p-6 text-center shadow-sm">
-              <div className="text-2xl font-bold text-purple-600 mb-2">4</div>
-              <div className="text-gray-600">Events This Week</div>
+              <div className="text-2xl font-bold text-purple-600 mb-2">{events.length}</div>
+              <div className="text-gray-600">Upcoming Events</div>
             </div>
             <div className="bg-white border border-purple-100 rounded-xl p-6 text-center shadow-sm">
-              <div className="text-2xl font-bold text-blue-600 mb-2">12</div>
+              <div className="text-2xl font-bold text-blue-600 mb-2">{events.length > 0 ? new Set(events.map(event => event.venue_id)).size : 0}</div>
               <div className="text-gray-600">Active Venues</div>
             </div>
             <div className="bg-white border border-purple-100 rounded-xl p-6 text-center shadow-sm">
-              <div className="text-2xl font-bold text-pink-600 mb-2">2.5km</div>
-              <div className="text-gray-600">Average Distance</div>
+              <div className="text-2xl font-bold text-pink-600 mb-2">{events.length > 0 ? 'Live' : 'None'}</div>
+              <div className="text-gray-600">Map Status</div>
             </div>
           </div>
         </div>

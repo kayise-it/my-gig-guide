@@ -17,20 +17,20 @@ import {
     UsersIcon,
     ClockIcon,
     ArrowTopRightOnSquareIcon,
-    XMarkIcon,
-    ChevronLeftIcon,
-    ChevronRightIcon,
     BuildingLibraryIcon,
-    PencilIcon
+    PencilIcon,
+    PhotoIcon
 } from '@heroicons/react/24/outline';
 import API_BASE_URL from '../../api/config';
 import GalleryImage from '../../components/GalleryImage';
 import ArtistMiniCard from '../../components/Artist/ArtistMiniCard';
-import EnhancedVenueCard from '../../components/Venue/EnhancedVenueCard';
+import VenueCardV2 from '../../components/Venue/VenueCardV2';
 import { HeroBreadcrumb } from '../../components/UI/DynamicBreadcrumb';
 import LiveEventsMap from '../../components/Map/LiveEventsMap';
 import ArtistsBlock from '../../components/TemplateStructure/ArtistsBlock';
 import GalleryPlaceholder from '../../components/TemplateStructure/GalleryPlaceholder';
+import DisplayPicture from '../../components/UI/DisplayPicture';
+import EventGallery from '../../components/Events/EventGallery';
 
 const ShowEvent = () => {
     const { id } = useParams();
@@ -41,11 +41,9 @@ const ShowEvent = () => {
     const [venue, setVenue] = React.useState(null);
     const [creator, setCreator] = React.useState(null);
     const [creatorType, setCreatorType] = React.useState(null);
-    const [isGalleryOpen, setIsGalleryOpen] = React.useState(false);
-    const [selectedImageIndex, setSelectedImageIndex] = React.useState(0);
+
     const [isInterested, setIsInterested] = React.useState(false);
     const [attendeeCount, setAttendeeCount] = React.useState(Math.floor(Math.random() * 150) + 50);
-    const [currentCarouselIndex, setCurrentCarouselIndex] = React.useState(0);
     const [isFavorite, setIsFavorite] = React.useState(false);
     const [favoriteLoading, setFavoriteLoading] = React.useState(false);
     // Function to get settings for current user from the settings column of their user type (artist or organiser) table
@@ -176,9 +174,21 @@ const ShowEvent = () => {
     // Parse gallery images if they exist (moved after useEffect to avoid hook order issues)
     const galleryImages = React.useMemo(() => {
         if (event?.gallery) {
-            const images = event.gallery.split(',').filter(img => img.trim());
-            console.log('Parsed gallery images:', images);
+            try {
+                // First try to parse as JSON (new format)
+                const parsed = JSON.parse(event.gallery);
+                if (Array.isArray(parsed)) {
+                    console.log('Parsed gallery images (JSON format):', parsed);
+                    return parsed.filter(img => img && img.trim());
+                }
+            } catch (e) {
+                // If JSON parsing fails, try comma-separated format (old format)
+                if (typeof event.gallery === 'string') {
+                    const images = event.gallery.split(',').filter(img => img && img.trim());
+                    console.log('Parsed gallery images (comma-separated format):', images);
             return images;
+                }
+            }
         }
         // Return empty array if no gallery
         console.log('No gallery found for event');
@@ -273,23 +283,7 @@ const ShowEvent = () => {
 
 
 
-    // Helper functions
-    const openGallery = (index = 0) => {
-        setSelectedImageIndex(index);
-        setIsGalleryOpen(true);
-    };
 
-    const closeGallery = () => {
-        setIsGalleryOpen(false);
-    };
-
-    const nextImage = () => {
-        setSelectedImageIndex((prev) => (prev + 1) % galleryImages.length);
-    };
-
-    const prevImage = () => {
-        setSelectedImageIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length);
-    };
 
     const handleInterestToggle = async () => {
         // If user is not authenticated, redirect to login or show message
@@ -344,36 +338,7 @@ const ShowEvent = () => {
         }
     };
 
-    // Carousel functions
-    const imagesPerSlide = 5; // Changed to 5 to match the grid layout
-    const totalSlides = Math.ceil(galleryImages.length / imagesPerSlide);
 
-    const nextCarouselSlide = () => {
-        setCurrentCarouselIndex((prev) => {
-            if (prev >= totalSlides - 1) {
-                return 0; // Loop back to first slide
-            }
-            return prev + 1;
-        });
-    };
-
-    const prevCarouselSlide = () => {
-        setCurrentCarouselIndex((prev) => {
-            if (prev <= 0) {
-                return totalSlides - 1; // Loop to last slide
-            }
-            return prev - 1;
-        });
-    };
-
-    const goToCarouselSlide = (index) => {
-        setCurrentCarouselIndex(index);
-    };
-
-    const getCurrentSlideImages = () => {
-        const startIndex = currentCarouselIndex * imagesPerSlide;
-        return galleryImages.slice(startIndex, startIndex + imagesPerSlide);
-    };
 
 
 
@@ -402,98 +367,32 @@ const ShowEvent = () => {
                     </button>
                 </div>
 
-                {event.poster ? (
-                    <div className="relative w-full h-full">
-                        <img
-                            src={event.poster.startsWith('http') ? event.poster : (() => {
-                                let posterPath = event.poster;
-
-                                // Remove extra spaces and fix the path
-                                posterPath = posterPath.replace(/\s+/g, '');
-
-                                // Fix the artist ID from 3_Thando_9144 to 3_Thando_8146
-                                posterPath = posterPath.replace('/artists/3_Thando_9144/', '/artists/3_Thando_8146/');
-
-                                // Handle different path formats
-                                console.log('Original poster path:', posterPath);
-                                
-                                if (posterPath.startsWith('/artists/') && posterPath.includes('/events/')) {
-                                    // Path is already in the correct format, just add the base URL
-                                    const finalUrl = `http://localhost:5173${posterPath}`;
-                                    console.log('Poster URL:', finalUrl);
-                                    return finalUrl;
-                                } else if (posterPath.includes('/artists/events/events/')) {
-                                    // Fix duplicate events in path
-                                    const fixedPath = posterPath.replace('/artists/events/events/', '/artists/3_Thando_8146/events/');
-                                    const finalUrl = `http://localhost:5173${fixedPath}`;
-                                    console.log('Poster URL (fixed duplicate events):', finalUrl);
-                                    return finalUrl;
-                                } else if (posterPath.includes('/events/events/')) {
-                                    // Fix duplicate events in path (without artists prefix)
-                                    const fixedPath = posterPath.replace('/events/events/', '/artists/3_Thando_8146/events/');
-                                    const finalUrl = `http://localhost:5173${fixedPath}`;
-                                    console.log('Poster URL (fixed duplicate events no artists):', finalUrl);
-                                    return finalUrl;
-                                } else if (posterPath.includes('/events/event_poster/')) {
-                                    // Handle legacy format - extract event info from filename
-                                    const posterFileName = posterPath.split('/').pop();
-                                    
-                                    // Try to extract event folder from the path if possible
-                                    const pathParts = posterPath.split('/');
-                                    const eventsIndex = pathParts.indexOf('events');
-                                    if (eventsIndex !== -1 && pathParts[eventsIndex + 1]) {
-                                        const eventFolder = pathParts[eventsIndex + 1];
-                                        posterPath = `/artists/3_Thando_8146/events/${eventFolder}/event_poster/${posterFileName}`;
-                                    } else {
-                                        // Fallback: try to construct from event data
-                                        const eventFolder = event.event_folder || `5_freya_ball`; // fallback
-                                        posterPath = `/artists/3_Thando_8146/events/${eventFolder}/event_poster/${posterFileName}`;
-                                    }
-                                    
-                                    const finalUrl = `http://localhost:5173${posterPath}`;
-                                    console.log('Poster URL (constructed):', finalUrl);
-                                    return finalUrl;
-                                }
-
-                                // Fallback - just add base URL
-                                const finalUrl = `http://localhost:5173${posterPath}`;
-                                console.log('Poster URL (fallback):', finalUrl);
-                                return finalUrl;
-                            })()}
-                            alt={event.name}
-                            className="absolute inset-0 w-full h-full object-cover transform hover:scale-105 transition-transform duration-700"
-                            onError={(e) => {
-                                console.log('Poster image failed to load:', e.target.src);
-                                e.target.style.display = 'none';
-                            }}
-                        />
+                <div className="absolute inset-0 w-full h-full">
+                    <DisplayPicture
+                        imagePath={event.poster}
+                        alt={event.name || 'Event'}
+                        fallbackIcon={CalendarIcon}
+                        fallbackText="Event Poster Coming Soon"
+                        size="custom"
+                        containerClassName="w-full h-full"
+                        className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-700"
+                        id="event-poster"
+                        showOverlay={true}
+                    />
+                    {/* Additional gradient overlays for the hero section */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
                         <div className="absolute inset-0 bg-gradient-to-br from-purple-900/30 via-transparent to-blue-900/30"></div>
                     </div>
-                ) : (
-                    <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-purple-600 via-blue-600 to-purple-800">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
-                        <div className="flex items-center justify-center h-full">
-                            <div className="text-center text-white">
-                                <div className="relative mb-6">
-                                    <div className="absolute -inset-4 bg-white/20 rounded-full blur-xl"></div>
-                                    <CalendarIcon className="relative h-20 w-20 mx-auto opacity-90" />
-                                </div>
-                                <span className="text-2xl font-semibold">Event Poster Coming Soon</span>
-                            </div>
-                        </div>
-                    </div>
-                )}
 
                 {/* Enhanced Content Overlay */}
                 <div className="absolute inset-0 flex items-end">
-                    <div className="p-8 w-full">
+                    <div className="p-8 w-full mb-14">
                         {/* Breadcrumb at the top of content */}
                         <div className="max-w-6xl mx-auto mb-8">
                             <HeroBreadcrumb
                                 customBreadcrumbs={[
                                     { label: 'Events', path: '/events', icon: null },
-                                    { label: event?.name || 'Event', path: `/event/${id}`, isLast: true }
+                                    { label: event?.name || 'Event', path: `/events/${id}`, isLast: true }
                                 ]}
                                 showHome={true}
                             />
@@ -554,80 +453,23 @@ const ShowEvent = () => {
             </div>
 
             <div className="max-w-6xl mx-auto px-4 py-8">
-                <div className="relative -mt-20 mb-8 bg-white rounded-2xl shadow-2xl overflow-hidden border border-purple-100">
+                <div className="relative -mt-20 mb-8 bg-white rounded-2xl shadow-xl overflow-hidden">
                     {/* Enhanced Event Header */}
-                    <div className="p-8 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-blue-50">
+                    <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-blue-50">
                         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
                             <div className="flex-1">
-                                <div className="diplayPosterPic rounded overflow-hidden relative h-[100px] w-[100px]" >
-                                    <img
-                                        src={event.poster.startsWith('http') ? event.poster : (() => {
-                                            let posterPath = event.poster;
-
-                                            // Remove extra spaces and fix the path
-                                            posterPath = posterPath.replace(/\s+/g, '');
-
-                                            // Fix the artist ID from 3_Thando_9144 to 3_Thando_8146
-                                            posterPath = posterPath.replace('/artists/3_Thando_9144/', '/artists/3_Thando_8146/');
-
-                                            // Handle different path formats
-                                            console.log('Original poster path (section 2):', posterPath);
-                                            
-                                            if (posterPath.startsWith('/artists/') && posterPath.includes('/events/')) {
-                                                // Path is already in the correct format, just add the base URL
-                                                const finalUrl = `http://localhost:5173${posterPath}`;
-                                                console.log('Poster URL (section 2):', finalUrl);
-                                                return finalUrl;
-                                            } else if (posterPath.includes('/artists/events/events/')) {
-                                                // Fix duplicate events in path
-                                                const fixedPath = posterPath.replace('/artists/events/events/', '/artists/3_Thando_8146/events/');
-                                                const finalUrl = `http://localhost:5173${fixedPath}`;
-                                                console.log('Poster URL (section 2, fixed duplicate events):', finalUrl);
-                                                return finalUrl;
-                                            } else if (posterPath.includes('/events/events/')) {
-                                                // Fix duplicate events in path (without artists prefix)
-                                                const fixedPath = posterPath.replace('/events/events/', '/artists/3_Thando_8146/events/');
-                                                const finalUrl = `http://localhost:5173${fixedPath}`;
-                                                console.log('Poster URL (section 2, fixed duplicate events no artists):', finalUrl);
-                                                return finalUrl;
-                                            } else if (posterPath.includes('/events/event_poster/')) {
-                                                // Handle legacy format - extract event info from filename
-                                                const posterFileName = posterPath.split('/').pop();
-                                                
-                                                // Try to extract event folder from the path if possible
-                                                const pathParts = posterPath.split('/');
-                                                const eventsIndex = pathParts.indexOf('events');
-                                                if (eventsIndex !== -1 && pathParts[eventsIndex + 1]) {
-                                                    const eventFolder = pathParts[eventsIndex + 1];
-                                                    posterPath = `/artists/3_Thando_8146/events/${eventFolder}/event_poster/${posterFileName}`;
-                                                } else {
-                                                    // Fallback: try to construct from event data
-                                                    const eventFolder = event.event_folder || `5_freya_ball`; // fallback
-                                                    posterPath = `/artists/3_Thando_8146/events/${eventFolder}/event_poster/${posterFileName}`;
-                                                }
-                                                
-                                                const finalUrl = `http://localhost:5173${posterPath}`;
-                                                console.log('Poster URL (constructed section 2):', finalUrl);
-                                                return finalUrl;
-                                            }
-
-                                            // Fallback - just add base URL
-                                            const finalUrl = `http://localhost:5173${posterPath}`;
-                                            console.log('Poster URL (fallback section 2):', finalUrl);
-                                            return finalUrl;
-                                        })()}
-                                        alt={event.name}
-                                        className="absolute inset-0 w-full h-full object-cover transform hover:scale-105 transition-transform duration-700"
-                                        onError={(e) => {
-                                            console.log('Poster image failed to load:', e.target.src);
-                                            e.target.style.display = 'none';
-                                        }}
+                                <div className="diplayPosterPic">
+                                    <DisplayPicture
+                                        imagePath={event.poster}
+                                        alt={event.name || 'Event'}
+                                        fallbackIcon={CalendarIcon}
+                                        fallbackText="Event Poster"
+                                        size="medium"
+                                        className="transform hover:scale-105 transition-transform duration-700"
+                                        id="event-poster-thumbnail"
                                     />
-
-
                                 </div>
-                                <div className="flex items-center gap-4 mb-4">
-                                    <h1 className="text-4xl font-bold text-gray-900">{event.name}</h1>
+                                <div className="flex items-center gap-4 mb-3">
                                     <button
                                         onClick={handleInterestToggle}
                                         disabled={favoriteLoading}
@@ -639,7 +481,7 @@ const ShowEvent = () => {
                                         <HeartIcon className={`h-6 w-6 ${isFavorite ? 'fill-current' : ''}`} />
                                     </button>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-6 text-gray-600 mb-4">
+                                <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-3">
                                     <div className="flex items-center">
                                         <CalendarIcon className="h-5 w-5 mr-2 text-purple-500" />
                                         <span className="font-medium">{eventDate}</span>
@@ -664,16 +506,16 @@ const ShowEvent = () => {
                             </div>
 
                             {/* Enhanced Price and Action Card */}
-                            <div className="mt-6 lg:mt-0 lg:ml-8">
-                                <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 p-6 rounded-2xl min-w-[250px] shadow-lg">
+                            <div className="mt-4 lg:mt-0 lg:ml-6">
+                                <div className="bg-gradient-to-br from-purple-50 to-blue-50 p-4 rounded-xl min-w-[220px] shadow-lg">
                                     {event.price && event.price > 0 ? (
-                                        <div className="mb-6 text-center">
-                                            <p className="text-4xl font-black text-gray-900 mb-1">R{event.price}</p>
+                                        <div className="mb-4 text-center">
+                                            <p className="text-3xl font-black text-gray-900 mb-1">R{event.price}</p>
                                             <p className="text-sm text-gray-600 bg-white px-3 py-1 rounded-full inline-block">per ticket</p>
                                         </div>
                                     ) : (
-                                        <div className="mb-6 text-center">
-                                            <p className="text-3xl font-black text-green-600 mb-1">FREE</p>
+                                        <div className="mb-4 text-center">
+                                            <p className="text-2xl font-black text-green-600 mb-1">FREE</p>
                                             <p className="text-sm text-gray-600 bg-white px-3 py-1 rounded-full inline-block">No cost to attend</p>
                                         </div>
                                     )}
@@ -682,7 +524,7 @@ const ShowEvent = () => {
                                         // Edit button for event owner
                                         <button
                                             onClick={handleEdit}
-                                            className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 group"
+                                            className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 group"
                                         >
                                             <PencilIcon className="h-5 w-5 mr-2" />
                                             <span>Edit Event</span>
@@ -694,7 +536,7 @@ const ShowEvent = () => {
                                             href={event.ticket_url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 group"
+                                            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 group"
                                         >
                                             <TicketIcon className="h-5 w-5 mr-2" />
                                             <span>Get Tickets Now</span>
@@ -702,7 +544,7 @@ const ShowEvent = () => {
                                         </a>
                                     ) : (
                                         // Join button for non-owners without ticket URL
-                                        <button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105">
+                                        <button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105">
                                             <SparklesIcon className="h-5 w-5 mr-2" />
                                             <span>Join Event</span>
                                         </button>
@@ -710,7 +552,7 @@ const ShowEvent = () => {
 
                                     {event.capacity && (
                                         <div className="mt-4 text-center">
-                                            <div className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg border border-purple-200">
+                                            <div className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg">
                                                 <span className="text-sm text-purple-700 font-medium">{event.capacity} spots available</span>
                                             </div>
                                         </div>
@@ -719,7 +561,7 @@ const ShowEvent = () => {
                                     {/* Additional CTA */}
                                     <button
                                         onClick={handleShare}
-                                        className="w-full mt-3 bg-white hover:bg-gray-50 border border-purple-200 hover:border-purple-300 text-purple-700 font-medium py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center"
+                                        className="w-full mt-2 bg-white hover:bg-gray-50 text-purple-700 font-medium py-2 px-4 rounded-xl transition-all duration-300 flex items-center justify-center shadow-sm"
                                     >
                                         <ShareIcon className="h-5 w-5 mr-2" />
                                         <span>Share Event</span>
@@ -729,118 +571,114 @@ const ShowEvent = () => {
                         </div>
                     </div>
 
-                    {/* Event Details Grid */}
-                    <div className="p-8 space-y-8">
-                        {/* Description */}
+                    {/* Event Details */}
+                    <div className="p-6 space-y-6">
+                        {/* Description - Full Width */}
                         {event.description && (
                             <div>
-                                <h2 className="text-2xl font-semibold text-gray-900 mb-4">About This Event</h2>
+                                <h2 className="text-xl font-semibold text-gray-900 mb-3">About This Event</h2>
                                 <div className="prose max-w-none">
-                                    <p className="text-gray-700 whitespace-pre-line leading-relaxed">
+                                    <p className="text-gray-700 whitespace-pre-line leading-relaxed text-sm">
                                         {event.description}
                                     </p>
                                 </div>
                             </div>
                         )}
 
-                        {/* Map and Quick Details Row */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                            {/* Map Section */}
-                            <div className="lg:col-span-2 h-full">
-                                <div className="flex items-center justify-between mb-6">
-                                    <h2 className="text-3xl font-bold text-gray-900 flex items-center">
-                                        <MapPinIcon className="h-8 w-8 text-purple-600 mr-3" />
-                                        Event Location
-                                    </h2>
-                                </div>
-
-
-                                {venue ? (
-                                    <div className="space-y-6 h-full">
-                                        {/* Enhanced Venue Card */}
-                                        {venue && (
-                                            <div className="mb-6">
-                                                <EnhancedVenueCard venue={venue} showActions={true} showStats={true} />
-                                            </div>
-                                        )}
-
-                                        {/* Get Directions Button */}
-                                        {venue && venue.address && (
-                                            <button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-300 flex items-center justify-center space-x-2 hover:scale-105 shadow-md">
-                                                <MapPinIcon className="h-5 w-5" />
-                                                <span>Get Directions</span>
-                                                <ArrowTopRightOnSquareIcon className="h-5 w-5" />
+                        {/* Event Gallery and Quick Details Row - Optimized Layout */}
+                        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                            {/* Event Gallery Section - Takes 3 columns */}
+                            <div className="lg:col-span-3">
+                                <div className="bg-gray-50 rounded-xl p-4">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                                            <PhotoIcon className="h-5 w-5 text-purple-600 mr-2" />
+                                            Event Gallery
+                                            {galleryImages.length > 0 && (
+                                                <span className="ml-2 text-sm text-gray-500">({galleryImages.length} photos)</span>
+                                            )}
+                                        </h2>
+                                        {isEventOwner && (
+                                            <button className="text-purple-600 hover:text-purple-700 text-sm font-medium">
+                                                + Add Photos
                                             </button>
                                         )}
-
-                                        {/* Live Events Map */}
-                                        <div className="mt-6 flex-1">
-                                            <LiveEventsMap events={safeEvent ? [safeEvent] : []} />
-                                        </div>
                                     </div>
-                                ) : (
-                                    <div className="h-full">
-                                        <LiveEventsMap events={safeEvent ? [safeEvent] : []} />
-                                    </div>
-                                )}
+                                    <EventGallery
+                                        galleryImages={galleryImages}
+                                        eventName={event?.name || 'Event'}
+                                        eventId={event?.id}
+                                        showHeader={false}
+                                        isEventOwner={isEventOwner}
+                                        onGalleryUpdate={(newGallery) => {
+                                            console.log('Gallery updated:', newGallery);
+                                            if (newGallery) {
+                                                setEvent(prevEvent => ({
+                                                    ...prevEvent,
+                                                    gallery: Array.isArray(newGallery) ? JSON.stringify(newGallery) : newGallery
+                                                }));
+                                            }
+                                        }}
+                                    />
+                                </div>
                             </div>
 
-                            {/* Quick Details Sidebar */}
-                            <div className="space-y-6 h-full">
-                                <div className="flex items-center justify-between mb-6">
-                                    <h2 className="text-3xl font-bold text-gray-900 flex items-center">
-                                        <CalendarIcon className="h-8 w-8 text-purple-600 mr-3" />
+                            {/* Quick Details Sidebar - Takes 1 column */}
+                            <div className="lg:col-span-1">
+                                <div className="bg-white rounded-xl p-4 shadow-sm">
+                                    <h2 className="text-lg font-semibold text-gray-900 flex items-center mb-4">
+                                        <CalendarIcon className="h-5 w-5 text-purple-600 mr-2" />
                                         Quick Details
                                     </h2>
-                                </div>
-                                {/* Enhanced Event Details */}
-                                <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 p-6 rounded-2xl shadow-lg">
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between p-3 bg-white/70 rounded-xl">
+                                    
+                                    {/* Compact Event Details */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between py-2">
                                             <div className="flex items-center">
-                                                <CalendarIcon className="h-5 w-5 mr-3 text-purple-600" />
-                                                <span className="text-gray-700 font-medium">Date</span>
+                                                <CalendarIcon className="h-4 w-4 mr-2 text-purple-500" />
+                                                <span className="text-sm text-gray-600">Date</span>
                                             </div>
-                                            <span className="font-bold text-gray-900">{eventDate}</span>
+                                            <span className="text-sm font-medium text-gray-900">{eventDate}</span>
                                         </div>
 
-                                        <div className="flex items-center justify-between p-3 bg-white/70 rounded-xl">
+                                        <div className="flex items-center justify-between py-2">
                                             <div className="flex items-center">
-                                                <ClockIcon className="h-5 w-5 mr-3 text-blue-600" />
-                                                <span className="text-gray-700 font-medium">Time</span>
+                                                <ClockIcon className="h-4 w-4 mr-2 text-blue-500" />
+                                                <span className="text-sm text-gray-600">Time</span>
                                             </div>
-                                            <span className="font-bold text-gray-900">{event.time}</span>
+                                            <span className="text-sm font-medium text-gray-900">{event.time}</span>
                                         </div>
 
                                         {event.category && (
-                                            <div className="flex items-center justify-between p-3 bg-white/70 rounded-xl">
+                                            <div className="flex items-center justify-between py-2">
                                                 <div className="flex items-center">
-                                                    <SparklesIcon className="h-5 w-5 mr-3 text-pink-600" />
-                                                    <span className="text-gray-700 font-medium">Category</span>
+                                                    <SparklesIcon className="h-4 w-4 mr-2 text-pink-500" />
+                                                    <span className="text-sm text-gray-600">Category</span>
                                                 </div>
-                                                <span className="font-bold text-gray-900">{event.category}</span>
+                                                <span className="text-sm font-medium text-gray-900">{event.category}</span>
                                             </div>
                                         )}
 
                                         {event.capacity && (
-                                            <div className="flex items-center justify-between p-3 bg-white/70 rounded-xl">
+                                            <div className="flex items-center justify-between py-2">
                                                 <div className="flex items-center">
-                                                    <UsersIcon className="h-5 w-5 mr-3 text-green-600" />
-                                                    <span className="text-gray-700 font-medium">Capacity</span>
+                                                    <UsersIcon className="h-4 w-4 mr-2 text-green-500" />
+                                                    <span className="text-sm text-gray-600">Capacity</span>
                                                 </div>
-                                                <span className="font-bold text-gray-900">{event.capacity} people</span>
+                                                <span className="text-sm font-medium text-gray-900">{event.capacity}</span>
                                             </div>
                                         )}
 
-                                        <div className="flex items-center justify-between p-3 bg-white/70 rounded-xl">
+                                        <div className="flex items-center justify-between py-2">
                                             <div className="flex items-center">
-                                                <TicketIcon className="h-5 w-5 mr-3 text-yellow-600" />
-                                                <span className="text-gray-700 font-medium">Status</span>
+                                                <TicketIcon className="h-4 w-4 mr-2 text-yellow-500" />
+                                                <span className="text-sm text-gray-600">Status</span>
                                             </div>
-                                            <span className={`font-bold px-3 py-1 rounded-full text-sm ${event.status === 'active' ? 'bg-green-100 text-green-700' :
+                                            <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                                                event.status === 'active' ? 'bg-green-100 text-green-700' :
                                                 event.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                                                    'bg-blue-100 text-blue-700'
-                                                }`}>
+                                                'bg-blue-100 text-blue-700'
+                                            }`}>
                                                 {event.status || 'Scheduled'}
                                             </span>
                                         </div>
@@ -849,186 +687,51 @@ const ShowEvent = () => {
                             </div>
                         </div>
 
-                        {/* Full Width Gallery Section */}
-                        {hasRealGallery ? (
-                            <div>
-                                <div className="flex items-center justify-between mb-6">
-                                    <h2 className="text-3xl font-bold text-gray-900 flex items-center">
-                                        <SparklesIcon className="h-8 w-8 text-purple-600 mr-3" />
-                                        Event Gallery
+                                                {/* Venue Section - Optimized Layout */}
+                        {venue && (
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                                        <MapPinIcon className="h-5 w-5 text-purple-600 mr-2" />
+                                        Event Location
                                     </h2>
-                                    <div className="flex items-center space-x-3">
-                                        <span className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium">
-                                            {galleryImages.length} photos
-                                        </span>
-                                        <div className="flex space-x-2">
-                                            <button
-                                                onClick={prevCarouselSlide}
-                                                disabled={totalSlides <= 1}
-                                                className="bg-white border border-purple-200 hover:border-purple-300 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed p-2 rounded-full transition-all duration-300 hover:scale-110 shadow-md"
-                                            >
-                                                <ChevronLeftIcon className="h-5 w-5 text-purple-600" />
-                                            </button>
-                                            <button
-                                                onClick={nextCarouselSlide}
-                                                disabled={totalSlides <= 1}
-                                                className="bg-white border border-purple-200 hover:border-purple-300 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed p-2 rounded-full transition-all duration-300 hover:scale-110 shadow-md"
-                                            >
-                                                <ChevronRightIcon className="h-5 w-5 text-purple-600" />
-                                            </button>
-                                        </div>
-                                    </div>
                                 </div>
 
-                                {/* Carousel Container */}
-                                <div className="relative overflow-hidden">
-                                    {/* Carousel Slides */}
-                                    <div className="relative h-32 mb-4">
-                                        <div
-                                            className="flex transition-transform duration-500 ease-in-out h-full"
-                                            style={{ transform: `translateX(-${currentCarouselIndex * 100}%)` }}
-                                        >
-                                            {Array.from({ length: totalSlides }).map((_, slideIndex) => (
-                                                <div key={slideIndex} className="w-full flex-shrink-0 grid grid-cols-5 gap-3 h-full">
-                                                    {galleryImages.slice(slideIndex * 5, (slideIndex + 1) * 5).map((image, imageIndex) => {
-                                                        const actualIndex = slideIndex * 5 + imageIndex;
-                                                        return (
-                                                            <GalleryImage
-                                                                key={actualIndex}
-                                                                image={image}
-                                                                index={actualIndex}
-                                                                alt={`Event gallery ${actualIndex + 1}`}
-                                                                onClick={() => openGallery(actualIndex)}
-                                                                size="small"
-                                                                aspectRatio="square"
-                                                                showNumber={true}
-                                                                showHoverIcon={true}
-                                                                className="h-full w-full object-cover"
-                                                            />
-                                                        );
-                                                    })}
-                                                    {/* Fill empty slots to always show 5 images */}
-                                                    {Array.from({ length: 5 - galleryImages.slice(slideIndex * 5, (slideIndex + 1) * 5).length }).map((_, emptyIndex) => (
-                                                        <GalleryPlaceholder
-                                                            key={`empty-${emptyIndex}`}
-                                                            size="full"
-                                                            className="h-full w-full"
-                                                        />
-                                                    ))}
-                                                </div>
-                                            ))}
-                                        </div>
+                                {/* Venue Card and Map */}
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    <div className="h-72">
+                                        <VenueCardV2 venue={venue} showActions={true} showStats={true} />
                                     </div>
-
-                                    {/* Carousel Indicators */}
-                                    {totalSlides > 1 && (
-                                        <div className="flex justify-center space-x-2">
-                                            {Array.from({ length: totalSlides }).map((_, index) => (
-                                                <button
-                                                    key={index}
-                                                    onClick={() => goToCarouselSlide(index)}
-                                                    className={`w-3 h-3 rounded-full transition-all duration-300 ${index === currentCarouselIndex
-                                                        ? 'bg-gradient-to-r from-purple-600 to-blue-600 scale-125'
-                                                        : 'bg-gray-300 hover:bg-purple-300'
-                                                        }`}
-                                                />
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {/* Slide Counter */}
-                                    <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full shadow-md">
-                                        <span className="text-sm font-medium text-purple-700">
-                                            {currentCarouselIndex + 1} of {totalSlides}
-                                        </span>
+                                    <div className="h-72 relative">
+                                        <LiveEventsMap events={safeEvent ? [safeEvent] : []} />
+                                        {/* Get Directions Button Overlay */}
+                                        {venue && venue.address && (
+                                            <div className="absolute bottom-4 left-4 z-10">
+                                                <button 
+                                                    onClick={() => {
+                                                        const address = encodeURIComponent(venue.address);
+                                                        window.open(`https://www.google.com/maps/dir/?api=1&destination=${address}`, '_blank');
+                                                    }}
+                                                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-3 py-2 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2 hover:scale-105 shadow-lg backdrop-blur-sm text-sm"
+                                                >
+                                                    <MapPinIcon className="h-4 w-4" />
+                                                    <span>Get Directions</span>
+                                                    <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                            </div>
-                        ) : (
-                            // No gallery message
-                            <div className="text-center py-12">
-                                <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 rounded-2xl p-8 shadow-lg">
-                                    <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <SparklesIcon className="h-8 w-8 text-white" />
-                                    </div>
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No Gallery Available</h3>
-                                    <p className="text-gray-600">This event doesn't have any gallery images yet.</p>
                                 </div>
                             </div>
                         )}
+
+
                     </div>
                 </div>
 
 
 
-                {/* Enhanced Gallery Modal */}
-                {isGalleryOpen && (
-                    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                        <div className="relative w-full max-w-4xl">
-                            {/* Close Button */}
-                            <button
-                                onClick={closeGallery}
-                                className="absolute top-4 right-4 z-60 bg-white/90 backdrop-blur-sm text-gray-700 p-3 rounded-full hover:bg-white transition-all duration-300 hover:scale-110 shadow-lg"
-                            >
-                                <XMarkIcon className="h-6 w-6" />
-                            </button>
 
-                            {/* Navigation Buttons */}
-                            {galleryImages.length > 1 && (
-                                <>
-                                    <button
-                                        onClick={prevImage}
-                                        className="absolute left-4 top-1/2 transform -translate-y-1/2 z-60 bg-white/90 backdrop-blur-sm text-gray-700 p-3 rounded-full hover:bg-white transition-all duration-300 hover:scale-110 shadow-lg"
-                                    >
-                                        <ChevronLeftIcon className="h-6 w-6" />
-                                    </button>
-                                    <button
-                                        onClick={nextImage}
-                                        className="absolute right-4 top-1/2 transform -translate-y-1/2 z-60 bg-white/90 backdrop-blur-sm text-gray-700 p-3 rounded-full hover:bg-white transition-all duration-300 hover:scale-110 shadow-lg"
-                                    >
-                                        <ChevronRightIcon className="h-6 w-6" />
-                                    </button>
-                                </>
-                            )}
-
-                            {/* Image Display */}
-                            <div className="relative">
-                                <img
-                                    src={galleryImages[selectedImageIndex]?.startsWith('http') ? galleryImages[selectedImageIndex] : (() => {
-                                        const imagePath = galleryImages[selectedImageIndex];
-                                        
-                                        // Handle different path formats
-                                        console.log('Gallery image path:', imagePath);
-                                        
-                                        if (imagePath?.startsWith('/artists/') && imagePath.includes('/events/')) {
-                                            // Path is already in the correct format, just add the base URL
-                                            return `http://localhost:5173${imagePath}`;
-                                        } else if (imagePath?.includes('/artists/events/events/')) {
-                                            // Handle legacy format with duplicate events
-                                            return `http://localhost:5173${imagePath.replace('/artists/events/events/', '/artists/3_Thando_8146/events/')}`;
-                                        } else if (imagePath?.includes('/artists/events/')) {
-                                            // Handle legacy format
-                                            return `http://localhost:5173${imagePath.replace('/artists/events/', '/artists/3_Thando_8146/events/')}`;
-                                        } else if (imagePath?.includes('/events/events/')) {
-                                            // Handle another duplicate events format
-                                            return `http://localhost:5173${imagePath.replace('/events/events/', '/artists/3_Thando_8146/events/')}`;
-                                        }
-                                        
-                                        // Fallback - just add base URL
-                                        return `http://localhost:5173${imagePath}`;
-                                    })()}
-                                    alt={`Gallery image ${selectedImageIndex + 1}`}
-                                    className="w-full h-auto max-h-[80vh] object-contain rounded-2xl shadow-2xl"
-                                />
-
-                                {/* Image Counter */}
-                                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-sm text-gray-700 px-6 py-3 rounded-full shadow-lg">
-                                    <span className="font-medium">{selectedImageIndex + 1} of {galleryImages.length}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );
