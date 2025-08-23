@@ -22,6 +22,8 @@ import EventCard from '../../components/Events/EventCard';
 import LiveEventsMap from '../../components/Map/LiveEventsMap';
 import { fetchFilteredEvents, isUpcoming } from '../../services/eventsService.js';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 export default function ViewEvents() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -301,7 +303,7 @@ export default function ViewEvents() {
                 {/* Results Summary */}
                 <div className="border-t border-gray-200 pt-4">
                   <div className="flex items-center justify-between text-sm text-gray-600">
-                    <span className="font-medium">{sortedEvents.length} events found</span>
+                    <span className="font-medium">{events.length} events found</span>
                     <span className="text-xs">Updated just now</span>
                   </div>
                 </div>
@@ -340,7 +342,7 @@ export default function ViewEvents() {
                     <option value="sports">Sports</option>
                   </select>
                 </div>
-                <span className="text-sm text-gray-600 font-medium">{sortedEvents.length} events</span>
+                <span className="text-sm text-gray-600 font-medium">{events.length} events</span>
               </div>
             </div>
 
@@ -371,11 +373,11 @@ export default function ViewEvents() {
             <div>
               <h2 className="text-3xl font-bold text-gray-800 mb-6 flex items-center">
                 <CalendarIcon className="h-8 w-8 text-purple-600 mr-3" />
-                All Events ({sortedEvents.length})
+                All Events ({events.length})
               </h2>
               
               {/* Modern Events Grid/List */}
-              {sortedEvents.length === 0 ? (
+              {events.length === 0 ? (
                 <div className="text-center py-20">
                   <div className="relative mb-8">
                     <div className="absolute -inset-4 bg-purple-100 rounded-full blur-xl opacity-60"></div>

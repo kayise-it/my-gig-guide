@@ -23,7 +23,6 @@ const DisplayPicture = ({
     large: 'w-64 h-64',
     custom: ''
   };
-
   // Get the correct image URL
   const getImageUrl = (path) => {
     if (!path || path === 'null' || path === '') return null;
@@ -79,7 +78,7 @@ const DisplayPicture = ({
           
           {/* Overlay for hover effects or additional info */}
           {showOverlay && (
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent rounded-xl"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent rounded-xl uu"></div>
           )}
           
           {/* Custom overlay text */}
