@@ -20,7 +20,7 @@ import {
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import EventCard from '../../components/Events/EventCard';
 import LiveEventsMap from '../../components/Map/LiveEventsMap';
-import { fetchFilteredEvents, isUpcoming } from '../../services/eventsService';
+import { fetchFilteredEvents, isUpcoming } from '../../services/eventsService.js';
 
 export default function ViewEvents() {
   const [events, setEvents] = useState([]);
