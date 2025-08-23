@@ -91,8 +91,6 @@ export default function ViewEvents() {
   
   // Debug logging
   console.log('Total events:', events.length);
-  console.log('Filtered events:', filteredEvents.length);
-  console.log('Sorted events:', sortedEvents.length);
 
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex justify-center items-center">
