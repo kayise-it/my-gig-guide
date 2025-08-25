@@ -1,29 +1,22 @@
-// Migration script to update venues table structure
-// Run this script to migrate from artist_id to owner_id/owner_type
+'use strict';
 
-const db = require("../models");
-const Venue = db.venue;
-
-async function migrateVenuesTable() {
-  try {
-    console.log('Starting venues table migration...');
-
-    // First, let's check if the venues table exists
-    const tables = await db.sequelize.query(
+module.exports = {
+  up: async (queryInterface, Sequelize) => {
+    // Check if the venues table exists
+    const tables = await queryInterface.sequelize.query(
       "SHOW TABLES LIKE 'venues'",
-      { type: db.sequelize.QueryTypes.SELECT }
+      { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
     if (tables.length === 0) {
-      console.log('Venues table does not exist. Creating it with new structure...');
-      console.log('Please run your normal database sync first to create the venues table.');
+      console.log('Venues table does not exist. Skipping migration.');
       return;
     }
 
     // Check if the new columns already exist
-    const tableInfo = await db.sequelize.query(
+    const tableInfo = await queryInterface.sequelize.query(
       "DESCRIBE venues",
-      { type: db.sequelize.QueryTypes.SELECT }
+      { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
     const hasNewColumns = tableInfo.some(col => col.Field === 'owner_id' || col.Field === 'owner_type');
@@ -36,87 +29,71 @@ async function migrateVenuesTable() {
 
     // Add new columns if they don't exist
     if (!hasNewColumns) {
-      console.log('Adding new columns: owner_id, owner_type');
-      await db.sequelize.query(
-        "ALTER TABLE venues ADD COLUMN owner_id INT",
-        { type: db.sequelize.QueryTypes.RAW }
-      );
+      await queryInterface.addColumn('venues', 'owner_id', {
+        type: Sequelize.INTEGER,
+        allowNull: true
+      });
       
-      await db.sequelize.query(
-        "ALTER TABLE venues ADD COLUMN owner_type ENUM('artist', 'organiser')",
-        { type: db.sequelize.QueryTypes.RAW }
-      );
+      await queryInterface.addColumn('venues', 'owner_type', {
+        type: Sequelize.ENUM('artist', 'organiser'),
+        allowNull: true
+      });
     }
 
     // Migrate existing data
-    console.log('Migrating existing data...');
-    
-    // Update venues that have artist_id
-    await db.sequelize.query(
+    await queryInterface.sequelize.query(
       "UPDATE venues SET owner_id = artist_id, owner_type = 'artist' WHERE artist_id IS NOT NULL AND artist_id != 0",
-      { type: db.sequelize.QueryTypes.UPDATE }
+      { type: queryInterface.sequelize.QueryTypes.UPDATE }
     );
 
-    // Update venues that have organiser_id (if any)
-    await db.sequelize.query(
+    await queryInterface.sequelize.query(
       "UPDATE venues SET owner_id = organiser_id, owner_type = 'organiser' WHERE organiser_id IS NOT NULL AND organiser_id != 0",
-      { type: db.sequelize.QueryTypes.UPDATE }
+      { type: queryInterface.sequelize.QueryTypes.UPDATE }
     );
 
     // Make owner_id NOT NULL after migration
-    await db.sequelize.query(
-      "ALTER TABLE venues MODIFY COLUMN owner_id INT NOT NULL",
-      { type: db.sequelize.QueryTypes.RAW }
-    );
-
-    await db.sequelize.query(
-      "ALTER TABLE venues MODIFY COLUMN owner_type ENUM('artist', 'organiser') NOT NULL",
-      { type: db.sequelize.QueryTypes.RAW }
-    );
-
-    // Remove old columns
-    console.log('Removing old columns...');
-    if (hasOldColumns) {
-      await db.sequelize.query(
-        "ALTER TABLE venues DROP COLUMN artist_id",
-        { type: db.sequelize.QueryTypes.RAW }
-      );
-
-      await db.sequelize.query(
-        "ALTER TABLE venues DROP COLUMN organiser_id",
-        { type: db.sequelize.QueryTypes.RAW }
-      );
-    }
-
-    console.log('Venues migration completed successfully!');
-    
-    // Verify migration
-    const venueCount = await Venue.count();
-    console.log(`Total venues in database: ${venueCount}`);
-    
-    const venuesWithOwner = await db.sequelize.query(
-      "SELECT COUNT(*) as count FROM venues WHERE owner_id IS NOT NULL AND owner_type IS NOT NULL",
-      { type: db.sequelize.QueryTypes.SELECT }
-    );
-    console.log(`Venues with owner data: ${venuesWithOwner[0].count}`);
-
-  } catch (error) {
-    console.error('Venues migration failed:', error);
-    throw error;
-  }
-}
-
-// Run migration if this file is executed directly
-if (require.main === module) {
-  migrateVenuesTable()
-    .then(() => {
-      console.log('Venues migration script completed');
-      process.exit(0);
-    })
-    .catch((error) => {
-      console.error('Venues migration script failed:', error);
-      process.exit(1);
+    await queryInterface.changeColumn('venues', 'owner_id', {
+      type: Sequelize.INTEGER,
+      allowNull: false
     });
-}
 
-module.exports = migrateVenuesTable;
+    await queryInterface.changeColumn('venues', 'owner_type', {
+      type: Sequelize.ENUM('artist', 'organiser'),
+      allowNull: false
+    });
+
+    // Remove old columns if they exist
+    if (hasOldColumns) {
+      await queryInterface.removeColumn('venues', 'artist_id');
+      await queryInterface.removeColumn('venues', 'organiser_id');
+    }
+  },
+
+  down: async (queryInterface, Sequelize) => {
+    // Add back old columns
+    await queryInterface.addColumn('venues', 'artist_id', {
+      type: Sequelize.INTEGER,
+      allowNull: true
+    });
+
+    await queryInterface.addColumn('venues', 'organiser_id', {
+      type: Sequelize.INTEGER,
+      allowNull: true
+    });
+
+    // Migrate data back
+    await queryInterface.sequelize.query(
+      "UPDATE venues SET artist_id = owner_id WHERE owner_type = 'artist'",
+      { type: queryInterface.sequelize.QueryTypes.UPDATE }
+    );
+
+    await queryInterface.sequelize.query(
+      "UPDATE venues SET organiser_id = owner_id WHERE owner_type = 'organiser'",
+      { type: queryInterface.sequelize.QueryTypes.UPDATE }
+    );
+
+    // Remove new columns
+    await queryInterface.removeColumn('venues', 'owner_id');
+    await queryInterface.removeColumn('venues', 'owner_type');
+  }
+};

@@ -7,12 +7,14 @@ dotenv.config({ path: './.env' });
 
 const db = require('./models');
 const authRoutes = require('./routes/auth.routes');
+const socialAuthRoutes = require('./routes/socialAuth.routes');
 const artistRoutes = require('./routes/artist.routes');
 const eventRoutes = require('./routes/event.routes.js');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const organiserRoutes = require('./routes/organiser.routes');
 const venueRoutes = require('./routes/venue.routes');
 const favoriteRoutes = require('./routes/favorites.routes');
+const ratingRoutes = require('./routes/rating.routes');
 const aclRoutes = require('./routes/acl_trust.routes.js');
 const healthRoutes = require('./routes/health.routes');
 
@@ -51,12 +53,14 @@ app.get('/api', (req, res) => {
 // Serve uploaded files - simple route without regex issues
 app.use('/files', express.static(path.join(__dirname, '../frontend/public')));
 app.use('/api/auth', authRoutes);           // Auth routes
+app.use('/api/social-auth', socialAuthRoutes); // Social auth routes
 app.use('/api/dashboard', dashboardRoutes); // Dashboard routes
 app.use('/api/artists', artistRoutes);     // Artist routes
 app.use('/api/events', eventRoutes);     // Events routes
 app.use('/api/organisers', organiserRoutes);     // Events routes
 app.use('/api/venue', venueRoutes);     // Events routes
 app.use('/api/favorites', favoriteRoutes);     // Favorite routes
+app.use('/api/ratings', ratingRoutes);         // Rating routes
 app.use('/api/notifications', require('./routes/notification.routes')); // Notification routes
 app.use('/api/', aclRoutes);          // ACL routes
 app.use('/api', healthRoutes);        // Health check routes

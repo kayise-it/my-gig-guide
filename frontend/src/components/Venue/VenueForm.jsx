@@ -1,19 +1,18 @@
 // src/components/Venue/VenueForm.jsx
-import { LoadScript, Autocomplete } from '@react-google-maps/api';
+import { Autocomplete } from '@react-google-maps/api';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { venueService } from '../../api/venueService'; // You'll need to implement these API functions
-import { useContext } from 'react';
-import { AuthContext } from '../../context/AuthContext';
+import { venueService } from '../../api/venueService';
+import { useGoogleMaps } from '../../context/GoogleMapsContext';
 
-const VenueForm = ({ isModal = false, onSuccess, onClose }) => {
-  const { venueId } = useParams();
+const VenueForm = ({ isModal = false, onSuccess, onClose, venueId: propVenueId }) => {
+  const { venueId: paramVenueId } = useParams();
+  const venueId = propVenueId || paramVenueId;
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const libraries = ['places'];
-  const googleMapsApiKey = 'AIzaSyDVfOS0l8Tv59v8WTgUO231X2FtmBQCc2Y'; // your API key
+  const { isLoaded, loadError } = useGoogleMaps();
   const autocompleteRef = useRef(null);
 
   const [mainPictureFile, setMainPictureFile] = useState(null);
@@ -126,6 +125,7 @@ const VenueForm = ({ isModal = false, onSuccess, onClose }) => {
         address: venue.address,
         latitude: venue.latitude,
         longitude: venue.longitude,
+        userId: currentUser.id, // Preserve the current user ID
         owner_id: venue.owner_id,
         owner_type: venue.owner_type
       });
@@ -175,6 +175,14 @@ const VenueForm = ({ isModal = false, onSuccess, onClose }) => {
         longitude: formData.longitude ? Number(formData.longitude) : null,
         owner_id: Number(formData.owner_id)
       };
+
+      console.log('Venue update data:', {
+        venueId,
+        userId: body.userId,
+        currentUser: currentUser.id,
+        owner_id: body.owner_id,
+        owner_type: body.owner_type
+      });
 
       // Build multipart form data
       const fd = new FormData();
@@ -346,7 +354,12 @@ const VenueForm = ({ isModal = false, onSuccess, onClose }) => {
             <label htmlFor="address" className="block text-sm font-medium mb-1">
               Address *
             </label>
-            <LoadScript googleMapsApiKey={googleMapsApiKey} libraries={libraries}>
+            {loadError && (
+              <div className="text-red-500 text-sm mb-2">
+                Google Maps failed to load. Please refresh the page.
+              </div>
+            )}
+            {isLoaded ? (
               <Autocomplete
                 onLoad={(autoC) => (autocompleteRef.current = autoC)}
                 onPlaceChanged={onPlaceChanged}
@@ -361,7 +374,18 @@ const VenueForm = ({ isModal = false, onSuccess, onClose }) => {
                   className={`w-full p-2 border rounded ${errors.address ? 'border-red-500' : 'border-gray-300'}`}
                 />
               </Autocomplete>
-            </LoadScript>
+            ) : (
+              <input
+                type="text"
+                id="address"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                placeholder="Loading Google Maps..."
+                className={`w-full p-2 border rounded ${errors.address ? 'border-red-500' : 'border-gray-300'}`}
+                disabled
+              />
+            )}
             {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address}</p>}
           </div>
 

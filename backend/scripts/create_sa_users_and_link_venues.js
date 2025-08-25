@@ -21,7 +21,7 @@ async function createUsersAndLinkVenues() {
                     username: organiserData.username,
                     email: organiserData.email,
                     password: hashedPassword,
-                    role: 2 // Organiser role
+                    role: 4 // Organiser role
                 });
 
                 // Create organiser
@@ -40,6 +40,7 @@ async function createUsersAndLinkVenues() {
 
             } catch (error) {
                 console.error(`❌ Error creating organiser "${organiserData.name}":`, error.message);
+                console.error('Full error:', error);
             }
         }
 
@@ -53,7 +54,7 @@ async function createUsersAndLinkVenues() {
                     username: artistData.username,
                     email: artistData.email,
                     password: hashedPassword,
-                    role: 1 // Artist role
+                    role: 3 // Artist role
                 });
 
                 // Create artist
@@ -74,6 +75,7 @@ async function createUsersAndLinkVenues() {
 
             } catch (error) {
                 console.error(`❌ Error creating artist "${artistData.name}":`, error.message);
+                console.error('Full error:', error);
             }
         }
 

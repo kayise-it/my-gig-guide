@@ -7,6 +7,7 @@ const Event = db.event;
 const User = db.user;
 const Artist = db.artist;
 const Organiser = db.organiser;
+const Venue = db.venue;
 const { Op } = require("sequelize"); // Make sure this is imported at the top of your file
 
 
@@ -32,7 +33,7 @@ exports.events = async (req, res) => {
         },
         {
           model: db.venue,
-          attributes: ["id", "name", "address", "latitude", "longitude"],
+          attributes: ["id", "name", "latitude", "longitude", "address"],
           as: 'venue'
         }
       ]
@@ -42,8 +43,7 @@ exports.events = async (req, res) => {
     res.status(200).json(events);
   } catch (err) {
     console.error('Error fetching events:', err);
-    // Return empty array instead of error to prevent frontend from breaking
-    res.status(200).json([]);
+    res.status(500).json({ message: 'Failed to fetch events', error: err.message });
   }
 };
 exports.createEvent = async (req, res) => {
@@ -83,6 +83,11 @@ exports.getEventById = async (req, res) => {
           model: Organiser,
           attributes: ["id", "name"],
           as: 'organiserOwner'
+        },
+        {
+          model: db.venue,
+          attributes: ["id", "name", "latitude", "longitude", "address"],
+          as: 'venue'
         }
       ]
     });
@@ -285,24 +290,14 @@ exports.updateEventVenue = async (req, res) => {
   }
 };
 
-// Get events for a specific venue
+//Get events by venue
 exports.getEventsByVenue = async (req, res) => {
   try {
-    const venueId = parseInt(req.params.venueId, 10);
-    
-    if (!venueId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Venue ID is required" 
-      });
-    }
+    const venueId = req.params.venueId;
 
     const events = await Event.findAll({
-      where: {
-        venue_id: venueId,
-        date: {
-          [Op.gte]: new Date(new Date().setHours(0, 0, 0, 0)) // Only get events from today onwards (start of day)
-        }
+      where: { 
+        venue_id: venueId
       },
       include: [
         {
@@ -321,24 +316,15 @@ exports.getEventsByVenue = async (req, res) => {
           as: 'organiserOwner'
         },
         {
-          model: db.venue,
-          attributes: ["id", "name", "address", "latitude", "longitude"],
+          model: Venue,
+          attributes: ["id", "name", "address"],
           as: 'venue'
         }
       ],
-      order: [['date', 'ASC']] // Order by date ascending
     });
-
-    res.status(200).json({
-      success: true,
-      events: events
-    });
+    res.status(200).json(events);
   } catch (error) {
-    console.error('Error fetching venue events:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to fetch venue events',
-      error: error.message 
-    });
+    console.error("Error fetching venue events:", error);
+    res.status(500).json({ message: "Failed to fetch events" });
   }
 };

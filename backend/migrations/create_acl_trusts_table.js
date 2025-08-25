@@ -1,85 +1,60 @@
-// Migration script to create and seed acl_trusts table
-const db = require("../models");
+'use strict';
 
-async function createAclTrustsTable() {
-  try {
-    console.log('Starting ACL Trusts table migration...');
-
+module.exports = {
+  up: async (queryInterface, Sequelize) => {
     // Check if acl_trusts table exists
-    const tables = await db.sequelize.query(
+    const tables = await queryInterface.sequelize.query(
       "SHOW TABLES LIKE 'acl_trusts'",
-      { type: db.sequelize.QueryTypes.SELECT }
+      { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
     if (tables.length === 0) {
-      console.log('Creating acl_trusts table...');
-      
       // Create the acl_trusts table
-      await db.sequelize.query(`
-        CREATE TABLE acl_trusts (
-          acl_id INT AUTO_INCREMENT PRIMARY KEY,
-          acl_name VARCHAR(255) NOT NULL,
-          acl_display VARCHAR(255) NOT NULL,
-          createdAt DATETIME NOT NULL,
-          updatedAt DATETIME NOT NULL
-        )
-      `, { type: db.sequelize.QueryTypes.RAW });
-      
-      console.log('✅ acl_trusts table created successfully');
-    } else {
-      console.log('acl_trusts table already exists');
+      await queryInterface.createTable('acl_trusts', {
+        acl_id: {
+          type: Sequelize.INTEGER,
+          primaryKey: true,
+          autoIncrement: true
+        },
+        acl_name: {
+          type: Sequelize.STRING,
+          allowNull: false
+        },
+        acl_display: {
+          type: Sequelize.STRING,
+          allowNull: false
+        },
+        createdAt: {
+          type: Sequelize.DATE,
+          allowNull: false
+        },
+        updatedAt: {
+          type: Sequelize.DATE,
+          allowNull: false
+        }
+      });
     }
 
     // Check if data already exists
-    const aclCount = await db.sequelize.query(
+    const aclCount = await queryInterface.sequelize.query(
       "SELECT COUNT(*) as count FROM acl_trusts",
-      { type: db.sequelize.QueryTypes.SELECT }
+      { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
     if (aclCount[0].count === 0) {
-      console.log('Seeding acl_trusts table with default roles...');
-      
       // Insert default ACL roles
-      await db.sequelize.query(`
-        INSERT INTO acl_trusts (acl_id, acl_name, acl_display, createdAt, updatedAt) VALUES
-        (1, 'superuser', 'Superuser', NOW(), NOW()),
-        (2, 'admin', 'Administrator', NOW(), NOW()),
-        (3, 'artist', 'Artist', NOW(), NOW()),
-        (4, 'organiser', 'Event Organiser', NOW(), NOW()),
-        (5, 'venue', 'Venue Owner', NOW(), NOW()),
-        (6, 'user', 'User', NOW(), NOW())
-      `, { type: db.sequelize.QueryTypes.INSERT });
-      
-      console.log('✅ ACL trust roles seeded successfully');
-    } else {
-      console.log('ACL trust roles already exist');
+      await queryInterface.bulkInsert('acl_trusts', [
+        { acl_id: 1, acl_name: 'superuser', acl_display: 'Superuser', createdAt: new Date(), updatedAt: new Date() },
+        { acl_id: 2, acl_name: 'admin', acl_display: 'Administrator', createdAt: new Date(), updatedAt: new Date() },
+        { acl_id: 3, acl_name: 'artist', acl_display: 'Artist', createdAt: new Date(), updatedAt: new Date() },
+        { acl_id: 4, acl_name: 'organiser', acl_display: 'Event Organiser', createdAt: new Date(), updatedAt: new Date() },
+        { acl_id: 5, acl_name: 'venue', acl_display: 'Venue Owner', createdAt: new Date(), updatedAt: new Date() },
+        { acl_id: 6, acl_name: 'user', acl_display: 'User', createdAt: new Date(), updatedAt: new Date() }
+      ]);
     }
+  },
 
-    // Verify the migration
-    const finalCount = await db.sequelize.query(
-      "SELECT COUNT(*) as count FROM acl_trusts",
-      { type: db.sequelize.QueryTypes.SELECT }
-    );
-    
-    console.log(`Total ACL trust roles in database: ${finalCount[0].count}`);
-    
-    // Show the roles
-    const roles = await db.sequelize.query(
-      "SELECT acl_id, acl_name, acl_display FROM acl_trusts ORDER BY acl_id",
-      { type: db.sequelize.QueryTypes.SELECT }
-    );
-    
-    console.log('Available roles:');
-    roles.forEach(role => {
-      console.log(`  ${role.acl_id}: ${role.acl_display} (${role.acl_name})`);
-    });
-
-    console.log('✅ ACL Trusts migration completed successfully!');
-    
-  } catch (error) {
-    console.error('❌ ACL Trusts migration failed:', error);
-    throw error;
+  down: async (queryInterface, Sequelize) => {
+    await queryInterface.dropTable('acl_trusts');
   }
-}
-
-module.exports = createAclTrustsTable;
+};

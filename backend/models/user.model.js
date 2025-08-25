@@ -3,7 +3,7 @@ module.exports = (sequelize, DataTypes) => {
   const User = sequelize.define("user", {
     username: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true, // Optional for social auth
       unique: true,
     },
     email: {
@@ -13,7 +13,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     password: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true, // Optional for social auth
     },
     role: {
       //refers to the ACL trust table
@@ -23,6 +23,25 @@ module.exports = (sequelize, DataTypes) => {
         model: 'acl_trusts', // name of the target model
         key: 'acl_id' // key in the target model that we're referencing
       }
+    },
+    auth_provider: {
+      type: DataTypes.ENUM('local', 'google', 'facebook'),
+      allowNull: false,
+      defaultValue: 'local'
+    },
+    auth_provider_id: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true
+    },
+    profile_picture: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    email_verified: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
     }
   });
 

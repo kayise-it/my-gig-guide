@@ -17,6 +17,8 @@ function LiveEventsMap({ events = [] }) {
   const [center, setCenter] = useState({ lat: -26.1550, lng: 28.0595 });
   const [userLocation, setUserLocation] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [hoveredEvent, setHoveredEvent] = useState(null);
+  const [hoverTimeout, setHoverTimeout] = useState(null);
   const [mapError, setMapError] = useState(loadError);
 
   // Helper function to format event date
@@ -196,12 +198,8 @@ function LiveEventsMap({ events = [] }) {
           <div className="flex items-center">
             <div className="w-4 h-4 bg-purple-500 rounded mr-2 flex items-center justify-center">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="3" y="4" width="18" height="18" rx="1" fill="#ffffff"/>
-                <rect x="3" y="2" width="18" height="4" fill="#ffffff"/>
-                <line x1="8" y1="2" x2="8" y2="6" stroke="#7c3aed" strokeWidth="1"/>
-                <line x1="16" y1="2" x2="16" y2="6" stroke="#7c3aed" strokeWidth="1"/>
-                <line x1="3" y1="10" x2="21" y2="10" stroke="#7c3aed" strokeWidth="1"/>
-                <circle cx="12" cy="15" r="1" fill="#7c3aed"/>
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#ffffff"/>
+                <circle cx="12" cy="9" r="2" fill="#7c3aed"/>
               </svg>
             </div>
             <span className="text-xs text-gray-700">Event Venues ({eventsWithCoordinates.length})</span>
@@ -287,23 +285,53 @@ function LiveEventsMap({ events = [] }) {
               }}
               title={event.name}
               onClick={() => setSelectedEvent(event)}
+              onMouseOver={() => {
+                // Clear any existing timeout
+                if (hoverTimeout) {
+                  clearTimeout(hoverTimeout);
+                }
+                // Set hover event after a short delay
+                const timeout = setTimeout(() => {
+                  setHoveredEvent(event);
+                }, 300); // 300ms delay
+                setHoverTimeout(timeout);
+              }}
+              onMouseOut={() => {
+                // Clear timeout and hide hover
+                if (hoverTimeout) {
+                  clearTimeout(hoverTimeout);
+                }
+                setHoveredEvent(null);
+              }}
               icon={{
                 url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                  <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="2" y="2" width="20" height="20" rx="4" fill="#7c3aed" stroke="#ffffff" stroke-width="2"/>
-                    <rect x="4" y="4" width="16" height="4" fill="#7c3aed"/>
-                    <circle cx="12" cy="14" r="2" fill="#ffffff"/>
+                  <svg width="40" height="40" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <filter id="glow">
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                        <feMerge> 
+                          <feMergeNode in="coloredBlur"/>
+                          <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                      </filter>
+                    </defs>
+                    <circle cx="12" cy="12" r="8" fill="#7c3aed" opacity="0.3" filter="url(#glow)">
+                      <animate attributeName="r" values="8;12;8" dur="2s" repeatCount="indefinite"/>
+                      <animate attributeName="opacity" values="0.3;0.1;0.3" dur="2s" repeatCount="indefinite"/>
+                    </circle>
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#7c3aed" stroke="#ffffff" stroke-width="1"/>
+                    <circle cx="12" cy="9" r="2.5" fill="#ffffff"/>
                   </svg>
                 `),
-                scaledSize: new window.google.maps.Size(24, 24),
-                anchor: new window.google.maps.Point(12, 12)
+                scaledSize: new window.google.maps.Size(40, 40),
+                anchor: new window.google.maps.Point(12, 24)
               }}
             />
           ))}
 
 
 
-          {/* Info Window for Selected Event */}
+          {/* Info Window for Selected Event (Click) */}
           {selectedEvent && (
             <InfoWindow
               position={{ 
@@ -312,26 +340,61 @@ function LiveEventsMap({ events = [] }) {
               }}
               onCloseClick={() => setSelectedEvent(null)}
             >
-              <div className="p-3 max-w-xs">
-                <h3 className="font-bold text-gray-900 mb-2">{selectedEvent.name}</h3>
-                <div className="space-y-1 text-sm text-gray-600">
+              <div className="p-4 max-w-xs">
+                <h3 className="font-bold text-gray-900 mb-3 text-lg">{selectedEvent.name}</h3>
+                <div className="space-y-2 text-sm text-gray-600">
                   <div className="flex items-center">
-                    <MapPinIcon className="h-4 w-4 text-purple-500 mr-2" />
-                    <span>{selectedEvent.venue.name}</span>
+                    <MapPinIcon className="h-4 w-4 text-purple-500 mr-2 flex-shrink-0" />
+                    <span className="truncate">{selectedEvent.venue.name}</span>
                   </div>
                   <div className="flex items-center">
-                    <CalendarDaysIcon className="h-4 w-4 text-purple-500 mr-2" />
+                    <CalendarDaysIcon className="h-4 w-4 text-purple-500 mr-2 flex-shrink-0" />
                     <span>{formatEventDate(selectedEvent.date)}</span>
                   </div>
                   <div className="flex items-center">
-                    <ClockIcon className="h-4 w-4 text-purple-500 mr-2" />
+                    <ClockIcon className="h-4 w-4 text-purple-500 mr-2 flex-shrink-0" />
                     <span>{selectedEvent.time || new Date(selectedEvent.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                   </div>
-                  <div className="flex items-center justify-between mt-3">
-                    <span className="font-semibold text-purple-600">R{selectedEvent.price || 0}</span>
-                    <button className="bg-purple-600 text-white px-3 py-1 rounded-lg text-xs hover:bg-purple-700 transition-colors">
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-200">
+                    <span className="font-semibold text-purple-600 text-lg">R{selectedEvent.price || 0}</span>
+                    <a 
+                      href={`/events/${selectedEvent.id}`}
+                      className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 hover:scale-105 shadow-md"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.location.href = `/events/${selectedEvent.id}`;
+                      }}
+                    >
                       View Details
-                    </button>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </InfoWindow>
+          )}
+
+          {/* Info Window for Hovered Event */}
+          {hoveredEvent && !selectedEvent && (
+            <InfoWindow
+              position={{ 
+                lat: parseFloat(hoveredEvent.venue.latitude), 
+                lng: parseFloat(hoveredEvent.venue.longitude) 
+              }}
+            >
+              <div className="p-3 max-w-xs">
+                <h3 className="font-bold text-gray-900 mb-2 text-base">{hoveredEvent.name}</h3>
+                <div className="space-y-1 text-sm text-gray-600">
+                  <div className="flex items-center">
+                    <MapPinIcon className="h-4 w-4 text-purple-500 mr-2 flex-shrink-0" />
+                    <span className="truncate">{hoveredEvent.venue.name}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <CalendarDaysIcon className="h-4 w-4 text-purple-500 mr-2 flex-shrink-0" />
+                    <span>{formatEventDate(hoveredEvent.date)}</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="font-semibold text-purple-600">R{hoveredEvent.price || 0}</span>
+                    <span className="text-xs text-gray-500">Click for details</span>
                   </div>
                 </div>
               </div>

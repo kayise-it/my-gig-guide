@@ -167,13 +167,13 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
     try {
         const {
-            email,
+            username,
             password
         } = req.body;
 
         const user = await User.findOne({
             where: {
-                email,
+                username,
             },
             include: [{
                 model: AclTrust,
@@ -320,5 +320,63 @@ exports.getMe = async (req, res) => {
             message: "Failed to fetch user data",
             error: err.message,
         });
+    }
+};
+
+// Check if email exists
+exports.checkEmail = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ message: 'Email is required' });
+        }
+
+        const user = await db.user.findOne({ where: { email } });
+
+        if (user) {
+            res.json({ exists: true });
+        } else {
+            res.json({ exists: false });
+        }
+    } catch (error) {
+        console.error('Check email error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+// Reset password
+exports.resetPassword = async (req, res) => {
+    try {
+        const { email, newPassword } = req.body;
+
+        if (!email || !newPassword) {
+            return res.status(400).json({ message: 'Email and new password are required' });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ message: 'Password must be at least 6 characters' });
+        }
+
+        const user = await db.user.findOne({ where: { email } });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Hash the new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Update user's password
+        await user.update({ password: hashedPassword });
+
+        res.json({ 
+            success: true, 
+            message: 'Password reset successfully' 
+        });
+
+    } catch (error) {
+        console.error('Reset password error:', error);
+        res.status(500).json({ message: 'Internal server error' });
     }
 };

@@ -18,11 +18,10 @@ import {
   PlayIcon
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
+import axios from 'axios';
+import API_BASE_URL from '../../api/config';
 import EventCard from '../../components/Events/EventCard';
 import LiveEventsMap from '../../components/Map/LiveEventsMap';
-import { fetchFilteredEvents, isUpcoming } from '../../services/eventsService.js';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export default function ViewEvents() {
   const [events, setEvents] = useState([]);
@@ -37,19 +36,54 @@ export default function ViewEvents() {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
 
+  // Helper function to fix poster URLs
+  const fixPosterUrl = (posterPath) => {
+    if (!posterPath || posterPath === 'null' || posterPath === '') return null;
+    
+    // Remove extra spaces and fix the path
+    let cleanPath = posterPath.replace(/\s+/g, '');
+    
+    // Fix common path issues based on your actual file structure
+    cleanPath = cleanPath.replace('/artists/3_Thando_9144/', '/artists/3_Thando_8146/');
+    cleanPath = cleanPath.replace('/events/event_poster/', '/events/1_kamal_lamb/event_poster/');
+    
+    // Ensure path starts with forward slash
+    if (!cleanPath.startsWith('/')) {
+      cleanPath = '/' + cleanPath;
+    }
+    
+    return cleanPath;
+  };
+
   // Fetch events from database
   useEffect(() => {
     const fetchEvents = async () => {
       try {
         setLoading(true);
-        const allEvents = await fetchFilteredEvents({
-          searchTerm,
-          category: categoryFilter,
-          showPastEvents,
-          sortBy
+        const response = await axios.get(`${API_BASE_URL}/api/events`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         });
         
-        setEvents(allEvents);
+        // Transform the data to match the expected format
+        const transformedEvents = response.data.map(event => ({
+          id: event.id,
+          name: event.name || event.event_name,
+          description: event.description,
+          date: event.date || event.event_date,
+          time: event.time,
+          category: event.category || 'concert', // Default category
+          price: event.price || event.ticket_price || 0,
+          poster: fixPosterUrl(event.poster), // Fix poster URL
+          venue: event.venue || { name: event.venue_name || 'TBD' },
+          rating: Math.floor(Math.random() * 2) + 4, // Random rating for demo
+          attendees: Math.floor(Math.random() * 500) + 50 // Random attendees for demo
+        }));
+        
+        console.log('Fetched events from database:', transformedEvents);
+        console.log('Poster URLs:', transformedEvents.map(e => ({ name: e.name, poster: e.poster, fullUrl: e.poster ? `${API_BASE_URL}${e.poster}` : null })));
+        setEvents(transformedEvents);
         setError(null);
       } catch (err) {
         console.error('Error fetching events:', err);
@@ -60,11 +94,46 @@ export default function ViewEvents() {
     };
 
     fetchEvents();
-  }, [searchTerm, categoryFilter, showPastEvents, sortBy]);
+  }, [token]);
+
+  // Helper function to check if event is upcoming (today or later)
+  const isUpcoming = (eventDate) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of today
+    const eventDateTime = new Date(eventDate);
+    eventDateTime.setHours(0, 0, 0, 0); // Set to start of event day
+    return eventDateTime >= today;
+  };
+
+  // Filter events based on search, category, and date preferences
+  const filteredEvents = events.filter(event => {
+    const matchesSearch = event.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (event.venue?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || event.category === categoryFilter;
+    const matchesDateFilter = showPastEvents || isUpcoming(event.date);
+    return matchesSearch && matchesCategory && matchesDateFilter;
+  });
+
+  // Sort events
+  const sortedEvents = [...filteredEvents].sort((a, b) => {
+    switch (sortBy) {
+      case 'date':
+        return new Date(a.date) - new Date(b.date);
+      case 'price':
+        return (a.price || 0) - (b.price || 0);
+      case 'name':
+        return a.name.localeCompare(b.name);
+      case 'popularity':
+        return (b.attendees || 0) - (a.attendees || 0);
+      default:
+        return new Date(a.date) - new Date(b.date);
+    }
+  });
 
   // Featured events (first 3)
-  const featuredEvents = events.slice(0, 3);
-  const regularEvents = events.slice(3);
+  const featuredEvents = sortedEvents.slice(0, 3);
+  const regularEvents = sortedEvents.slice(3);
 
   // Toggle favorite
   const toggleFavorite = (eventId) => {
@@ -93,6 +162,8 @@ export default function ViewEvents() {
   
   // Debug logging
   console.log('Total events:', events.length);
+  console.log('Filtered events:', filteredEvents.length);
+  console.log('Sorted events:', sortedEvents.length);
 
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex justify-center items-center">
@@ -212,14 +283,14 @@ export default function ViewEvents() {
                   </label>
                   <div className="space-y-2">
                     {[
-                      { value: 'all', label: 'All Categories', count: events.length },
-                      { value: 'concert', label: 'Concerts', count: events.filter(e => e.category === 'concert').length },
-                      { value: 'festival', label: 'Festivals', count: events.filter(e => e.category === 'festival').length },
-                      { value: 'comedy', label: 'Comedy', count: events.filter(e => e.category === 'comedy').length },
-                      { value: 'exhibition', label: 'Exhibitions', count: events.filter(e => e.category === 'exhibition').length },
-                      { value: 'conference', label: 'Conferences', count: events.filter(e => e.category === 'conference').length },
-                      { value: 'theater', label: 'Theater', count: events.filter(e => e.category === 'theater').length },
-                      { value: 'sports', label: 'Sports', count: events.filter(e => e.category === 'sports').length }
+                      { value: 'all', label: 'All Categories', count: sortedEvents.length },
+                      { value: 'concert', label: 'Concerts', count: events.filter(e => e.category === 'concert' && isUpcoming(e.date)).length },
+                      { value: 'festival', label: 'Festivals', count: events.filter(e => e.category === 'festival' && isUpcoming(e.date)).length },
+                      { value: 'comedy', label: 'Comedy', count: events.filter(e => e.category === 'comedy' && isUpcoming(e.date)).length },
+                      { value: 'exhibition', label: 'Exhibitions', count: events.filter(e => e.category === 'exhibition' && isUpcoming(e.date)).length },
+                      { value: 'conference', label: 'Conferences', count: events.filter(e => e.category === 'conference' && isUpcoming(e.date)).length },
+                      { value: 'theater', label: 'Theater', count: events.filter(e => e.category === 'theater' && isUpcoming(e.date)).length },
+                      { value: 'sports', label: 'Sports', count: events.filter(e => e.category === 'sports' && isUpcoming(e.date)).length }
                     ].map(category => (
                       <label key={category.value} className="flex items-center justify-between p-3 rounded-lg hover:bg-purple-50 cursor-pointer transition-colors duration-200">
                         <div className="flex items-center">
@@ -303,7 +374,7 @@ export default function ViewEvents() {
                 {/* Results Summary */}
                 <div className="border-t border-gray-200 pt-4">
                   <div className="flex items-center justify-between text-sm text-gray-600">
-                    <span className="font-medium">{events.length} events found</span>
+                    <span className="font-medium">{sortedEvents.length} events found</span>
                     <span className="text-xs">Updated just now</span>
                   </div>
                 </div>
@@ -342,7 +413,7 @@ export default function ViewEvents() {
                     <option value="sports">Sports</option>
                   </select>
                 </div>
-                <span className="text-sm text-gray-600 font-medium">{events.length} events</span>
+                <span className="text-sm text-gray-600 font-medium">{sortedEvents.length} events</span>
               </div>
             </div>
 
@@ -373,11 +444,11 @@ export default function ViewEvents() {
             <div>
               <h2 className="text-3xl font-bold text-gray-800 mb-6 flex items-center">
                 <CalendarIcon className="h-8 w-8 text-purple-600 mr-3" />
-                All Events ({events.length})
+                All Events ({sortedEvents.length})
               </h2>
               
               {/* Modern Events Grid/List */}
-              {events.length === 0 ? (
+              {sortedEvents.length === 0 ? (
                 <div className="text-center py-20">
                   <div className="relative mb-8">
                     <div className="absolute -inset-4 bg-purple-100 rounded-full blur-xl opacity-60"></div>

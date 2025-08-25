@@ -1,9 +1,32 @@
 import React from 'react';
-import { CalendarIcon, ClockIcon, MapPinIcon, StarIcon, PhotoIcon } from '@heroicons/react/24/outline';
-import DisplayPicture from '../UI/DisplayPicture';
+import { CalendarIcon, ClockIcon, MapPinIcon, StarIcon } from '@heroicons/react/24/outline';
+import API_BASE_URL from '../../api/config';
 
 const EventCard = ({ event, navigate }) => {
+  // Helper function to fix poster URLs
+  const fixPosterUrl = (posterPath) => {
+    if (!posterPath || posterPath === 'null' || posterPath === '') return null;
+    
+    let cleanPath = posterPath.replace(/\s+/g, '');
+    
+    // Fix common path issues
+    cleanPath = cleanPath.replace('/artists/3_Thando_9144/', '/artists/3_Thando_8146/');
+    cleanPath = cleanPath.replace('/events/event_poster/', '/events/1_kamal_lamb/event_poster/');
+    
+    // Remove API prefix if present
+    cleanPath = cleanPath.replace('/api/artists/', '/artists/');
+    
+    // Fix double events path
+    cleanPath = cleanPath.replace('/events/events/', '/events/');
+    
+    if (!cleanPath.startsWith('/')) {
+      cleanPath = '/' + cleanPath;
+    }
+    
+    return cleanPath;
+  };
 
+  const posterUrl = fixPosterUrl(event.poster);
   const eventDate = new Date(event.date);
 
   return (
@@ -13,16 +36,22 @@ const EventCard = ({ event, navigate }) => {
     >
       {/* Background Image */}
       <div className="relative h-56 overflow-hidden">
-        <DisplayPicture
-          imagePath={event.poster}
-          alt={event.name || 'Event'}
-          fallbackIcon={PhotoIcon}
-          fallbackText="No Image"
-          size="custom"
-          containerClassName="w-full h-full"
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          id={`event-card-${event.id}`}
-        />
+        {posterUrl ? (
+          <img
+            src={posterUrl.startsWith('http') ? posterUrl : `${API_BASE_URL}${posterUrl}`}
+            alt={event.name}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            onError={(e) => {
+              console.warn('Failed to load image:', posterUrl);
+              e.target.style.display = 'none';
+              e.target.parentElement.style.background = 'linear-gradient(to bottom right, #6366f1, #8b5cf6, #ec4899)';
+            }}
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center">
+            <span className="text-white text-lg font-semibold">No Image</span>
+          </div>
+        )}
 
         {/* Price Badge */}
         <div className="absolute top-2 left-2">

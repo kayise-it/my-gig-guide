@@ -17,6 +17,7 @@ import Contact from "./pages/Contact";
 import Venues from "./pages/Venues";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import ForgotPassword from "./pages/ForgotPassword";
 
 /* Artists */
 import ArtistDashboard from "./pages/Artists/Dashboard";
@@ -43,6 +44,7 @@ import NewVenue from "./pages/Venue/NewVenue";
 /* Organiser Venues */
 import EditVenue from "./pages/Organiser/Dashboard/Venues/EditVenue";
 import GalleryTest from "./components/GalleryTest";
+import RatingDemo from "./pages/RatingDemo";
 
 function App() {
   return (
@@ -66,6 +68,7 @@ function App() {
         {/* Authentication Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
         {/* Artist Routes */}
         <Route path="/artists/dashboard" element={<PrivateRoute requiredRole="artist"><Layout><ArtistDashboard /></Layout></PrivateRoute>} />
@@ -91,6 +94,7 @@ function App() {
         
         {/* Test Routes */}
         <Route path="/gallery-test" element={<Layout><GalleryTest /></Layout>} />
+        <Route path="/rating-demo" element={<Layout><RatingDemo /></Layout>} />
         </Routes>
       </Router>
     </GoogleMapsProvider>

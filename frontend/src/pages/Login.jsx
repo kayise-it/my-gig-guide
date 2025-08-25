@@ -1,7 +1,7 @@
 //backend/src/pages/Login.jsx
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaEnvelope, FaLock } from 'react-icons/fa';
+import { FaUser, FaLock } from 'react-icons/fa';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import API_BASE_URL from '../api/config';
@@ -9,7 +9,7 @@ import API_BASE_URL from '../api/config';
 
 export default function Login() {
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: '',
   });
   const [errors, setErrors] = useState({});
@@ -28,10 +28,10 @@ export default function Login() {
   const validate = () => {
     const newErrors = {};
 
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email';
+    if (!formData.username.trim()) {
+      newErrors.username = 'Username is required';
+    } else if (formData.username.length < 3) {
+      newErrors.username = 'Username must be at least 3 characters';
     }
 
     if (!formData.password) {
@@ -48,6 +48,13 @@ export default function Login() {
 
     setIsSubmitting(true);
     setErrors({});
+
+    // Debug: Log what we're sending
+    console.log('🔍 Attempting login with:', {
+      username: formData.username,
+      password: formData.password ? '***' : 'empty',
+      API_URL: `${API_BASE_URL}/api/auth/login`
+    });
 
     try {
       const response = await axios.post(`${API_BASE_URL}/api/auth/login`, formData);
@@ -86,11 +93,93 @@ export default function Login() {
       }
     } catch (error) {
       console.error('Login error:', error.response?.data);
+      console.error('🔍 Full error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        headers: error.response?.headers
+      });
       setErrors({
         server: error.response?.data?.message || 'Login failed. Please check your credentials.'
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleFacebookLogin = async () => {
+    try {
+      console.log('🔍 Starting Facebook login...');
+      
+      // Check if Facebook SDK is available
+      if (!window.FB) {
+        console.error('Facebook SDK not loaded');
+        alert('Facebook login is not available. Please try again.');
+        return;
+      }
+
+      // Initialize Facebook login
+      window.FB.login(async (response) => {
+        if (response.authResponse) {
+          console.log('✅ Facebook login successful:', response.authResponse);
+          
+          try {
+            // Send access token to your backend
+            const backendResponse = await axios.post(`${API_BASE_URL}/api/social-auth/facebook`, {
+              accessToken: response.authResponse.accessToken
+            });
+
+            console.log('✅ Backend response:', backendResponse.data);
+
+            if (backendResponse.data?.token && backendResponse.data?.user) {
+              // Login user
+              login(backendResponse.data.token, backendResponse.data.user);
+              
+              alert(`Welcome ${backendResponse.data.user.name || backendResponse.data.user.username}!`);
+              
+              // Redirect based on role
+              const roleRoutes = {
+                1: '/admin/dashboard',
+                3: '/artists/dashboard',
+                4: '/organiser/dashboard'
+              };
+
+              const route = roleRoutes[backendResponse.data.user?.role] || '/';
+              navigate(route);
+            }
+          } catch (error) {
+            console.error('❌ Backend Facebook auth error:', error.response?.data);
+            setErrors({
+              server: error.response?.data?.message || 'Facebook login failed. Please try again.'
+            });
+          }
+        } else {
+          console.log('❌ Facebook login cancelled or failed');
+          setErrors({
+            server: 'Facebook login was cancelled or failed. Please try again.'
+          });
+        }
+      }, {
+        scope: 'email,public_profile'
+      });
+
+    } catch (error) {
+      console.error('❌ Facebook login error:', error);
+      setErrors({
+        server: 'Facebook login failed. Please try again.'
+      });
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      console.log('🔍 Starting Google login...');
+      alert('Google login coming soon!');
+    } catch (error) {
+      console.error('❌ Google login error:', error);
+      setErrors({
+        server: 'Google login failed. Please try again.'
+      });
     }
   };
   return (
@@ -116,27 +205,27 @@ export default function Login() {
           )}
 
           <form className="space-y-6" onSubmit={handleSubmit}>
-            {/* Email */}
+            {/* Username */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                Username
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaEnvelope className="h-5 w-5 text-gray-400" />
+                  <FaUser className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  value={formData.email}
+                  id="username"
+                  name="username"
+                  type="text"
+                  autoComplete="username"
+                  value={formData.username}
                   onChange={handleChange}
-                  className={`block w-full pl-10 pr-3 py-2 border ${errors.email ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                  className={`block w-full pl-10 pr-3 py-2 border ${errors.username ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                 />
               </div>
-              {errors.email && (
-                <p className="mt-2 text-sm text-red-600">{errors.email}</p>
+              {errors.username && (
+                <p className="mt-2 text-sm text-red-600">{errors.username}</p>
               )}
             </div>
 
@@ -214,6 +303,7 @@ export default function Login() {
               <div>
                 <button
                   type="button"
+                  onClick={handleGoogleLogin}
                   className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
                 >
                   <span className="sr-only">Sign in with Google</span>
@@ -226,6 +316,7 @@ export default function Login() {
               <div>
                 <button
                   type="button"
+                  onClick={handleFacebookLogin}
                   className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
                 >
                   <span className="sr-only">Sign in with Facebook</span>
