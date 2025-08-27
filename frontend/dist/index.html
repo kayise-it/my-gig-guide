@@ -5,13 +5,33 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vite + React</title>
-    <script type="module" crossorigin src="/assets/index-CN7Qa1Zo.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CWGKxXvs.css">
+    <script type="module" crossorigin src="/assets/index-CnfAxeqN.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DQuf-ORn.css">
   </head>
   <body>
     <div id="root">
       
     </div>
+    
+    <!-- Facebook SDK -->
+    <script>
+      window.fbAsyncInit = function() {
+        FB.init({
+          appId: 'YOUR_FACEBOOK_APP_ID', // Replace with your actual App ID
+          cookie: true,
+          xfbml: true,
+          version: 'v23.0'
+        });
+      };
+
+      (function(d, s, id) {
+        var js, fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) return;
+        js = d.createElement(s); js.id = id;
+        js.src = "https://connect.facebook.net/en_US/sdk.js";
+        fjs.parentNode.insertBefore(js, fjs);
+      }(document, 'script', 'facebook-jssdk'));
+    </script>
     
   </body>
 </html>

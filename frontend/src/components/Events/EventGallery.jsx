@@ -138,16 +138,16 @@ const EventGallery = ({
     processedPath = processedPath.replace('/artists/3_Thando_9144/', '/artists/3_Thando_8146/');
     
     if (processedPath.startsWith('/artists/') && processedPath.includes('/events/')) {
-      return `http://localhost:5173${processedPath}`;
+      return processedPath;
     } else if (processedPath.includes('/artists/events/events/')) {
       const fixedPath = processedPath.replace('/artists/events/events/', '/artists/3_Thando_8146/events/');
-      return `http://localhost:5173${fixedPath}`;
+      return fixedPath;
     } else if (processedPath.includes('/events/events/')) {
       const fixedPath = processedPath.replace('/events/events/', '/artists/3_Thando_8146/events/');
-      return `http://localhost:5173${fixedPath}`;
+      return fixedPath;
     }
     
-    return `http://localhost:5173${processedPath}`;
+    return processedPath;
   };
 
   if (!hasRealGallery) {

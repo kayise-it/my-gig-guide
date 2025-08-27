@@ -8,7 +8,7 @@ const Artist = db.artist;
 const Organiser = db.organiser;
 const User = db.user;
 const {verifyToken } = require("../middleware/auth.middleware");
-const { createOrUpdateUserProfileSettings } = require("../helpers/userProfileHelper");
+const { createOrUpdateUserProfileSettings, getUserFolderPath } = require("../helpers/userProfileHelper");
 const createFolderStructure = require("../helpers/createFolderStructure");
 
 // Get all events

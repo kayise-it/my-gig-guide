@@ -11,8 +11,12 @@ const path = require('path');
  */
 async function createFolderStructure(settings) {
     try {
-        // Resolve the full path on disk (not just relative to backend)
-        const fullPath = path.resolve(__dirname, '../../', settings.path, settings.folder_name);
+        // Resolve the full path on disk from repo root, normalizing away any ../ prefixes in settings.path
+        const repoRoot = path.resolve(__dirname, '../../');
+        const normalizedPath = settings.path
+            ? settings.path.replace(/^(\.\.\/)+/, '') // strip leading ../ to avoid escaping repo root
+            : '';
+        const fullPath = path.resolve(repoRoot, normalizedPath, settings.folder_name);
 
         // If folder doesn't exist, create it
         if (!fs.existsSync(fullPath)) {

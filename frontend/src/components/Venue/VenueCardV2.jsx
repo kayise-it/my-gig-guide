@@ -9,8 +9,8 @@ const VenueCardV2 = ({ venue, showActions = true, showStats = true, className = 
     const imageUrl = React.useMemo(() => {
         if (!venue.main_picture) return null;
         return venue.main_picture.startsWith('http') 
-            ? venue.main_picture 
-            : `http://localhost:5173${venue.main_picture}`;
+                    ? venue.main_picture
+        : venue.main_picture;
     }, [venue.main_picture]);
 
     return (

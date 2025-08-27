@@ -78,7 +78,7 @@ exports.register = async (req, res) => {
             
             const settings = {
                 setting_name: name || username,
-                path: "../frontend/public/artists/",
+                path: "frontend/public/artists",
                 folder_name: folderName
             };
 
@@ -97,7 +97,7 @@ exports.register = async (req, res) => {
             const artistSubfolders = ['events', 'venues', 'profile', 'gallery'];
             for (const subfolder of artistSubfolders) {
                 await createFolderStructure({
-                    path: `${settings.path}${folderName}`,
+                    path: `${settings.path}/${folderName}`,
                     folder_name: subfolder
                 });
             }
@@ -107,7 +107,7 @@ exports.register = async (req, res) => {
             
             const settings = {
                 setting_name: name || username,
-                path: "../frontend/public/organiser/",
+                path: "frontend/public/organiser",
                 folder_name: folderName
             };
 
@@ -126,7 +126,7 @@ exports.register = async (req, res) => {
             const organiserSubfolders = ['events', 'venues', 'profile'];
             for (const subfolder of organiserSubfolders) {
                 await createFolderStructure({
-                    path: `${settings.path}${folderName}`,
+                    path: `${settings.path}/${folderName}`,
                     folder_name: subfolder
                 });
             }

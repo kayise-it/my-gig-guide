@@ -33,12 +33,12 @@ const GalleryImage = ({
         
         // If the path already contains the correct structure, use it as is
         if (correctedPath.includes('/artists/3_Thando_8146/') || correctedPath.includes('/organiser/')) {
-            return `http://localhost:5173${correctedPath}`;
+            return correctedPath;
         }
         
         // Fallback to the old structure if needed
         correctedPath = correctedPath.replace('/artists/events/', '/artists/3_Thando_8146/events/');
-        return `http://localhost:5173${correctedPath}`;
+        return correctedPath;
     }, [image]);
 
     // Debug logging for first image only (if needed)

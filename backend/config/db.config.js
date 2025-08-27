@@ -1,8 +1,9 @@
 //File location: 
 module.exports = {
-  HOST: process.env.DB_HOST || "localhost",
+  HOST: process.env.DB_HOST || "127.0.0.1",
+  PORT: parseInt(process.env.DB_PORT || "3306", 10),
   USER: process.env.DB_USER || "root",
-  PASSWORD: process.env.DB_PASSWORD || "root",
-  DB: process.env.DB_NAME || "my_gig_guide_db",
+  PASSWORD: process.env.DB_PASSWORD || "",
+  DB: process.env.DB_NAME || "mygigguide",
   dialect: process.env.DB_DIALECT || "mysql",
 };
