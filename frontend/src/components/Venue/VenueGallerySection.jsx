@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PhotoIcon, PlusIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { venueService } from '../../api/venueService';
+import API_BASE_URL from '../../api/config';
 
 const VenueGallerySection = ({ 
   venue, 
@@ -163,7 +164,7 @@ const VenueGallerySection = ({
             {galleryImages.map((image, index) => (
               <div key={index} className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100">
                 <img
-                  src={image.startsWith('http') ? image : image}
+                  src={image.startsWith('http') ? image : `${API_BASE_URL}${image}`}
                   alt={`Gallery ${index + 1}`}
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110 cursor-pointer"
                   onClick={() => openImageModal(index)}
@@ -174,7 +175,7 @@ const VenueGallerySection = ({
                 />
                 
                 {/* Hover overlay */}
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center">
+                <div className="absolute inset-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center">
                   <PhotoIcon className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
                 
@@ -291,7 +292,7 @@ const VenueGallerySection = ({
               <img
                 src={galleryImages[selectedImageIndex]?.startsWith('http') 
                   ? galleryImages[selectedImageIndex] 
-                  : galleryImages[selectedImageIndex]}
+                  : `${API_BASE_URL}${galleryImages[selectedImageIndex]}`}
                 alt={`Gallery ${selectedImageIndex + 1}`}
                 className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
                 onError={(e) => {

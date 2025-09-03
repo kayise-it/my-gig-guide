@@ -11,13 +11,15 @@ export const useGoogleMaps = () => {
   return context;
 };
 
+// Static libraries array to prevent recreation on every render
+const GOOGLE_MAPS_LIBRARIES = ['places', 'marker'];
+
 export const GoogleMapsProvider = ({ children }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState(null);
 
   // Get API key from environment variable
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyDVfOS0l8Tv59v8WTgUO231X2FtmBQCc2Y';
-  const libraries = ['places'];
 
   const handleLoad = () => {
     setIsLoaded(true);
@@ -33,7 +35,7 @@ export const GoogleMapsProvider = ({ children }) => {
     <GoogleMapsContext.Provider value={{ isLoaded, loadError, apiKey }}>
       <LoadScript
         googleMapsApiKey={apiKey}
-        libraries={libraries}
+        libraries={GOOGLE_MAPS_LIBRARIES}
         onLoad={handleLoad}
         onError={handleError}
       >

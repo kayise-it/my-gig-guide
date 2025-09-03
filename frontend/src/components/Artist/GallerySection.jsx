@@ -7,14 +7,16 @@ const GallerySection = ({
   onImageClick, 
   onDeleteImage 
 }) => {
-  const hasImages = gallery && gallery.length > 0;
+  const hasImages = Array.isArray(gallery) && gallery.length > 0;
   const displayImages = hasImages ? gallery.slice(0, 6) : [];
+  const getUrl = (img) => encodeURI(typeof img === 'string' ? img : (img?.url || ''));
+  const getOriginalPath = (img) => (typeof img === 'string' ? img : (img?.originalPath || img?.url || ''));
   const remainingCount = hasImages ? Math.max(0, gallery.length - 6) : 0;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6" id="artist-gallery-section">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3 sm:mb-4">
+      <div className="flex items-center justify-between mb-3 sm:mb-4" id="artist-gallery-header">
         <div className="flex items-center space-x-2">
           <PhotoIcon className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
           <h3 className="text-base sm:text-lg font-semibold text-gray-900">Gallery</h3>
@@ -36,18 +38,18 @@ const GallerySection = ({
 
       {/* Gallery Grid */}
       {hasImages ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3" id="artist-gallery-grid">
           {displayImages.map((image, index) => (
-            <div key={index} className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100">
+            <div key={index} className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100" id={`artist-gallery-item-${index+1}`}>
               <img
-                src={image.url}
+                src={getUrl(image)}
                 alt={`Gallery ${index + 1}`}
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110 cursor-pointer"
                 onClick={() => onImageClick(index)}
               />
               
               {/* Overlay */}
-              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center">
+              <div className="absolute inset-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center">
                 <PhotoIcon className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               
@@ -55,7 +57,7 @@ const GallerySection = ({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onDeleteImage(image.originalPath);
+                  onDeleteImage(getOriginalPath(image));
                 }}
                 className="absolute top-1 right-1 bg-red-500 bg-opacity-80 text-white p-1 rounded-full hover:bg-opacity-100 transition-all opacity-0 group-hover:opacity-100"
                 title="Delete image"
@@ -69,9 +71,9 @@ const GallerySection = ({
           
           {/* Show remaining count overlay on last image */}
           {remainingCount > 0 && (
-            <div className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100">
+            <div className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100" id="artist-gallery-more-tile">
               <img
-                src={displayImages[5]?.url}
+                src={displayImages[5] ? getUrl(displayImages[5]) : ''}
                 alt="Gallery"
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110 cursor-pointer"
                 onClick={() => onImageClick(5)}
@@ -89,7 +91,7 @@ const GallerySection = ({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onDeleteImage(displayImages[5]?.originalPath);
+                  if (displayImages[5]) onDeleteImage(getOriginalPath(displayImages[5]));
                 }}
                 className="absolute top-1 right-1 bg-red-500 bg-opacity-80 text-white p-1 rounded-full hover:bg-opacity-100 transition-all opacity-0 group-hover:opacity-100"
                 title="Delete image"

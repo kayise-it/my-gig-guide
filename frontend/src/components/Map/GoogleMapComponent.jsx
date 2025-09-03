@@ -10,7 +10,8 @@ const containerStyle = {
 };
 
 // Static libraries array to prevent reloading
-const libraries = ['places'];
+// Static libraries array to prevent recreation on every render
+const GOOGLE_MAPS_LIBRARIES = ['places'];
 
 function GoogleMapComponent({ gigs }) {
   const { isLoaded, loadError } = useGoogleMaps();

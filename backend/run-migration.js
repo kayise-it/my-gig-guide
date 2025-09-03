@@ -4,6 +4,7 @@
 const createAclTrustsTable = require('./migrations/create_acl_trusts_table');
 const migrateEventsTable = require('./migrations/update_events_table');
 const migrateVenuesTable = require('./migrations/update_venues_table');
+const updateVenueOwnerFields = require('./migrations/update_venue_owner_fields');
 
 async function runAllMigrations() {
   try {
@@ -26,12 +27,18 @@ async function runAllMigrations() {
     await migrateVenuesTable();
     console.log('');
 
+    // Run Venue Owner Fields migration
+    console.log('4. Running Venue Owner Fields migration...');
+    await updateVenueOwnerFields();
+    console.log('');
+
     console.log('✅ All migrations completed successfully!');
     console.log('');
     console.log('Database structure is now up to date:');
     console.log('- acl_trusts table created and seeded with roles');
     console.log('- events table updated to use owner_id/owner_type');
     console.log('- venues table updated to use owner_id/owner_type');
+    console.log('- venues table updated to allow null owner fields');
     console.log('');
     console.log('You can now restart your backend server.');
     

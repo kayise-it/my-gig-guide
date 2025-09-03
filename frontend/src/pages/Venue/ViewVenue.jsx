@@ -6,7 +6,7 @@ import HeroSection from '../../components/UI/HeroSection';
 import { useAuth } from '../../context/AuthContext';
 import { Autocomplete } from '@react-google-maps/api';
 import { useGoogleMaps } from '../../context/GoogleMapsContext';
-import VenueMap from '../../components/Map/VenueMap';
+import LiveEventsMap from '../../components/Map/LiveEventsMap';
 import { PhotoIcon } from '@heroicons/react/24/outline';
 import { 
   StarIcon as StarIconSolid,
@@ -34,8 +34,10 @@ import {
   TicketIcon
 } from '@heroicons/react/24/outline';
 import VenueGallerySection from '../../components/Venue/VenueGallerySection';
+import VenueReviewComments from '../../components/Venue/VenueReviewComments';
 import VenueUpcomingEvents from '../../components/Venue/VenueUpcomingEvents';
 import DisplayPicture from '../../components/UI/DisplayPicture';
+import RatingSystem from '../../components/UI/RatingSystem';
 
 
 export default function ViewVenue() {
@@ -64,6 +66,18 @@ export default function ViewVenue() {
   const [selectedGalleryFiles, setSelectedGalleryFiles] = useState([]);
   const [galleryFilePreviews, setGalleryFilePreviews] = useState([]);
   const [uploadingGallery, setUploadingGallery] = useState(false);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [bookingForm, setBookingForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    message: 'I am interested in booking your venue',
+    date: '',
+    time: '',
+    duration: '2 hours'
+  });
+  const [bookingSubmitting, setBookingSubmitting] = useState(false);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
 
   // Google Maps configuration
   const autocompleteRef = useRef(null);
@@ -442,6 +456,22 @@ export default function ViewVenue() {
     }
   };
 
+  // Handle delete venue (owner only)
+  const handleDeleteVenue = async () => {
+    if (!isVenueOwner) return;
+    if (!window.confirm('Are you sure you want to delete this venue? This cannot be undone.')) return;
+    try {
+      await venueService.deleteVenue(id);
+      // Navigate back to the correct dashboard based on role
+      const destination = currentUser?.role === 4 ? '/organiser/dashboard' : '/artists/dashboard';
+      navigate(destination, { replace: true });
+    } catch (error) {
+      console.error('Error deleting venue:', error);
+      const msg = error?.response?.data?.message || error?.message || 'Failed to delete venue';
+      alert(msg);
+    }
+  };
+
   // Handle cancel edit
   const handleCancelEdit = () => {
     setIsEditingName(false);
@@ -613,11 +643,11 @@ export default function ViewVenue() {
           { icon: MapPinIcon, text: venue?.location || 'Location TBD' },
           { icon: UsersIcon, text: `${venue?.capacity || 0} Capacity` }
         ]}
-        rating="4.7"
-        ratingText="Venue Rating"
+        rating={null}
+        ratingText={null}
         ctaText={isVenueOwner ? null : "Book Venue"}
         ctaIcon={isVenueOwner ? null : CalendarDaysIcon}
-        onCtaClick={isVenueOwner ? null : () => console.log('Book venue clicked')}
+        onCtaClick={isVenueOwner ? null : () => setIsBookingOpen(true)}
       />
 
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -642,7 +672,7 @@ export default function ViewVenue() {
                     {/* Upload Overlay - Only show for venue owners when editing */}
                     {isVenueOwner && isEditingName && (
                       <>
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center rounded-xl">
+                        <div className="absolute inset-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center rounded-xl">
                           <label htmlFor="main-picture-upload" className="cursor-pointer">
                             <div className="bg-white/90 backdrop-blur-sm rounded-full p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                               <PhotoIcon className="h-6 w-6 text-purple-600" />
@@ -771,8 +801,13 @@ export default function ViewVenue() {
               <div className="mt-6 lg:mt-0 lg:ml-8">
                 <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 p-6 rounded-2xl min-w-[250px] shadow-lg">
                   <div className="mb-6 text-center">
-                    <p className="text-4xl font-black text-gray-900 mb-1">★ 4.9</p>
-                    <p className="text-sm text-gray-600 bg-white px-3 py-1 rounded-full inline-block">venue rating</p>
+                    <RatingSystem
+                      rateableType="venue"
+                      rateableId={venue?.id}
+                      label="Venue Rating"
+                      showForm={true}
+                      showReviews={false}
+                    />
                   </div>
 
                   {isVenueOwner ? (
@@ -804,10 +839,20 @@ export default function ViewVenue() {
                       </button>
                     )
                   ) : (
-                    <button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 group">
+                    <button onClick={() => setIsBookingOpen(true)} className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 group">
                       <SparklesIcon className="h-5 w-5 mr-2" />
                       <span>Book Venue</span>
                       <ArrowTopRightOnSquareIcon className="h-5 w-5 ml-2 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300" />
+                    </button>
+                  )}
+
+                  {/* Delete (owner only) */}
+                  {isVenueOwner && (
+                    <button 
+                      onClick={handleDeleteVenue}
+                      className="w-full mt-3 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl"
+                    >
+                      <span>Delete Venue</span>
                     </button>
                   )}
 
@@ -870,25 +915,33 @@ export default function ViewVenue() {
 
             {/* Sidebar */}
             <div className="space-y-6">
-               {/* Venue Map */}
-               <div>
+              {/* Reviews Carousel */}
+              <VenueReviewComments venueId={venue?.id} venueName={venue?.name} />
+              {/* Venue Map */}
+              <div>
                 <div className="bg-white border border-gray-200 rounded-xl">
                   {venue?.latitude && venue?.longitude ? (
-                    <VenueMap venue={venue} />
+                    <LiveEventsMap
+                      events={[{
+                        id: venue.id,
+                        name: venue.name || 'Venue',
+                        date: new Date().toISOString(),
+                        venue: {
+                          name: venue.name,
+                          latitude: venue.latitude,
+                          longitude: venue.longitude
+                        }
+                      }]}
+                      height="300px"
+                      showLegend={false}
+                      compact={true}
+                      zoomDelta={2}
+                    />
                   ) : (
                     <div>
                       <p className="text-gray-500 text-center py-8">No location coordinates available for this venue.</p>
                       <p className="text-sm text-gray-400 text-center">Latitude: {venue?.latitude || 'Not set'}</p>
                       <p className="text-sm text-gray-400 text-center">Longitude: {venue?.longitude || 'Not set'}</p>
-                      {/* Test map with mock data */}
-                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                        <p className="text-sm text-gray-600 mb-2">Test Map (Mock Data):</p>
-                        <VenueMap venue={{
-                          name: "Test Venue",
-                          latitude: -25.4658,
-                          longitude: 30.9853
-                        }} />
-                      </div>
                     </div>
                   )}
                 </div>
@@ -931,7 +984,7 @@ export default function ViewVenue() {
 
             <div className="relative">
               <img
-                src={galleryImages[selectedImageIndex]?.startsWith('http') ? galleryImages[selectedImageIndex] : galleryImages[selectedImageIndex]}
+                src={galleryImages[selectedImageIndex]?.startsWith('http') ? galleryImages[selectedImageIndex] : `${API_BASE_URL}${galleryImages[selectedImageIndex]}`}
                 alt={`Gallery ${selectedImageIndex + 1}`}
                 className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
                 onError={(e) => {
@@ -960,6 +1013,113 @@ export default function ViewVenue() {
 
             <div className="text-center text-white mt-4">
               <span className="text-sm">{selectedImageIndex + 1} of {galleryImages.length}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Book Venue Modal */}
+      {isBookingOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900">Book {venue?.name}</h2>
+              <button className="text-gray-400 hover:text-gray-600" onClick={() => setIsBookingOpen(false)}>
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Your Name</label>
+                  <input
+                    type="text"
+                    value={bookingForm.name}
+                    onChange={(e)=>setBookingForm(prev=>({...prev,name:e.target.value}))}
+                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Your Email</label>
+                  <input
+                    type="email"
+                    value={bookingForm.email}
+                    onChange={(e)=>setBookingForm(prev=>({...prev,email:e.target.value}))}
+                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    value={bookingForm.phone}
+                    onChange={(e)=>setBookingForm(prev=>({...prev,phone:e.target.value}))}
+                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Date</label>
+                  <input
+                    type="date"
+                    value={bookingForm.date}
+                    onChange={(e)=>setBookingForm(prev=>({...prev,date:e.target.value}))}
+                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Time</label>
+                  <input
+                    type="time"
+                    value={bookingForm.time}
+                    onChange={(e)=>setBookingForm(prev=>({...prev,time:e.target.value}))}
+                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Duration</label>
+                  <select
+                    value={bookingForm.duration}
+                    onChange={(e)=>setBookingForm(prev=>({...prev,duration:e.target.value}))}
+                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-300"
+                  >
+                    {['1 hour','2 hours','3 hours','4 hours','Full day'].map(d=>(
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Message</label>
+                <textarea
+                  rows="4"
+                  value={bookingForm.message}
+                  onChange={(e)=>setBookingForm(prev=>({...prev,message:e.target.value}))}
+                  className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-300"
+                />
+              </div>
+              {venue?.contact_email && (
+                <p className="text-xs text-gray-500">This request will be directed to: <span className="font-medium">{venue.contact_email}</span></p>
+              )}
+              {bookingSuccess && (
+                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-lg">Booking request sent</div>
+              )}
+            </div>
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <button className="px-4 py-2 rounded-lg text-gray-600 hover:text-gray-800" onClick={()=>setIsBookingOpen(false)}>Cancel</button>
+              <button
+                disabled={bookingSubmitting}
+                onClick={()=>{
+                  setBookingSubmitting(true);
+                  setTimeout(()=>{
+                    setBookingSubmitting(false);
+                    setBookingSuccess(true);
+                    setTimeout(()=>{ setBookingSuccess(false); setIsBookingOpen(false); }, 5000);
+                  }, 800);
+                }}
+                className={`px-6 py-2 rounded-lg text-white font-medium ${bookingSubmitting? 'bg-gray-400' : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700'}`}
+              >
+                {bookingSubmitting? 'Sending...' : 'Send'}
+              </button>
             </div>
           </div>
         </div>

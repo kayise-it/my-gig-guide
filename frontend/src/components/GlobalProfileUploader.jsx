@@ -55,11 +55,7 @@ const GlobalProfileUploader = ({
             const fileName = 'profile.jpg';
 
             const formData = new FormData();
-            formData.append('uploaded_image', dataURLtoFile(base64Image, fileName));
-            formData.append('path', path);
-            formData.append('folder_name', folder_name);
-            formData.append('user_type', userType);
-            formData.append('image_type', imageType);
+            formData.append('profile_picture', dataURLtoFile(base64Image, fileName));
 
             try {
                 await axios.put(

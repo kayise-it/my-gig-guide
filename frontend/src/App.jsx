@@ -1,5 +1,5 @@
 // frontend/src/App
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
 import Layout from './components/Layout';
 import { GoogleMapsProvider } from './context/GoogleMapsContext';
@@ -8,6 +8,9 @@ import './utils/consoleErrorFixer'; // Import error fixer utility
 /* Owners */
 import AdminDashboard from "./pages/AdminDashboard";
 import Dashboard from "./pages/Dashboard/Dashboard";
+import UserCreateEvent from "./pages/Dashboard/CreateEvent";
+import UserViewEvent from "./pages/Dashboard/ViewEvent";
+import UserEditEvent from "./pages/Dashboard/EditEvent";
 
 /* Public Pages */
 import Home from "./pages/Home";
@@ -49,8 +52,7 @@ import RatingDemo from "./pages/RatingDemo";
 function App() {
   return (
     <GoogleMapsProvider>
-      <Router>
-        <Routes>
+      <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Layout><Home /></Layout>} />
         <Route path="/about" element={<Layout><AboutUs /></Layout>} />
@@ -79,6 +81,11 @@ function App() {
 
         {/* Protected Dashboard Routes */}
         <Route path="/dashboard" element={<PrivateRoute><Layout><Dashboard /></Layout></PrivateRoute>} />
+        {/* User Dashboard Routes */}
+        <Route path="/user/dashboard" element={<PrivateRoute><Layout><Dashboard /></Layout></PrivateRoute>} />
+        <Route path="/user/dashboard/create-event" element={<PrivateRoute><Layout><UserCreateEvent /></Layout></PrivateRoute>} />
+        <Route path="/user/dashboard/event/:id" element={<PrivateRoute><Layout><UserViewEvent /></Layout></PrivateRoute>} />
+        <Route path="/user/dashboard/edit-event/:id" element={<PrivateRoute><Layout><UserEditEvent /></Layout></PrivateRoute>} />
         <Route path="/admin" element={<PrivateRoute requiredRole="admin"><Layout><AdminDashboard /></Layout></PrivateRoute>} />
         <Route path="/organiser/dashboard" element={<PrivateRoute requiredRole="organiser"><Layout><OrganiserDashboard /></Layout></PrivateRoute>} />
         <Route path="/organiser/dashboard/profile" element={<PrivateRoute requiredRole="organiser"><Layout><OrganisationProfile /></Layout></PrivateRoute>} />
@@ -95,8 +102,7 @@ function App() {
         {/* Test Routes */}
         <Route path="/gallery-test" element={<Layout><GalleryTest /></Layout>} />
         <Route path="/rating-demo" element={<Layout><RatingDemo /></Layout>} />
-        </Routes>
-      </Router>
+      </Routes>
     </GoogleMapsProvider>
   );
 }

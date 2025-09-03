@@ -8,7 +8,127 @@ const multer = require('multer');
 // Use memory storage; controller will persist to disk
 const upload = multer({ storage: multer.memoryStorage() });
 
-// List all venues with search, filtering, and pagination
+// Public route for listing all venues (no authentication required)
+router.get('/public', async (req, res) => {
+  try {
+    const { 
+      search = '', 
+      location = '', 
+      capacity_min = 0, 
+      capacity_max = 10000, 
+      page = 1, 
+      limit = 20
+    } = req.query;
+
+    const offset = (page - 1) * limit;
+    const whereClause = {};
+
+    // Add search functionality (using LIKE for MySQL compatibility)
+    if (search) {
+      whereClause[require('sequelize').Op.or] = [
+        { name: { [require('sequelize').Op.like]: `%${search}%` } },
+        { location: { [require('sequelize').Op.like]: `%${location}%` } },
+        { description: { [require('sequelize').Op.like]: `%${search}%` } }
+      ];
+    }
+
+    // Add location filter
+    if (location) {
+      whereClause.location = { [require('sequelize').Op.like]: `%${location}%` };
+    }
+
+    // Add capacity filter
+    if (capacity_min || capacity_max) {
+      whereClause.capacity = {
+        [require('sequelize').Op.between]: [parseInt(capacity_min), parseInt(capacity_max)]
+      };
+    }
+
+    // Get all venues with owner information
+    const { count, rows: rawVenues } = await require('../models').venue.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: require('../models').artist,
+          as: 'artistOwner',
+          required: false,
+          include: [{
+            model: require('../models').user,
+            as: 'user',
+            attributes: ['username', 'email']
+          }]
+        },
+        {
+          model: require('../models').organiser,
+          as: 'organiserOwner', 
+          required: false,
+          include: [{
+            model: require('../models').user,
+            as: 'user',
+            attributes: ['username', 'email']
+          }]
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    // Add ownership information for public display
+    const venues = rawVenues.map(venue => {
+      const venueData = venue.toJSON();
+      
+      // Determine owner information
+      let owner = null;
+      
+      if (venueData.owner_type === 'artist' && venueData.artistOwner) {
+        owner = {
+          type: 'artist',
+          id: venueData.artistOwner.id,
+          name: venueData.artistOwner.stage_name || venueData.artistOwner.user?.username,
+          email: venueData.artistOwner.user?.email
+        };
+      } else if (venueData.owner_type === 'organiser' && venueData.organiserOwner) {
+        owner = {
+          type: 'organiser',
+          id: venueData.organiserOwner.id,
+          name: venueData.organiserOwner.name || venueData.organiserOwner.user?.username,
+          email: venueData.organiserOwner.user?.email
+        };
+      } else if (venueData.owner_type === 'unclaimed' || !venueData.owner_type) {
+        owner = {
+          type: 'unclaimed',
+          id: null,
+          name: 'Unclaimed',
+          email: null
+        };
+      }
+
+      return {
+        ...venueData,
+        owner,
+        // Remove the included models to clean up response
+        artistOwner: undefined,
+        organiserOwner: undefined
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      venues: venues,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(count / limit)
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ message: 'Failed to fetch venues', error: err.message });
+  }
+});
+
+// List all venues with search, filtering, and pagination (authenticated)
 router.get('/', verifyToken, async (req, res) => {
   try {
     const { 
@@ -102,6 +222,15 @@ router.get('/', verifyToken, async (req, res) => {
         };
         // Check if current user owns this venue (for organisers, match organiser ID)
         isOwnVenue = user_role === 'organiser' && venueData.owner_id.toString() === user_id.toString();
+      } else if (venueData.owner_type === 'unclaimed' || !venueData.owner_type) {
+        owner = {
+          type: 'unclaimed',
+          id: null,
+          name: 'Unclaimed',
+          email: null
+        };
+        // Unclaimed venues are not owned by anyone
+        isOwnVenue = false;
       }
 
       return {

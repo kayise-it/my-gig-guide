@@ -6,6 +6,7 @@ const { createOrUpdateUserProfileSettings } = require('../helpers/userProfileHel
 const { createFolderStructure } = require('../utils/fileUtils');
 const fs = require('fs');
 const path = require('path');
+const { buildUserFolderAbsolutePath, getUserBasePath } = require('../utils/pathHelpers');
 
 //Access control list to delete the event ACL[1,2,3]
 exports.deleteArtist = async (req, res) => {
@@ -179,7 +180,7 @@ exports.uploadGalleryImages = async (req, res) => {
     await createFolderStructure(settings);
 
     // Create gallery subfolder if it doesn't exist
-    const folderPath = path.resolve(__dirname, "..", settings.path, settings.folder_name);
+    const folderPath = buildUserFolderAbsolutePath('artists', settings.folder_name);
     const galleryPath = path.join(folderPath, 'gallery');
     
     // Ensure all artist subfolders exist (events, venues, profile, gallery)
@@ -234,9 +235,12 @@ exports.uploadGalleryImages = async (req, res) => {
           continue;
         }
 
-        // Generate unique filename
+        // Generate safe, unique filename (no spaces or special chars)
         const timestamp = Date.now();
-        const filename = `gallery_${timestamp}_${originalname}`;
+        const safeOriginal = originalname
+          .toLowerCase()
+          .replace(/[^a-z0-9._-]/g, '_');
+        const filename = `gallery_${timestamp}_${safeOriginal}`;
 
         // Save the file to gallery folder
         const filePath = path.join(galleryPath, filename);
@@ -361,15 +365,18 @@ exports.uploadGalleryImage = async (req, res) => {
       userId: user.id
     });
 
-    // Generate unique filename
+    // Generate safe, unique filename
     const timestamp = Date.now();
-    const filename = `gallery_${timestamp}_${originalname}`;
+    const safeOriginal = originalname
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]/g, '_');
+    const filename = `gallery_${timestamp}_${safeOriginal}`;
 
     // Create folder structure if it doesn't exist
     await createFolderStructure(settings);
 
     // Create gallery subfolder if it doesn't exist
-    const folderPath = path.resolve(__dirname, "..", settings.path, settings.folder_name);
+    const folderPath = buildUserFolderAbsolutePath('artists', settings.folder_name);
     const galleryPath = path.join(folderPath, 'gallery');
     
     // Ensure all artist subfolders exist (events, venues, profile, gallery)
@@ -631,23 +638,45 @@ exports.uploadProfilePicture = async (req, res) => {
       }
     });
 
-    // Get or create settings - function will handle existing settings automatically
-    const folderName = `${user.role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
-    const settings = await createOrUpdateUserProfileSettings({
-      role: user.role,
-      name: user.name,
-      username: user.username,
-      email: user.email,
-      contact_email: user.contact_email,
-      phone_number: user.phone_number,
-      folderName,
-      userId: user.id
-    });
+    // Get existing settings from the artist's profile instead of creating new ones
+    let settings;
+    if (existingArtist && existingArtist.settings) {
+      try {
+        settings = JSON.parse(existingArtist.settings);
+        console.log('Using existing settings from artist profile:', settings);
+      } catch (e) {
+        console.error('Error parsing existing settings, will create new ones:', e);
+        // Fallback to creating new settings if parsing fails
+        const folderName = `${user.role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
+        settings = await createOrUpdateUserProfileSettings({
+          role: user.role,
+          name: user.name,
+          username: user.username,
+          email: user.email,
+          contact_email: user.contact_email,
+          phone_number: user.phone_number,
+          folderName,
+          userId: user.id
+        });
+      }
+    } else {
+      // No existing settings, create new ones
+      const folderName = `${user.role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
+      settings = await createOrUpdateUserProfileSettings({
+        role: user.role,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        contact_email: user.contact_email,
+        phone_number: user.phone_number,
+        folderName,
+        userId: user.id
+      });
+    }
 
-    // Generate unique filename
-    const timestamp = Date.now();
+    // Generate clean filename: profile_picture.{extension}
     const fileExtension = originalname.split('.').pop();
-    const filename = `profile_${timestamp}_${originalname}`;
+    const filename = `profile_picture.${fileExtension}`;
 
     // Create folder structure if it doesn't exist
     await createFolderStructure(settings);
@@ -655,10 +684,13 @@ exports.uploadProfilePicture = async (req, res) => {
     // Delete previous profile picture if it exists
     if (existingArtist && existingArtist.profile_picture) {
       try {
-        const previousPicturePath = path.resolve(__dirname, "..", existingArtist.profile_picture);
+        // Construct the correct path to the previous profile picture
+        const previousPicturePath = path.resolve(__dirname, "../../", existingArtist.profile_picture);
         if (fs.existsSync(previousPicturePath)) {
           fs.unlinkSync(previousPicturePath);
           console.log('Deleted previous profile picture:', previousPicturePath);
+        } else {
+          console.log('Previous profile picture not found at:', previousPicturePath);
         }
       } catch (error) {
         console.error('Error deleting previous profile picture:', error);
@@ -666,29 +698,53 @@ exports.uploadProfilePicture = async (req, res) => {
       }
     }
 
-    // Save the file to disk
-    const folderPath = path.resolve(__dirname, "..", settings.path, settings.folder_name);
-    const filePath = path.join(folderPath, filename);
+    // PERMANENT FIX: Save file to the correct public directory
+    // The file should be saved to: frontend/public/artists/3_trip_9337/profile_picture.jpg
+    // And served from: /artists/3_trip_9337/profile_picture.jpg
     
+    // Construct the correct file path
+    const userFolderPath = buildUserFolderAbsolutePath('artists', settings.folder_name.replace(/^artists\//, ''));
+    const filePath = path.join(userFolderPath, filename);
+    
+    console.log("🔍 User folder path:", userFolderPath);
+    console.log("🔍 Full file path:", filePath);
+    console.log("🔍 Buffer size:", buffer.length, "bytes");
+    
+    // Ensure all directories exist
+    if (!fs.existsSync(userFolderPath)) {
+      fs.mkdirSync(userFolderPath, { recursive: true });
+      console.log("✅ Created user directory");
+    }
+    
+    // Save the file
     fs.writeFileSync(filePath, buffer);
-    console.log('File saved to:', filePath);
-
-    // At this point, settings.path + settings.folder_name points to the right folder.
-    // Save the uploaded file's path in the Artist profile.
-    const profilePicturePath = `${settings.path}${settings.folder_name}/${filename}`;
-    await existingArtist.update({
-      profile_picture: profilePicturePath
-    });
-
-    res.json({
-      message: "Profile picture uploaded successfully",
-      profile_picture: profilePicturePath,
-      fileInfo: {
-        originalName: originalname,
-        size: size,
-        mimeType: mimetype
-      }
-    });
+    console.log('✅ File saved successfully');
+    
+    // Verify the file was created
+    if (fs.existsSync(filePath)) {
+      const stats = fs.statSync(filePath);
+      console.log('✅ File verified, size:', stats.size, 'bytes');
+      
+      // Store the clean public path in database
+      const profilePicturePath = `/artists/${settings.folder_name.replace(/^artists\//, '')}/${filename}`;
+      console.log("✅ Database path:", profilePicturePath);
+      
+      await existingArtist.update({
+        profile_picture: profilePicturePath
+      });
+      
+      res.json({
+        message: "Profile picture uploaded successfully",
+        profile_picture: profilePicturePath,
+        fileInfo: {
+          originalName: originalname,
+          size: size,
+          mimeType: mimetype
+        }
+      });
+    } else {
+      throw new Error('File was not created successfully');
+    }
 
   } catch (err) {
     console.error("Upload error:", err);

@@ -25,18 +25,18 @@ const ProfilePictureModal = ({ isOpen, onClose, initialImage, onSave, settings }
     }
   };
 
-const handleSave = async () => {
-  setIsLoading(true);
-  try {
-    const destinationPath = settings.path + settings.folder_name;
-    await onSave(rawFile, destinationPath); // ✅ send actual file
-    onClose();
-  } catch (error) {
-    console.error("Error saving profile picture:", error);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  const handleSave = async () => {
+    setIsLoading(true);
+    try {
+      const destinationPath = settings.path + '/' + settings.folder_name;
+      await onSave(rawFile, destinationPath); // ✅ send actual file
+      onClose();
+    } catch (error) {
+      console.error("Error saving profile picture:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
 
   if (!isOpen) return null;
@@ -78,7 +78,7 @@ const handleSave = async () => {
             <button
               onClick={() => fileInputRef.current.click()}
               className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 px-4 rounded"
-            >
+             n>
               Upload Photo
             </button>
             {image && (

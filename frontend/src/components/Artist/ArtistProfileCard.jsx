@@ -9,16 +9,41 @@ export default function ArtistProfileCard({
   isProfileModalOpen, 
   onProfileModalClose,
   onProfileModalOpen,
-  onSaveProfilePicture, // Add this new prop for saving
+  onSaveProfilePicture,
   artistSettings,
 }) {
-  // Remove "../frontend" from the profile_picture path if present
-  const profilePicture = artistData.profile_picture
-    ? artistData.profile_picture.replace(/^(\.\.\/frontend)/, '')
-    : '';
+  // Build the correct public URL for the profile picture
+  let profilePictureUrl = '';
+  if (artistData.profile_picture) {
+    console.log('🔍 Profile picture data:', artistData.profile_picture);
+    
+    // Extract the path after "artists/" and construct the correct URL
+    let cleanPath = artistData.profile_picture;
+    
+    // Find the "artists/" part in the path
+    const artistsIndex = cleanPath.indexOf('artists/');
+    if (artistsIndex !== -1) {
+      // Get everything from "artists/" onwards
+      cleanPath = cleanPath.substring(artistsIndex);
+    } else {
+      // If no "artists/" found, use the path as is
+      cleanPath = artistData.profile_picture;
+    }
+    
+    // Automatically detect the current domain and properly encode the URL
+    const baseUrl = window.location.origin;
+    
+    // Properly encode the path to handle spaces and special characters
+    const encodedPath = encodeURIComponent(cleanPath).replace(/%2F/g, '/');
+    profilePictureUrl = `${baseUrl}/${encodedPath}?t=${new Date().getTime()}`;
+    
+    console.log('🔗 Constructed URL:', profilePictureUrl);
+  } else {
+    console.log('❌ No profile picture data available');
+  }
+
   return (
     <>
-    
       <div className="bg-white shadow rounded-tl-lg rounded-tr-lg overflow-hidden">
         <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-8">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
@@ -31,15 +56,23 @@ export default function ArtistProfileCard({
                   }`}
                 >
                   {artistData.profile_picture ? (
-                    <img
-                        src={`${profilePicture}?t=${new Date().getTime()}`} // ✅ reloads the image on update
-                      alt="Profile"
-                      className="h-full w-full object-cover"
-                    />
+                    <>
+                      {console.log('🖼️ Rendering image with URL:', profilePictureUrl)}
+                      <img
+                        src={profilePictureUrl}
+                        alt="Profile"
+                        className="h-full w-full object-cover"
+                        onError={(e) => console.error('❌ Image failed to load:', e.target.src)}
+                        onLoad={() => console.log('✅ Image loaded successfully:', profilePictureUrl)}
+                      />
+                    </>
                   ) : (
-                    <div className="h-full w-full bg-indigo-200 flex items-center justify-center">
-                      <UserIcon className="h-12 w-12 text-indigo-600" />
-                    </div>
+                    <>
+                      {console.log('👤 No profile picture, showing default icon')}
+                      <div className="h-full w-full bg-indigo-200 flex items-center justify-center">
+                        <UserIcon className="h-12 w-12 text-indigo-600" />
+                      </div>
+                    </>
                   )}
                 </div>
                 {editMode && (
@@ -50,7 +83,6 @@ export default function ArtistProfileCard({
                     <PencilIcon className="h-5 w-5 text-indigo-600" />
                   </div>
                 )}
-                
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-white">{artistData.stage_name}</h1>

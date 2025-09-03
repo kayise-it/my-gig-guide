@@ -31,34 +31,37 @@ const VenueForm = ({ isModal = false, onSuccess, onClose, venueId: propVenueId }
       }));
     }
   };
-  let userRole = '';
-  if (currentUser.artist_id) {
-    userRole = 'artists';
-  } 
-  if (currentUser.organiser_id) {
-    userRole = 'organisers';
-  }
+
+  // Determine user role and owner information
+  const getUserRoleInfo = () => {
+    if (currentUser.artist_id) {
+      return {
+        userRole: 'artists',
+        owner_id: currentUser.artist_id,
+        owner_type: 'artist'
+      };
+    } 
+    if (currentUser.organiser_id) {
+      return {
+        userRole: 'organisers',
+        owner_id: currentUser.organiser_id,
+        owner_type: 'organiser'
+      };
+    }
+    return {
+      userRole: '',
+      owner_id: null,
+      owner_type: null
+    };
+  };
+
+  const { userRole, owner_id, owner_type } = getUserRoleInfo();
   // Fetch user info on mount
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem("user"));
     setUser(storedUser);
 
   }, []);
-
-  // Determine owner_id and owner_type based on user role
-  let owner_id = null;
-  let owner_type = null;
-  
-  // Check if user has artist_id (role 3 = artist)
-  if (currentUser.artist_id) {
-    owner_id = currentUser.artist_id;
-    owner_type = 'artist';
-  } 
-  // Check if user has organiser_id (role 4 = organiser)
-  else if (currentUser.organiser_id) {
-    owner_id = currentUser.organiser_id;
-    owner_type = 'organiser';
-  }
 
   // Debug logging
   console.log('Current User:', currentUser);
@@ -95,6 +98,15 @@ const VenueForm = ({ isModal = false, onSuccess, onClose, venueId: propVenueId }
 
   const validateForm = () => {
     const newErrors = {};
+    
+    // Allow creating unclaimed venues (no role/owner required) or venues with owners
+    if (formData.owner_id && formData.owner_type) {
+      // If owner_id is provided, owner_type must be valid
+      if (!['artist', 'organiser'].includes(formData.owner_type)) {
+        newErrors.owner_type = 'Owner type must be either artist or organiser';
+      }
+    }
+    
     if (!formData.name.trim()) newErrors.name = 'Name is required';
     if (!formData.location.trim()) newErrors.location = 'Location is required';
     if (!formData.capacity) newErrors.capacity = 'Capacity is required';
@@ -104,8 +116,19 @@ const VenueForm = ({ isModal = false, onSuccess, onClose, venueId: propVenueId }
       newErrors.contact_email = 'Email is invalid';
     }
     if (!formData.address.trim()) newErrors.address = 'Address is required';
-    if (!formData.owner_id) newErrors.owner_id = 'Owner ID is required';
-    if (!formData.owner_type) newErrors.owner_type = 'Owner type is required';
+    
+    // Validate main picture file if provided
+    if (mainPictureFile) {
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      
+      if (!allowedTypes.includes(mainPictureFile.type)) {
+        newErrors.main_picture = 'Please upload a valid image file (JPG, PNG, GIF)';
+      }
+      if (mainPictureFile.size > maxSize) {
+        newErrors.main_picture = 'Image file size must be less than 5MB';
+      }
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -212,7 +235,7 @@ const VenueForm = ({ isModal = false, onSuccess, onClose, venueId: propVenueId }
           const targetUrl = newVenueId ? `/artists/dashboard/venue/${newVenueId}` : '/artists/dashboard';
           navigate(targetUrl);
         } else {
-          const targetUrl = newVenueId ? `/venue/${newVenueId}` : '/venues';
+          const targetUrl = newVenueId ? `/venues/${newVenueId}` : '/venues';
           navigate(targetUrl);
         }
       }
@@ -240,6 +263,62 @@ const VenueForm = ({ isModal = false, onSuccess, onClose, venueId: propVenueId }
         </h2>
       )}
 
+      {/* Venue Ownership Toggle */}
+      {!isEditMode && (
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+          <label className="block text-sm font-medium mb-2">Venue Ownership</label>
+          <div className="flex space-x-4">
+            <label className="flex items-center">
+              <input
+                type="radio"
+                name="ownership_type"
+                value="claimed"
+                checked={formData.owner_id && formData.owner_type}
+                onChange={() => {
+                  if (owner_id && owner_type) {
+                    setFormData(prev => ({
+                      ...prev,
+                      owner_id: owner_id,
+                      owner_type: owner_type
+                    }));
+                  }
+                }}
+                className="mr-2"
+              />
+              <span className="text-sm">Claim this venue (I own/manage it)</span>
+            </label>
+            <label className="flex items-center">
+              <input
+                type="radio"
+                name="ownership_type"
+                value="unclaimed"
+                checked={!formData.owner_id || !formData.owner_type}
+                onChange={() => {
+                  setFormData(prev => ({
+                    ...prev,
+                    owner_id: null,
+                    owner_type: null
+                  }));
+                }}
+                className="mr-2"
+              />
+              <span className="text-sm">List as available (unclaimed venue)</span>
+            </label>
+          </div>
+          <p className="text-xs text-gray-600 mt-2">
+            {formData.owner_id && formData.owner_type 
+              ? "This venue will be associated with your account and you'll have full control over it."
+              : "This venue will be listed as available for others to discover and potentially claim."
+            }
+          </p>
+        </div>
+      )}
+
+      {errors.role && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {errors.role}
+        </div>
+      )}
       {errors.server && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           {errors.server}
@@ -389,7 +468,7 @@ const VenueForm = ({ isModal = false, onSuccess, onClose, venueId: propVenueId }
             {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address}</p>}
           </div>
 
-          {/* Latitude & Longitude */}
+          {/* Main Picture */}
           <div className="mb-4 md:col-span-2">
             <label htmlFor="main_picture" className="block text-sm font-medium mb-1">
               Main Venue Picture
@@ -400,12 +479,15 @@ const VenueForm = ({ isModal = false, onSuccess, onClose, venueId: propVenueId }
               name="main_picture"
               accept="image/*"
               onChange={(e) => setMainPictureFile(e.target.files?.[0] || null)}
-              className="w-full p-2 border border-gray-300 rounded"
+              className={`w-full p-2 border rounded ${errors.main_picture ? 'border-red-500' : 'border-gray-300'}`}
             />
+            <p className="text-xs text-gray-500 mt-1">Upload a main image for your venue (JPG, PNG, GIF)</p>
+            {errors.main_picture && <p className="text-red-500 text-xs mt-1">{errors.main_picture}</p>}
           </div>
 
+          {/* Latitude & Longitude */}
           <div className="mb-4">
-            <label htmlFor="latitude" className=" text-sm font-medium mb-1">
+            <label htmlFor="latitude" className="block text-sm font-medium mb-1">
               Latitude
             </label>
             <input
@@ -420,7 +502,7 @@ const VenueForm = ({ isModal = false, onSuccess, onClose, venueId: propVenueId }
           </div>
 
           <div className="mb-4">
-            <label htmlFor="longitude" className=" text-sm font-medium mb-1 ">
+            <label htmlFor="longitude" className="block text-sm font-medium mb-1">
               Longitude
             </label>
             <input
@@ -430,7 +512,7 @@ const VenueForm = ({ isModal = false, onSuccess, onClose, venueId: propVenueId }
               name="longitude"
               value={formData.longitude}
               onChange={handleChange}
-              className="w-full p-2 border border-gray-300 rounded "
+              className="w-full p-2 border border-gray-300 rounded"
             />
           </div>
         </div>

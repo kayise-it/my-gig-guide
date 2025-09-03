@@ -17,7 +17,6 @@ import {
   XMarkIcon,
   TrashIcon
 } from '@heroicons/react/24/outline';
-import axios from 'axios';
 import PageHeader from '../../components/Includes/PageHeader';
 import DashboardBreadCrumb from '../../components/Includes/DashboardBreadCrumb';
 import { Link } from 'react-router-dom';
@@ -29,120 +28,55 @@ import ArtistPreviousEvents from '../../components/Artist/ArtistPreviousEvents';
 import ArtistViewProfile from '../../components/Artist/ArtistViewProfile';
 import ArtistEditForm from '../../components/Artist/ArtistEditForm';
 import GallerySection from '../../components/Artist/GallerySection';
+import { useProfilePicture } from '../../hooks/useProfilePicture';
+import { useArtistData } from '../../hooks/useArtistData';
+import { useArtistGallery } from '../../hooks/useArtistGallery';
+import axios from 'axios';
 import API_BASE_URL from '../../api/config';
-import { artistService } from '../../api/artistService';
 
 export default function ArtistDashboard() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [tempImage, setTempImage] = useState(null);
   const [artistSettings, setArtistSettings] = useState({});
-  const [state, setState] = useState({
-    isProfileModalOpen: false,
-    artistData: null,
-    artistEvents: [],
-    artistActiveEvents: [],
-    artistVenues: [],
-    loading: true,
-    error: null,
-    editMode: false
-  });
-  const [artistData, setArtistData] = useState({
-    id: 0,
-    userId: 0,
-    stage_name: '',
-    real_name: '',
-    genre: '',
-    bio: '',
-    phone_number: '',
-    instagram: '',
-    facebook: '',
-    twitter: '',
-    profile_picture: null
-  });
-  const [artistEvents, setArtistEvents] = useState([]);
-  const [artistActiveEvents, setArtistActiveEvents] = useState([]);
-  const [artistVenues, setArtistVenues] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [editMode, setEditMode] = useState(false);
-  const [galleryRefreshKey, setGalleryRefreshKey] = useState(0);
-  const [gallery, setGallery] = useState([]);
   const [isGalleryModalOpen, setIsGalleryModalOpen] = useState(false);
   const [selectedGalleryImage, setSelectedGalleryImage] = useState(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [uploadingImages, setUploadingImages] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [filePreviews, setFilePreviews] = useState([]);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState(false);
   const navigate = useNavigate();
+
+  // Get user ID from localStorage
+  const user = JSON.parse(localStorage.getItem('user'));
+  const userId = user?.id;
+
+  // Custom hooks for data management
+  const { artistData, loading, error, setError, updateProfilePicture } = useArtistData(userId);
+  const { uploadProfilePicture, isUploading, uploadError, uploadSuccess: profileUploadSuccess } = useProfilePicture(userId, artistSettings);
+  const { gallery, fetchGallery, deleteGalleryImage } = useArtistGallery(userId);
+
+  // Additional state variables still needed
+  const [artistVenues, setArtistVenues] = useState([]);
+  const [artistEvents, setArtistEvents] = useState([]);
+  const [artistActiveEvents, setArtistActiveEvents] = useState([]);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
 
   const handleSaveModalProfilePicture = async (file) => {
     try {
-      await handleProfilePicUpload(file);
-      setIsProfileModalOpen(false); // Close modal on successful upload
+      const result = await uploadProfilePicture(file);
+      if (result.success) {
+        // Update the artist data with the new profile picture
+        updateProfilePicture(result.profile_picture);
+        setIsProfileModalOpen(false);
+        console.log('✅ Profile picture updated successfully in UI');
+      }
     } catch (error) {
-      // Error is already logged by handleProfilePicUpload
-      // You might want to show a notification to the user here
-      console.error("Failed to upload from modal:", error);
+      console.error("❌ Failed to upload from modal:", error);
     }
   };
 
   const handleGalleryUploadSuccess = () => {
-    // Increment the refresh key to trigger GalleryDisplay to refetch data
-    setGalleryRefreshKey(prev => prev + 1);
     fetchGallery();
-  };
-
-  // Gallery management functions
-  const fetchGallery = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const user = JSON.parse(localStorage.getItem('user'));
-      const response = await axios.get(`${API_BASE_URL}/api/artists/${user.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      console.log('Gallery data from server:', response.data.gallery);
-      
-      if (response.data.gallery && response.data.gallery.trim() !== '') {
-        try {
-          const galleryImages = JSON.parse(response.data.gallery);
-          console.log('Parsed gallery images:', galleryImages);
-          
-          const formattedGallery = galleryImages.map(img => {
-            // Handle different path formats
-            let url = img;
-            if (img.startsWith('../frontend/public/')) {
-              // Convert relative file system path to web path
-              url = img.replace('../frontend/public/', '/');
-            } else if (img.startsWith('/artists/')) {
-              // Already a web path, use as is
-              url = img;
-            } else if (!img.startsWith('http')) {
-              // Assume it's a relative path and add leading slash
-              url = `/${img}`;
-            }
-            
-            return {
-              url: url,
-              originalPath: img
-            };
-          });
-          
-          console.log('Formatted gallery:', formattedGallery);
-          setGallery(formattedGallery);
-        } catch (parseError) {
-          console.error('Error parsing gallery JSON:', parseError);
-          setGallery([]);
-        }
-      } else {
-        console.log('No gallery data found, setting empty array');
-        setGallery([]);
-      }
-    } catch (error) {
-      console.error('Error fetching gallery:', error);
-      setGallery([]);
-    }
   };
 
   const handleFileSelection = (files) => {
@@ -199,13 +133,8 @@ export default function ArtistDashboard() {
       );
 
       if (response.status === 200) {
-        // Force immediate gallery refresh with cache busting
-        setGalleryRefreshKey(prev => prev + 1);
-        
-        // Wait a moment for the server to process, then fetch updated gallery
-        setTimeout(async () => {
-          await fetchGallery();
-        }, 500);
+        // Refresh gallery immediately
+        await fetchGallery();
         
         closeUploadModal();
         
@@ -266,34 +195,19 @@ export default function ArtistDashboard() {
     }
   };
 
+  // Fetch additional data (events, venues, gallery) when userId changes
   useEffect(() => {
-    const fetchAllData = async () => {
+    const fetchAdditionalData = async () => {
       try {
         const token = localStorage.getItem('token'); // or wherever your token is stored
-        const user = JSON.parse(localStorage.getItem('user'));
-        if (!user || !user.id) throw new Error('User not found');
+        if (!userId) return;
 
-        const [artistRes, eventsRes, activeEventsRes, venuesRes] = await Promise.all([
-          axios.get(`${API_BASE_URL}/api/artists/${user.id}`, { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get(`${API_BASE_URL}/api/artists/events_by_artist/${user.id}`, { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get(`${API_BASE_URL}/api/artists/events_active_by_artist/${user.id}`, { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get(`${API_BASE_URL}/api/artists/venues_by_artist/${user.id}`, { headers: { Authorization: `Bearer ${token}` } })
+        const [eventsRes, activeEventsRes, venuesRes] = await Promise.all([
+          axios.get(`${API_BASE_URL}/api/artists/events_by_artist/${userId}`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API_BASE_URL}/api/artists/events_active_by_artist/${userId}`, { headers: { Authorization: `Bearer ${token}` } }),
+          axios.get(`${API_BASE_URL}/api/artists/venues_by_artist/${userId}`, { headers: { Authorization: `Bearer ${token}` } })
         ]);
-        const artist = artistRes.data;
-        if (artist.settings) {
-          try {
-            const parsedSettings = typeof artist.settings === 'string'
-              ? JSON.parse(artist.settings)
-              : artist.settings;
 
-            setArtistSettings(parsedSettings);
-          } catch (error) {
-            console.error("Failed to parse artist settings:", error);
-          }
-        }
-
-
-        setArtistData(artist);
         setArtistEvents(eventsRes.data);
         setArtistActiveEvents(activeEventsRes.data);
         setArtistVenues(venuesRes.data);
@@ -301,23 +215,28 @@ export default function ArtistDashboard() {
         // Fetch gallery
         await fetchGallery();
       } catch (error) {
-        console.error('Error fetching Artist data dashboard:', error);
-        const serverMessage = error?.response?.data?.message || error.message || 'Unknown error';
-        setError(`Failed to load data: ${serverMessage}`);
-      } finally {
-        setLoading(false);
+        console.error('Error fetching additional artist data:', error);
       }
     };
 
-    fetchAllData();
-  }, []);
+    fetchAdditionalData();
+  }, [userId, fetchGallery]);
 
-  // Separate useEffect to handle gallery refresh when refresh key changes
+  // Handle artist settings when artist data changes
   useEffect(() => {
-    if (galleryRefreshKey > 0) {
-      fetchGallery();
+    if (artistData && artistData.settings) {
+      try {
+        const parsedSettings = typeof artistData.settings === 'string'
+          ? JSON.parse(artistData.settings)
+          : artistData.settings;
+        setArtistSettings(parsedSettings);
+      } catch (error) {
+        console.error("Failed to parse artist settings:", error);
+      }
     }
-  }, [galleryRefreshKey]);
+  }, [artistData]);
+
+  // Gallery refresh is now handled by the useArtistGallery hook
 
 
   function formatDateToDDMMYYYY(dateInput) {
@@ -329,59 +248,27 @@ export default function ArtistDashboard() {
   }
 
   //uploadProfilePic We have set up a directory structure for uploading profile pictures. The folder path is “uploads/artist/{id}_{name}”, where {id} is the artist’s unique ID, and {name} is the artist’s name. Uploaded images are stored in this directory.
-  const handleProfilePicUpload = async (imageFile) => {
-    try {
-      const formData = new FormData();
+  // Profile picture upload is now handled by useProfilePicture hook
 
-      formData.append("profile_picture", imageFile); // ✅ Use the actual file object
-      formData.append("setting_name", artistSettings.setting_name);
-      formData.append("path", artistSettings.path);
-      formData.append("folder_name", artistSettings.folder_name);
-      formData.append("propic", artistSettings.setting_name);
-
-      const response = await axios.put(
-        `${API_BASE_URL}/api/artists/uploadprofilepicture/${artistData.userId}`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-
-      console.log("Upload response:", response.data);
-
-      // ✅ Update artistData with new profile picture (this triggers re-render)
-      if (response.status === 200) {
-        setArtistData((prev) => ({
-          ...prev,
-          profile_picture: response.data.path
-        }));
-      }
-    } catch (error) {
-      console.error("Error uploading profile picture:", error);
-    }
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setArtistData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+  // Input change handling is now managed by the useArtistData hook
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const userId = JSON.parse(localStorage.getItem('user')).id;
-
-      const response = artistService.updateArtist(userId, artistData);
+      const token = localStorage.getItem('token');
+      const response = await axios.put(
+        `${API_BASE_URL}/api/artists/${userId}`,
+        artistData,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
 
       if (response.status === 200) {
         setEditMode(false);
+        console.log('✅ Artist data updated successfully');
       }
     } catch (error) {
-      console.error('Error updating artist data:', error);
+      console.error('❌ Error updating artist data:', error);
       setError('Failed to update profile');
     }
   };
@@ -434,7 +321,7 @@ export default function ArtistDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Success Notification */}
-      {uploadSuccess && (
+      {(profileUploadSuccess || uploadSuccess) && (
         <div className="fixed top-4 right-4 z-50 bg-green-50 border border-green-200 rounded-lg p-4 shadow-lg">
           <div className="flex items-center">
             <div className="flex-shrink-0">
@@ -472,7 +359,7 @@ export default function ArtistDashboard() {
             {editMode ? (
               <ArtistEditForm
                 artistData={artistData}
-                onInputChange={handleInputChange}
+    
                 onSubmit={handleSubmit}
                 onCancel={() => setState(prev => ({ ...prev, editMode: false }))}
               />

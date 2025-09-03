@@ -9,6 +9,7 @@ const Organiser = db.organiser;
 const User = db.user;
 const {verifyToken } = require("../middleware/auth.middleware");
 const { createOrUpdateUserProfileSettings, getUserFolderPath } = require("../helpers/userProfileHelper");
+const { buildUserFolderAbsolutePath, getUserBasePath, UPLOADS_ROOT } = require('../utils/pathHelpers');
 const createFolderStructure = require("../helpers/createFolderStructure");
 
 // Get all events
@@ -498,7 +499,8 @@ router.post('/:id/gallery', verifyToken, upload.array('gallery', 10), async (req
         await createFolderStructure(settings);
 
         // Create event gallery subfolder
-        const folderPath = path.resolve(__dirname, "..", settings.path, settings.folder_name);
+        const userTypeForGallery = event.owner_type === 'artist' ? 'artists' : 'organisers';
+        const folderPath = buildUserFolderAbsolutePath(userTypeForGallery, settings.folder_name);
         const eventsPath = path.join(folderPath, 'events');
         const eventFolderName = `${eventId}_${event.name.replace(/\s+/g, '_').toLowerCase()}`;
         const eventFolderPath = path.join(eventsPath, eventFolderName);
@@ -642,7 +644,7 @@ router.delete('/:id/gallery', verifyToken, async (req, res) => {
 
         // Delete the file from disk
         const userType = event.owner_type === 'artist' ? 'artists' : 'organisers';
-        const fullImagePath = path.join(process.env.FRONTEND_PUBLIC_PATH || '/Applications/MAMP/htdocs/my-gig-guide/frontend/public', userType, imagePath.replace(`/${userType}/`, ''));
+        const fullImagePath = path.join(UPLOADS_ROOT, imagePath.replace(/^\//, ''));
         if (fs.existsSync(fullImagePath)) {
             fs.unlinkSync(fullImagePath);
         }

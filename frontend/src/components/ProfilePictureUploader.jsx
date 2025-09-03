@@ -55,11 +55,7 @@ const ProfilePictureUploader = ({
       const fileName = 'profile.jpg';
 
       const formData = new FormData();
-      formData.append('uploaded_image', dataURLtoFile(base64Image, fileName));
-      formData.append('path', path);
-      formData.append('folder_name', folder_name);
-      formData.append('user_type', userType);
-      formData.append('image_type', 'profilepic');
+      formData.append('profile_picture', dataURLtoFile(base64Image, fileName));
 
       await axios.put(
         `/api/${whoWhere}/uploadprofilepicture/${userId}`,
@@ -129,7 +125,7 @@ const ProfilePictureUploader = ({
           <>
             <img
               src={image}
-              alt="Profile"
+              alt="Profilsse"
               className="h-full w-full object-cover"
             />
             {editable && isHovered && !isUploading && (

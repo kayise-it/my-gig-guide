@@ -4,6 +4,7 @@ const db = require('../models');
 const Artist = db.artist;
 const Organiser = db.organiser;
 const { createFolderStructure } = require('../utils/fileUtils');
+const { getUserBasePath, buildUserFolderAbsolutePath } = require('../utils/pathHelpers');
 const fs = require('fs');
 const path = require('path');
 
@@ -19,10 +20,10 @@ function generateUserFolderPath(user, roleData, userType) {
     try {
         if (roleData && roleData.settings) {
             const settings = JSON.parse(roleData.settings);
-            // settings.path examples: "../frontend/public/artists/" or "../frontend/public/organiser/"
-            const baseResolved = path.resolve(__dirname, '..', settings.path);
+            const userType = settings.userType || (settings.path && settings.path.includes('organiser') ? 'organisers' : 'artists');
+            const baseResolved = getUserBasePath(userType);
             return {
-                path: settings.path,
+                path: `${userType}/`,
                 folder_name: settings.folder_name,
                 fullPath: path.join(baseResolved, settings.folder_name)
             };
@@ -33,9 +34,9 @@ function generateUserFolderPath(user, roleData, userType) {
     const rolePrefix = userType === 'artists' ? '3' : '4';
     const rand4 = Math.floor(Math.random() * 9000 + 1000);
     const folderName = `${rolePrefix}_${user.username}_${rand4}`;
-    const basePath = path.resolve(__dirname, '..', `../frontend/public/${userType}`);
+    const basePath = getUserBasePath(userType);
     return {
-        path: `../frontend/public/${userType}/`,
+        path: `${userType}/`,
         folder_name: folderName,
         fullPath: path.join(basePath, folderName)
     };
@@ -76,8 +77,8 @@ function getUserFolderPath(user, roleData, userType, subFolder = null) {
     try {
         // Parse existing settings from the database
         const settings = JSON.parse(roleData.settings);
-        const basePath = path.resolve(__dirname, "..", settings.path);
-        const fullPath = path.join(basePath, settings.folder_name);
+        const userType = settings.userType || (settings.path && settings.path.includes('organiser') ? 'organisers' : 'artists');
+        const fullPath = buildUserFolderAbsolutePath(userType, settings.folder_name);
         
         // Create all required subfolders if they don't exist
         createArtistSubfolders(fullPath);
@@ -164,7 +165,7 @@ async function createOrUpdateUserProfileSettings({
     // Artist
     settings = {
       setting_name: name || username,
-      path: "../frontend/public/artists/",
+      userType: 'artists',
       folder_name: folderName
     };
     model = Artist;
@@ -182,7 +183,7 @@ async function createOrUpdateUserProfileSettings({
     // Organiser
     settings = {
       setting_name: name || username,
-      path: "../frontend/public/organiser/",
+      userType: 'organisers',
       folder_name: folderName
     };
     model = Organiser;

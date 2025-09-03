@@ -107,7 +107,7 @@ exports.register = async (req, res) => {
             
             const settings = {
                 setting_name: name || username,
-                path: "frontend/public/organiser",
+                path: "frontend/public/organisers",
                 folder_name: folderName
             };
 

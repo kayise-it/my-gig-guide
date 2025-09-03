@@ -36,13 +36,13 @@ app.use(express.json());
 // Serve static files from frontend public directory
 app.use('/uploads', express.static(path.join(__dirname, '../frontend/public')));
 app.use('/artists', express.static(path.join(__dirname, '../frontend/public/artists')));
-app.use('/organisers', express.static(path.join(__dirname, '../frontend/public/organiser')));
+app.use('/organisers', express.static(path.join(__dirname, '../frontend/public/organisers')));
 app.use('/venues', express.static(path.join(__dirname, '../frontend/public/venues')));
 
 // Debug static file paths
 console.log('Static file paths:');
 console.log('Artists:', path.join(__dirname, '../frontend/public/artists'));
-console.log('Organisers:', path.join(__dirname, '../frontend/public/organiser'));
+console.log('Organisers:', path.join(__dirname, '../frontend/public/organisers'));
 console.log('Venues:', path.join(__dirname, '../frontend/public/venues'));
 
 // ✅ Register routes after middleware is defined

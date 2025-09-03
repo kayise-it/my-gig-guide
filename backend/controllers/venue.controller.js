@@ -105,15 +105,32 @@ exports.createVenue = async (req, res) => {
     }
 
     // Validate required fields for new structure
-    if (!req.body.owner_id) {
-      return res.status(400).json({
-        message: "Owner ID is required"
-      });
-    }
-    if (!req.body.owner_type || !['artist', 'organiser'].includes(req.body.owner_type)) {
-      return res.status(400).json({
-        message: "Owner type must be either 'artist' or 'organiser'"
-      });
+    // Allow unclaimed venues (no owner required) or venues with owners
+    if (req.body.owner_id && req.body.owner_type) {
+      // If owner_id is provided, owner_type must be valid
+      if (!['artist', 'organiser'].includes(req.body.owner_type)) {
+        return res.status(400).json({
+          message: "Owner type must be either 'artist' or 'organiser'"
+        });
+      }
+      
+      // Validate that the owner exists
+      let ownerData;
+      if (req.body.owner_type === 'artist') {
+        ownerData = await Artist.findByPk(req.body.owner_id);
+        if (!ownerData) {
+          return res.status(400).json({
+            message: "Artist not found"
+          });
+        }
+      } else if (req.body.owner_type === 'organiser') {
+        ownerData = await Organiser.findByPk(req.body.owner_id);
+        if (!ownerData) {
+          return res.status(400).json({
+            message: "Organiser not found"
+          });
+        }
+      }
     }
 
     // Validate that the owner exists
@@ -141,21 +158,34 @@ exports.createVenue = async (req, res) => {
     }
 
     // Get or create settings - function will handle existing settings automatically
-    const role = req.body.owner_type === 'artist' ? 3 : 4;
-    const folderName = `${role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
-    const settings = await createOrUpdateUserProfileSettings({
-      role: role,
-      name: user.name,
-      username: user.username,
-      email: user.email,
-      contact_email: user.contact_email,
-      phone_number: user.phone_number,
-      folderName,
-      userId: user.id
-    });
-
-    // Create folder structure if it doesn't exist
-    await createFolderStructure(settings);
+    let role, folderName, settings;
+    
+    if (req.body.owner_type && req.body.owner_id) {
+      // Venue has an owner
+      role = req.body.owner_type === 'artist' ? 3 : 4;
+      folderName = `${role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
+      settings = await createOrUpdateUserProfileSettings({
+        role: role,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        contact_email: user.contact_email,
+        phone_number: user.phone_number,
+        folderName,
+        userId: user.id
+      });
+      
+      // Create folder structure if it doesn't exist
+      await createFolderStructure(settings);
+    } else {
+      // Unclaimed venue - use a generic structure
+      role = 0; // Generic role for unclaimed venues
+      folderName = `unclaimed_venues`;
+      settings = {
+        folder_name: folderName,
+        role: role
+      };
+    }
 
     // Create venue record first
     const venueData = {
@@ -169,43 +199,69 @@ exports.createVenue = async (req, res) => {
       latitude: req.body.latitude,
       longitude: req.body.longitude,
       userId: req.body.userId,
-      owner_id: parseInt(req.body.owner_id),
-      owner_type: req.body.owner_type
+      owner_id: req.body.owner_id ? parseInt(req.body.owner_id) : null,
+      owner_type: req.body.owner_type || 'unclaimed'
     };
 
     const createdVenue = await Venue.create(venueData);
 
-    // Handle main picture upload using the same pattern
+    // 🎯 ALWAYS CREATE FOLDER STRUCTURE (even without image)
+    const projectRoot = path.resolve(__dirname, "../../");
+    let venuesPath;
+    
+    if (req.body.owner_type && req.body.owner_id) {
+      // Venue has an owner - use owner-specific path
+      const userType = req.body.owner_type === 'artist' ? 'artists' : 'organisers';
+      venuesPath = path.join(projectRoot, "frontend", "public", userType, settings.folder_name, "venues");
+    } else {
+      // Unclaimed venue - use generic path
+      venuesPath = path.join(projectRoot, "frontend", "public", "unclaimed_venues", "venues");
+    }
+    
+    console.log('🎯 CREATING VENUE FOLDER STRUCTURE:');
+    console.log('  Project root:', projectRoot);
+    console.log('  Venues path:', venuesPath);
+    
+    // Create venues folder if it doesn't exist
+    if (!fs.existsSync(venuesPath)) {
+      fs.mkdirSync(venuesPath, { recursive: true });
+      console.log('✅ Created venues folder:', venuesPath);
+    } else {
+      console.log('✅ Venues folder already exists:', venuesPath);
+    }
+
+    // Create specific venue folder
+    const venueFolderName = `${createdVenue.id}_${slugify(req.body.name || 'venue')}`;
+    const venueFolderPath = path.join(venuesPath, venueFolderName);
+    
+    console.log('  Venue folder path:', venueFolderPath);
+    
+    if (!fs.existsSync(venueFolderPath)) {
+      fs.mkdirSync(venueFolderPath, { recursive: true });
+      console.log('✅ Created venue folder:', venueFolderPath);
+    } else {
+      console.log('✅ Venue folder already exists:', venueFolderPath);
+    }
+
+    // Handle main picture upload if provided
     let mainPicturePath = null;
     if (req.file) {
-      // Create venues subfolder if it doesn't exist
-      const folderPath = path.resolve(__dirname, "..", settings.path, settings.folder_name);
-      const venuesPath = path.join(folderPath, 'venues');
-      
-      if (!fs.existsSync(venuesPath)) {
-        fs.mkdirSync(venuesPath, { recursive: true });
-        console.log('Created venues folder:', venuesPath);
-      }
-
-      // Create specific venue folder
-      const venueFolderName = `${createdVenue.id}_${slugify(req.body.name || 'venue')}`;
-      const venueFolderPath = path.join(venuesPath, venueFolderName);
-      
-      if (!fs.existsSync(venueFolderPath)) {
-        fs.mkdirSync(venueFolderPath, { recursive: true });
-        console.log('Created venue folder:', venueFolderPath);
-      }
-
       // Save the main picture
       const fileExtension = path.extname(req.file.originalname).toLowerCase();
       const fileName = `main_${Date.now()}${fileExtension}`;
       const filePath = path.join(venueFolderPath, fileName);
       
       fs.writeFileSync(filePath, req.file.buffer);
+      console.log('✅ Saved venue image:', filePath);
       
-      // Generate public path (same pattern as artist images)
-      const userType = req.body.owner_type === 'artist' ? 'artists' : 'organisers';
-      mainPicturePath = `/${userType}/${settings.folder_name}/venues/${venueFolderName}/${fileName}`;
+      // Generate public path
+      let mainPicturePath;
+      if (req.body.owner_type && req.body.owner_id) {
+        const userType = req.body.owner_type === 'artist' ? 'artists' : 'organisers';
+        mainPicturePath = `/${userType}/${settings.folder_name}/venues/${venueFolderName}/${fileName}`;
+      } else {
+        mainPicturePath = `/unclaimed_venues/venues/${venueFolderName}/${fileName}`;
+      }
       
       try { 
         await createdVenue.update({ main_picture: mainPicturePath }); 
@@ -321,13 +377,20 @@ exports.updateVenue = async (req, res) => {
 
     // Handle main picture upload if provided
     if (req.file) {
-      // Create venues subfolder if it doesn't exist
-      const folderPath = path.resolve(__dirname, "..", settings.path, settings.folder_name);
-      const venuesPath = path.join(folderPath, 'venues');
+      // 🎯 SIMPLE, WORKING PATH: Create venues INSIDE my-gig-guide folder
+      const projectRoot = path.resolve(__dirname, "../../");
+      const venuesPath = path.join(projectRoot, "frontend", "public", "artists", settings.folder_name, "venues");
       
+      console.log('🎯 SIMPLE PATH LOGIC (UPDATE):');
+      console.log('  Project root:', projectRoot);
+      console.log('  Venues path:', venuesPath);
+      
+      // Create venues folder if it doesn't exist
       if (!fs.existsSync(venuesPath)) {
         fs.mkdirSync(venuesPath, { recursive: true });
-        console.log('Created venues folder:', venuesPath);
+        console.log('✅ Created venues folder:', venuesPath);
+      } else {
+        console.log('✅ Venues folder already exists:', venuesPath);
       }
 
       // Create specific venue folder
@@ -336,7 +399,9 @@ exports.updateVenue = async (req, res) => {
       
       if (!fs.existsSync(venueFolderPath)) {
         fs.mkdirSync(venueFolderPath, { recursive: true });
-        console.log('Created venue folder:', venueFolderPath);
+        console.log('✅ Created venue folder:', venueFolderPath);
+      } else {
+        console.log('✅ Venue folder already exists:', venueFolderPath);
       }
 
       // Save the main picture
@@ -345,15 +410,17 @@ exports.updateVenue = async (req, res) => {
       const filePath = path.join(venueFolderPath, fileName);
       
       fs.writeFileSync(filePath, req.file.buffer);
+      console.log('✅ Saved venue image:', filePath);
       
-      // Generate public path (same pattern as artist images)
+      // 🔧 Generate public path using settings (maintains user's folder structure)
       const userType = req.body.owner_type === 'artist' ? 'artists' : 'organisers';
       const mainPicturePath = `/${userType}/${settings.folder_name}/venues/${venueFolderName}/${fileName}`;
       
       try { 
         await existingVenue.update({ main_picture: mainPicturePath }); 
+        console.log('✅ Updated venue with settings-based path:', mainPicturePath);
       } catch (e) { 
-        console.warn('Failed to persist main_picture on update:', e.message); 
+        console.error('❌ Failed to persist main_picture on update:', e.message); 
       }
     }
 
@@ -376,6 +443,7 @@ exports.uploadVenueGallery = async (req, res) => {
     const venueId = parseInt(req.params.id, 10);
     if (!venueId) return res.status(400).json({ message: 'Venue ID is required' });
 
+    // STEP 1: Validate venue exists and get basic info
     const venue = await Venue.findByPk(venueId);
     if (!venue) return res.status(404).json({ message: 'Venue not found' });
 
@@ -383,61 +451,116 @@ exports.uploadVenueGallery = async (req, res) => {
       return res.status(400).json({ message: 'No files uploaded' });
     }
 
-    // Get user and owner data
+    // STEP 2: Get user and owner data
     const user = await User.findByPk(venue.userId);
-    const ownerData = venue.owner_type === 'artist' ? await Artist.findByPk(venue.owner_id) : await Organiser.findByPk(venue.owner_id);
+    if (!user) return res.status(400).json({ message: 'User not found' });
 
-    // Get or create settings - function will handle existing settings automatically
-    const role = venue.owner_type === 'artist' ? 3 : 4;
-    const folderName = `${role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
-    const settings = await createOrUpdateUserProfileSettings({
-      role: role,
-      name: user.name,
-      username: user.username,
-      email: user.email,
-      contact_email: user.contact_email,
-      phone_number: user.phone_number,
-      folderName,
-      userId: user.id
-    });
+    const ownerData = venue.owner_type === 'artist' 
+      ? await Artist.findByPk(venue.owner_id) 
+      : await Organiser.findByPk(venue.owner_id);
+    
+    if (!ownerData) return res.status(400).json({ message: 'Owner profile not found' });
 
-    // Create folder structure if it doesn't exist
+    // STEP 3: Get or create settings with proper fallback logic
+    let settings = null;
+    let isNewSettings = false;
+
+    // Try to get existing settings first
+    if (ownerData.settings && ownerData.settings.trim() !== '') {
+      try {
+        settings = JSON.parse(ownerData.settings);
+        
+        // Validate that settings have required fields
+        if (settings.folder_name && settings.path) {
+          console.log('✅ Using existing settings:', {
+            folder_name: settings.folder_name,
+            path: settings.path
+          });
+        } else {
+          throw new Error('Settings missing required fields');
+        }
+      } catch (parseError) {
+        console.error('❌ Error parsing existing settings:', parseError.message);
+        console.log('🔄 Will create new settings...');
+        settings = null;
+      }
+    }
+
+    // Create new settings if none exist or if parsing failed
+    if (!settings) {
+      const role = venue.owner_type === 'artist' ? 3 : 4;
+      const folderName = `${role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
+      
+      console.log('🆕 Creating new settings with folder:', folderName);
+      
+      settings = await createOrUpdateUserProfileSettings({
+        role: role,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        contact_email: user.contact_email,
+        phone_number: user.phone_number,
+        folderName,
+        userId: user.id
+      });
+      
+      isNewSettings = true;
+      console.log('✅ New settings created:', settings);
+    }
+
+    // STEP 4: Ensure folder structure exists
     await createFolderStructure(settings);
 
-    // Create venue gallery subfolder
-    const folderPath = path.resolve(__dirname, "..", settings.path, settings.folder_name);
+    // STEP 5: Build the complete folder path for venue gallery
+    const repoRoot = path.resolve(__dirname, "../../");
+    const userType = venue.owner_type === 'artist' ? 'artists' : 'organisers';
+    
+    // Use the settings.folder_name (either existing or newly created)
+    const folderPath = path.join(repoRoot, 'frontend', 'public', userType, settings.folder_name);
     const venuesPath = path.join(folderPath, 'venues');
     const venueFolderName = `${venueId}_${slugify(venue.name || 'venue')}`;
     const venueFolderPath = path.join(venuesPath, venueFolderName);
     const galleryPath = path.join(venueFolderPath, 'gallery');
     
+    console.log('📁 Building folder structure:', {
+      repoRoot,
+      userType,
+      folderName: settings.folder_name,
+      venueFolderName,
+      galleryPath
+    });
+    
+    // Create all necessary directories
     if (!fs.existsSync(galleryPath)) {
       fs.mkdirSync(galleryPath, { recursive: true });
-      console.log('Created venue gallery folder:', galleryPath);
+      console.log('✅ Created venue gallery folder:', galleryPath);
     }
 
-    // Get current gallery from database
+    // STEP 6: Get current gallery from database
     let currentGallery = [];
     if (venue.venue_gallery) {
       try {
         currentGallery = JSON.parse(venue.venue_gallery);
-        console.log('Current venue gallery from DB:', currentGallery);
+        console.log('📸 Current venue gallery from DB:', currentGallery.length, 'images');
       } catch (e) {
-        console.error('Error parsing existing venue gallery:', e);
+        console.error('❌ Error parsing existing venue gallery:', e);
         currentGallery = [];
       }
     } else {
-      console.log('No existing venue gallery found, starting with empty array');
+      console.log('📸 No existing venue gallery found, starting fresh');
     }
 
+    // STEP 7: Process and upload each file
     const uploadedFiles = [];
     const errors = [];
+    let processedCount = 0;
 
-    // Process each uploaded file (same pattern as artist gallery)
-    console.log('Starting to process', req.files.length, 'venue gallery files');
+    console.log(`🚀 Starting to process ${req.files.length} venue gallery files`);
+    
     for (const file of req.files) {
       try {
-        console.log('Processing venue gallery file:', file.originalname);
+        console.log(`📤 Processing file ${processedCount + 1}/${req.files.length}:`, file.originalname);
+        
         const { originalname, mimetype, size, buffer } = file;
 
         // Validate file type
@@ -464,7 +587,7 @@ exports.uploadVenueGallery = async (req, res) => {
         const filePath = path.join(galleryPath, fileName);
         fs.writeFileSync(filePath, buffer);
 
-        // Generate public URL (same pattern as artist gallery)
+        // Generate public URL using the correct folder structure
         const userType = venue.owner_type === 'artist' ? 'artists' : 'organisers';
         const publicUrl = `/${userType}/${settings.folder_name}/venues/${venueFolderName}/gallery/${fileName}`;
         
@@ -473,40 +596,57 @@ exports.uploadVenueGallery = async (req, res) => {
           fileName,
           originalName: originalname,
           url: publicUrl,
-          size
+          size,
+          savedPath: filePath
         });
 
-        console.log(`Venue gallery file uploaded successfully: ${fileName}`);
+        processedCount++;
+        console.log(`✅ File ${processedCount}/${req.files.length} uploaded successfully:`, fileName);
+
       } catch (fileError) {
-        console.error(`Error processing venue gallery file ${file.originalname}:`, fileError);
+        console.error(`❌ Error processing file ${file.originalname}:`, fileError);
         errors.push(`Failed to upload ${file.originalname}: ${fileError.message}`);
       }
     }
 
-    // Update venue gallery in database
+    // STEP 8: Update venue gallery in database
     try {
       await venue.update({
         venue_gallery: JSON.stringify(currentGallery)
       });
-      console.log('Venue gallery updated in database:', currentGallery);
+      console.log('💾 Venue gallery updated in database:', currentGallery.length, 'total images');
     } catch (dbError) {
-      console.error('Error updating venue gallery in database:', dbError);
+      console.error('❌ Error updating venue gallery in database:', dbError);
       return res.status(500).json({
         message: 'Failed to update venue gallery in database',
         error: dbError.message
       });
     }
 
-    return res.status(200).json({
+    // STEP 9: Return success response
+    const response = {
       message: uploadedFiles.length > 0 ? 
         `Successfully uploaded ${uploadedFiles.length} venue gallery image(s)` : 
         'No venue gallery images were uploaded',
       uploadedFiles,
-      errors: errors.length > 0 ? errors : undefined,
-      gallery: currentGallery
-    });
+      totalImages: currentGallery.length,
+      folderInfo: {
+        folderName: settings.folder_name,
+        venueFolder: venueFolderName,
+        isNewSettings
+      }
+    };
+
+    if (errors.length > 0) {
+      response.errors = errors;
+      response.warning = `${errors.length} file(s) failed to upload`;
+    }
+
+    console.log('🎉 Venue gallery upload completed successfully');
+    return res.status(200).json(response);
+
   } catch (err) {
-    console.error('Venue gallery upload error:', err);
+    console.error('💥 Venue gallery upload error:', err);
     return res.status(500).json({ 
       message: 'Venue gallery upload failed', 
       error: err.message 

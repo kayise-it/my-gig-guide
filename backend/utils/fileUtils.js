@@ -2,13 +2,16 @@
 const fs = require("fs");
 const path = require("path");
 const db = require("../models"); // Adjust this path to your models directory
+const { buildUserFolderAbsolutePath, getUserBasePath } = require('./pathHelpers');
 
 
 // Function to create folder structure
 const createFolderStructure = async (settings) => {
-  // Resolve absolute path from __dirname (current file location) + relative path from settings
-  const folderPath = path.resolve(__dirname, "..", settings.path, settings.folder_name);
+  // settings: { userType: 'artists'|'organisers', folder_name }
+  const userType = settings.userType || (settings.path && settings.path.includes('organiser') ? 'organisers' : 'artists');
+  const folderPath = buildUserFolderAbsolutePath(userType, settings.folder_name);
 
+  console.log("Folder path:", folderPath);
   if (!fs.existsSync(folderPath)) {
     fs.mkdirSync(folderPath, { recursive: true });
     console.log("Created folder:", folderPath);

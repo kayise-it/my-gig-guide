@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import API_BASE_URL from '../../api/config';
+import API_BASE_URL, { APP_BASE_PATH } from '../../api/config';
 import { venueService } from '../../api/venueService';
 import { eventService } from '../../api/eventService';
 import VenueCard from '../../components/Venue/VenueCard';
@@ -262,7 +262,7 @@ const OrganiserDashboard = ({ organiser }) => {
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Quick Actions</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Link
-              to="/organiser/dashboard/events/new"
+              to={`${APP_BASE_PATH}/organiser/dashboard/events/new`}
               className="group bg-white/70 backdrop-blur-sm border border-purple-100 rounded-2xl p-6 hover:shadow-lg transition-all duration-300 hover:scale-105 hover:border-purple-300"
             >
               <div className="flex items-center">
@@ -318,7 +318,7 @@ const OrganiserDashboard = ({ organiser }) => {
                 <h3 className="text-xl font-semibold text-gray-900">Recent Events</h3>
               </div>
               <Link 
-                to="/organiser/dashboard/events" 
+                to={`${APP_BASE_PATH}/organiser/dashboard/events`} 
                 className="text-sm font-medium text-purple-600 hover:text-purple-700 flex items-center"
               >
                 View all
@@ -337,7 +337,7 @@ const OrganiserDashboard = ({ organiser }) => {
                 <div className="text-center py-12">
                   <div className="text-red-500 mb-4">{error}</div>
                   <Link 
-                    to="/organiser/dashboard/events/new"
+                    to={`${APP_BASE_PATH}/organiser/dashboard/events/new`}
                     className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-all"
                   >
                     Create Your First Event
@@ -350,7 +350,7 @@ const OrganiserDashboard = ({ organiser }) => {
                   <CalendarDaysIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600 mb-4">No events yet</p>
                   <Link 
-                    to="/organiser/dashboard/events/new"
+                    to={`${APP_BASE_PATH}/organiser/dashboard/events/new`}
                     className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-all"
                   >
                     Create Your First Event

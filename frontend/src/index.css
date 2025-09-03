@@ -17,31 +17,33 @@
   overflow: hidden;
 }
 
-html, body{
+html, body {
   width: 100%;
 }
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-.heroCont{
+
+.heroCont {
   margin-bottom: 100px;
 }
+
 a {
   font-weight: 500;
   color: #646cff;
   text-decoration: inherit;
 }
+
 a:hover {
   color: #535bf2;
 }
@@ -53,7 +55,8 @@ body {
   width: 100vw;
   min-height: 100vh;
 }
-#root{
+
+#root {
   width: 100%;
 }
 
@@ -73,9 +76,11 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
+
 button:hover {
   border-color: #646cff;
 }
+
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
@@ -114,7 +119,6 @@ button:focus-visible {
   }
 }
 
-
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
@@ -128,95 +132,13 @@ button:focus-visible {
   }
 }
 
-
-
-@layer base {
-  :root {
-    /* Base surfaces */
-    --background: 0 0% 100%;
-    --foreground: 224 71.4% 4.1%;
-    --card: 0 0% 100%;
-    --card-foreground: 224 71.4% 4.1%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 224 71.4% 4.1%;
-
-    /* Brand palette: white, purple, dark purple */
-    --primary: 262 83% 58%; /* purple */
-    --primary-foreground: 210 20% 98%;
-    --secondary: 262 90% 96%; /* light purple surface */
-    --secondary-foreground: 262 83% 28%;
-    --accent: 277 84% 20%; /* dark purple */
-    --accent-foreground: 210 20% 98%;
-
-    /* Neutrals */
-    --muted: 220 14.3% 95.9%;
-    --muted-foreground: 220 8.9% 46.1%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 262 83% 58%;
-
-    /* Charts (optional) */
-    --chart-1: 262 83% 58%;
-    --chart-2: 277 84% 20%;
-    --chart-3: 262 90% 66%;
-    --chart-4: 250 80% 60%;
-    --chart-5: 285 75% 55%;
-
-    /* Brand gradient tokens */
-    --brand-from: 262 83% 58%; /* purple */
-    --brand-to: 277 84% 20%;   /* dark purple */
-
-    /* Radius scale */
-    --radius: 0.75rem; /* 12px for consistent rounded corners */
-  }
-  .dark {
-    --background: 224 71.4% 4.1%;
-    --foreground: 210 20% 98%;
-    --card: 224 71.4% 4.1%;
-    --card-foreground: 210 20% 98%;
-    --popover: 224 71.4% 4.1%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 262 83% 68%;
-    --primary-foreground: 210 20% 98%;
-    --secondary: 262 34% 20%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 215 27.9% 16.9%;
-    --muted-foreground: 217.9 10.6% 64.9%;
-    --accent: 277 84% 20%;
-    --accent-foreground: 210 20% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 20% 98%;
-    --border: 215 27.9% 16.9%;
-    --input: 215 27.9% 16.9%;
-    --ring: 262 83% 58%;
-    --chart-1: 262 83% 58%;
-    --chart-2: 277 84% 20%;
-    --chart-3: 262 90% 66%;
-    --chart-4: 250 80% 60%;
-    --chart-5: 285 75% 55%;
-  }
-}
-
-
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
 /* Brand components/utilities */
 @layer utilities {
   .bg-brand-gradient {
-    background-image: linear-gradient(135deg, hsl(var(--brand-from)) 0%, hsl(var(--brand-to)) 100%);
+    background-image: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
   }
   .text-brand-gradient {
-    background-image: linear-gradient(135deg, hsl(var(--brand-from)) 0%, hsl(var(--brand-to)) 100%);
+    background-image: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;

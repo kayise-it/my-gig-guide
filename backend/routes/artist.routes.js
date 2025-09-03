@@ -25,7 +25,6 @@ const upload = multer({
     storage: multer.memoryStorage()
 });
 // 2. Your route with multer middleware
-
 router.put('/uploadprofilepicture/:id', verifyToken, upload.single('profile_picture'), artistController.uploadProfilePicture);
 router.delete('/uploadprofilepicture/:id', verifyToken, artistController.deleteProfilePicture);
 router.put('/galleryUpload/:id', verifyToken, upload.array('gallery_images', 10), artistController.uploadGalleryImages);

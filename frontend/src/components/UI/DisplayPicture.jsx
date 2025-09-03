@@ -38,17 +38,22 @@ const DisplayPicture = ({
       cleanPath = cleanPath.replace('../frontend/public', '');
     }
     
-    // If it starts with a slash, it's a relative path
-    if (cleanPath.startsWith('/')) {
-      return `${API_BASE_URL}${cleanPath}`;
-    }
+    // Ensure API_BASE_URL doesn't end with slash and cleanPath starts with slash
+    const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+    const imagePath = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
     
-    // Otherwise, assume it's a relative path and add the base URL
-    return `${API_BASE_URL}/${cleanPath}`;
+    return `${baseUrl}${imagePath}`;
   };
 
   const imageUrl = getImageUrl(imagePath);
   const IconComponent = fallbackIcon;
+  
+  // Debug logging
+  console.log('DisplayPicture debug:', {
+    originalPath: imagePath,
+    processedUrl: imageUrl,
+    API_BASE_URL: API_BASE_URL
+  });
 
   const handleImageError = (e) => {
     console.error('Failed to load image:', imagePath);

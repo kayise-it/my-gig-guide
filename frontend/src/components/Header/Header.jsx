@@ -48,7 +48,8 @@ const Header = () => {
     { name: 'Events', href: '/Events', icon: CalendarDaysIcon },
     { name: 'Artists', href: '/Artists', icon: MicrophoneIcon },
     { name: 'About', href: '/about', icon: InformationCircleIcon },
-    { name: 'Contact', href: '/Contact', icon: PhoneIcon },
+    { name: 'Venues', href: '/venues', icon: InformationCircleIcon },
+    { name: 'Contact', href: '/contact', icon: PhoneIcon },
   ];
 
   const isActiveLink = (href) => {

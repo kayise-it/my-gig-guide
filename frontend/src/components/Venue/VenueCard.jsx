@@ -37,7 +37,19 @@ const VenueCard = ({ venue, who }) => {
         {venue.rating && (
           <div className="absolute top-3 left-3 flex items-center bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full">
             <StarIcon className="h-4 w-4 text-yellow-500 mr-1" />
-            <span className="text-xs font-medium">{venue.rating.toFixed(1)}</span>
+            <span className="text-xs font-medium">
+              {(() => {
+                const rating = parseFloat(venue.rating);
+                return isNaN(rating) ? venue.rating : rating.toFixed(1);
+              })()}
+            </span>
+          </div>
+        )}
+        
+        {/* Unclaimed badge */}
+        {venue.owner && venue.owner.type === 'unclaimed' && (
+          <div className="absolute top-3 right-3 bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+            Available
           </div>
         )}
       </div>
@@ -73,6 +85,17 @@ const VenueCard = ({ venue, who }) => {
             </span>
           )}
         </div>
+        
+        {/* Owner information */}
+        {venue.owner && (
+          <div className="mt-2 text-xs text-gray-500">
+            {venue.owner.type === 'unclaimed' ? (
+              <span className="text-blue-600 font-medium">Available for booking</span>
+            ) : (
+              <span>Owner: {venue.owner.name}</span>
+            )}
+          </div>
+        )}
       </div>
     </Link>
   );

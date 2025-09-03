@@ -21,7 +21,7 @@ import {
     PencilIcon,
     PhotoIcon
 } from '@heroicons/react/24/outline';
-import API_BASE_URL from '../../api/config';
+import API_BASE_URL, { APP_BASE_PATH } from '../../api/config';
 import GalleryImage from '../../components/GalleryImage';
 import ArtistMiniCard from '../../components/Artist/ArtistMiniCard';
 import VenueCardV2 from '../../components/Venue/VenueCardV2';
@@ -31,6 +31,7 @@ import ArtistsBlock from '../../components/TemplateStructure/ArtistsBlock';
 import GalleryPlaceholder from '../../components/TemplateStructure/GalleryPlaceholder';
 import DisplayPicture from '../../components/UI/DisplayPicture';
 import EventGallery from '../../components/Events/EventGallery';
+import RatingSystem from '../../components/UI/RatingSystem';
 
 const ShowEvent = () => {
     const { id } = useParams();
@@ -332,9 +333,9 @@ const ShowEvent = () => {
     const handleEdit = () => {
         // Navigate to edit page based on user type
         if (currentUser.artist_id) {
-            window.location.href = `/artist/dashboard/events/edit/${event.id}`;
+            window.location.href = `${APP_BASE_PATH}/artist/dashboard/events/edit/${event.id}`;
         } else if (currentUser.organiser_id) {
-            window.location.href = `/organiser/dashboard/events/edit/${event.id}`;
+            window.location.href = `${APP_BASE_PATH}/organiser/dashboard/events/edit/${event.id}`;
         }
     };
 
@@ -584,6 +585,18 @@ const ShowEvent = () => {
                                 </div>
                             </div>
                         )}
+
+                        {/* Event Rating System */}
+                        <div>
+                            <h2 className="text-xl font-semibold text-gray-900 mb-3">Event Rating</h2>
+                            <RatingSystem
+                                rateableType="event"
+                                rateableId={event?.id}
+                                label="Event Rating"
+                                showForm={true}
+                                showReviews={true}
+                            />
+                        </div>
 
                         {/* Event Gallery and Quick Details Row - Optimized Layout */}
                         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">

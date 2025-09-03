@@ -8,7 +8,7 @@ const ratingService = {
   createOrUpdateRating: async (ratingData) => {
     try {
       const response = await axios.post(
-        `${API_BASE_URL}/ratings`,
+        `${API_BASE_URL}/api/ratings`,
         ratingData,
         {
           headers: {
@@ -28,7 +28,7 @@ const ratingService = {
   getAverageRating: async (rateableType, rateableId) => {
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/ratings/average/${rateableType}/${rateableId}`
+        `${API_BASE_URL}/api/ratings/average/${rateableType}/${rateableId}`
       );
       return response.data;
     } catch (error) {
@@ -42,7 +42,7 @@ const ratingService = {
   getUserRating: async (rateableType, rateableId) => {
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/ratings/user/${rateableType}/${rateableId}`,
+        `${API_BASE_URL}/api/ratings/user/${rateableType}/${rateableId}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -60,7 +60,7 @@ const ratingService = {
   getItemRatings: async (rateableType, rateableId, page = 1, limit = 10) => {
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/ratings/${rateableType}/${rateableId}`,
+        `${API_BASE_URL}/api/ratings/${rateableType}/${rateableId}`,
         {
           params: { page, limit }
         }
@@ -82,7 +82,7 @@ const ratingService = {
   deleteRating: async (rateableType, rateableId) => {
     try {
       const response = await axios.delete(
-        `${API_BASE_URL}/ratings/${rateableType}/${rateableId}`,
+        `${API_BASE_URL}/api/ratings/${rateableType}/${rateableId}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -103,7 +103,7 @@ const ratingService = {
       if (type) params.type = type;
 
       const response = await axios.get(
-        `${API_BASE_URL}/ratings/user/ratings`,
+        `${API_BASE_URL}/api/ratings/user/ratings`,
         {
           headers: {
             'Authorization': `Bearer ${token}`

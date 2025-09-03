@@ -7,7 +7,7 @@ import {
   PlayIcon
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartSolidIcon, StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
-import API_BASE_URL from '../../api/config';
+import API_BASE_URL, { APP_BASE_PATH } from '../../api/config';
 
 export default function ArtistCard({ artist, onLike, onFavorite, isLiked, isFavorited }) {
   const [isHovered, setIsHovered] = useState(false);
@@ -18,7 +18,7 @@ export default function ArtistCard({ artist, onLike, onFavorite, isLiked, isFavo
   const handleImageError = () => setImageError(true);
   
   const handleCardClick = () => {
-    window.location.href = `/Artists/${artist.id}`;
+    window.location.href = `${APP_BASE_PATH}/Artists/${artist.id}`;
   };
 
   // Get the correct image URL from profile_picture or image_url

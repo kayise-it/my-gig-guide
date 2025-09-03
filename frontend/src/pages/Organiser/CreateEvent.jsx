@@ -553,7 +553,7 @@ const CreateEvent = () => {
                 {/* Create New Venue Link */}
                 <div className="mt-4 text-center">
                   <Link
-                    to={`/${userRole}/dashboard/venues/new`}
+                    to={`/${userRole}/dashboard/venue/new`}
                     className="inline-flex items-center space-x-2 text-sm text-purple-600 hover:text-purple-700 font-medium"
                   >
                     <PlusIcon className="h-4 w-4" />
@@ -589,6 +589,7 @@ const CreateEvent = () => {
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                 >
                   <option value="">Select category</option>
+                  <option value="live_music">Live Music</option>
                   <option value="concert">Concert</option>
                   <option value="festival">Festival</option>
                   <option value="conference">Conference</option>
@@ -596,6 +597,24 @@ const CreateEvent = () => {
                   <option value="sports">Sports</option>
                   <option value="other">Other</option>
                 </select>
+              </div>
+
+              <div>
+                <label htmlFor="booked_artists" className="block text-sm font-semibold text-gray-900 mb-2">
+                  Booked Artists
+                </label>
+                <input
+                  type="text"
+                  name="booked_artists"
+                  id="booked_artists"
+                  value={formData.booked_artists}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  placeholder="Enter artist names separated by commas"
+                />
+                <p className="mt-1 text-sm text-gray-600">
+                  List the artists performing at this event (e.g., "John Doe, Jane Smith")
+                </p>
               </div>
             </div>
           </div>

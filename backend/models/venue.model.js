@@ -13,14 +13,17 @@ module.exports = (sequelize, DataTypes) => {
     userId: DataTypes.INTEGER,
     owner_id: { 
       type: DataTypes.INTEGER, 
-      allowNull: false 
+      allowNull: true,
+      comment: 'ID of the owner (artist or organiser). Null for unclaimed venues.'
     },
     owner_type: { 
-      type: DataTypes.ENUM('artist', 'organiser'), 
-      allowNull: false,
+      type: DataTypes.ENUM('artist', 'organiser', 'unclaimed'), 
+      allowNull: true,
+      defaultValue: 'unclaimed',
       validate: {
-        isIn: [['artist', 'organiser']]
-      }
+        isIn: [['artist', 'organiser', 'unclaimed']]
+      },
+      comment: 'Type of owner. "unclaimed" for venues without owners.'
     },
     main_picture: {
       type: DataTypes.STRING,

@@ -1,18 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { GoogleMap } from '@react-google-maps/api';
 import { useGoogleMaps } from '../../context/GoogleMapsContext';
 
-const containerStyle = {
-  width: '100%',
-  height: '400px',
-};
 
 
-
-function VenueMap({ venue }) {
+function VenueMap({ venue, height = '400px', width = '100%', zoom = 15 }) {
   const [center, setCenter] = useState({ lat: -25.4658, lng: 30.9853 }); // Default to Mbombela
   const [marker, setMarker] = useState(null);
   const { isLoaded, loadError } = useGoogleMaps();
+
+  const containerStyle = useMemo(() => ({ width, height }), [width, height]);
 
   useEffect(() => {
     if (venue?.latitude && venue?.longitude) {
@@ -53,7 +50,7 @@ function VenueMap({ venue }) {
       <GoogleMap
         mapContainerStyle={containerStyle}
         center={center}
-        zoom={15}
+        zoom={zoom}
         onLoad={onLoad}
         options={{
           styles: [

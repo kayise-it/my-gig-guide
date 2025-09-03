@@ -284,13 +284,14 @@ export default function ViewEvents() {
                   <div className="space-y-2">
                     {[
                       { value: 'all', label: 'All Categories', count: sortedEvents.length },
-                      { value: 'concert', label: 'Concerts', count: events.filter(e => e.category === 'concert' && isUpcoming(e.date)).length },
-                      { value: 'festival', label: 'Festivals', count: events.filter(e => e.category === 'festival' && isUpcoming(e.date)).length },
-                      { value: 'comedy', label: 'Comedy', count: events.filter(e => e.category === 'comedy' && isUpcoming(e.date)).length },
-                      { value: 'exhibition', label: 'Exhibitions', count: events.filter(e => e.category === 'exhibition' && isUpcoming(e.date)).length },
-                      { value: 'conference', label: 'Conferences', count: events.filter(e => e.category === 'conference' && isUpcoming(e.date)).length },
-                      { value: 'theater', label: 'Theater', count: events.filter(e => e.category === 'theater' && isUpcoming(e.date)).length },
-                      { value: 'sports', label: 'Sports', count: events.filter(e => e.category === 'sports' && isUpcoming(e.date)).length }
+                              { value: 'live_music', label: 'Live Music', count: events.filter(e => e.category === 'live_music' && isUpcoming(e.date)).length },
+        { value: 'concert', label: 'Concerts', count: events.filter(e => e.category === 'concert' && isUpcoming(e.date)).length },
+        { value: 'festival', label: 'Festivals', count: events.filter(e => e.category === 'festival' && isUpcoming(e.date)).length },
+        { value: 'comedy', label: 'Comedy', count: events.filter(e => e.category === 'comedy' && isUpcoming(e.date)).length },
+        { value: 'exhibition', label: 'Exhibitions', count: events.filter(e => e.category === 'exhibition' && isUpcoming(e.date)).length },
+        { value: 'conference', label: 'Conferences', count: events.filter(e => e.category === 'conference' && isUpcoming(e.date)).length },
+        { value: 'theater', label: 'Theater', count: events.filter(e => e.category === 'theater' && isUpcoming(e.date)).length },
+        { value: 'sports', label: 'Sports', count: events.filter(e => e.category === 'sports' && isUpcoming(e.date)).length }
                     ].map(category => (
                       <label key={category.value} className="flex items-center justify-between p-3 rounded-lg hover:bg-purple-50 cursor-pointer transition-colors duration-200">
                         <div className="flex items-center">
@@ -474,7 +475,7 @@ export default function ViewEvents() {
                   </button>
                 </div>
               ) : viewMode === 'grid' ? (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
                   {regularEvents.map((event) => (
                     <EventCard 
                       key={event.id} 

@@ -24,6 +24,7 @@ import {
   TicketIcon
 } from '@heroicons/react/24/outline';
 import HeroSection from '../../components/UI/HeroSection';
+import RatingSystem from '../../components/UI/RatingSystem';
 
 
 export default function ShowArtist() {
@@ -269,8 +270,13 @@ export default function ShowArtist() {
                             <div className="mt-6 lg:mt-0 lg:ml-8">
                                 <div className="bg-gradient-to-br from-purple-50 to-blue-50 border border-purple-200 p-6 rounded-2xl min-w-[250px] shadow-lg">
                                     <div className="mb-6 text-center">
-                                        <p className="text-4xl font-black text-gray-900 mb-1">★ 4.8</p>
-                                        <p className="text-sm text-gray-600 bg-white px-3 py-1 rounded-full inline-block">artist rating</p>
+                                        <RatingSystem
+                                            rateableType="artist"
+                                            rateableId={profile?.id}
+                                            label="Artist Rating"
+                                            showForm={true}
+                                            showReviews={false}
+                                        />
                                     </div>
 
                                     <button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-105 group">

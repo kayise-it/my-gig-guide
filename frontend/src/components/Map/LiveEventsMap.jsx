@@ -1,18 +1,19 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { APP_BASE_PATH } from '../../api/config';
 import { GoogleMap, InfoWindow, Marker } from '@react-google-maps/api';
 import { MapPinIcon, CalendarDaysIcon, ClockIcon, StarIcon } from '@heroicons/react/24/outline';
 import { useGoogleMaps } from '../../context/GoogleMapsContext';
 
-const containerStyle = {
+const defaultContainerStyle = {
   width: '100%',
   height: '400px',
   borderRadius: '16px',
 };
 
-// Static libraries array to prevent reloading
-const libraries = ['places'];
+// Static libraries array to prevent recreation on every render
+const GOOGLE_MAPS_LIBRARIES = ['places'];
 
-function LiveEventsMap({ events = [] }) {
+function LiveEventsMap({ events = [], height = '400px', width = '100%', showLegend = true, compact = false, zoomDelta = 0 }) {
   const { isLoaded, loadError, apiKey } = useGoogleMaps();
   const [center, setCenter] = useState({ lat: -26.1550, lng: 28.0595 });
   const [userLocation, setUserLocation] = useState(null);
@@ -20,6 +21,8 @@ function LiveEventsMap({ events = [] }) {
   const [hoveredEvent, setHoveredEvent] = useState(null);
   const [hoverTimeout, setHoverTimeout] = useState(null);
   const [mapError, setMapError] = useState(loadError);
+
+  const containerStyle = useMemo(() => ({ ...defaultContainerStyle, width, height }), [width, height]);
 
   // Helper function to format event date
   const formatEventDate = (eventDate) => {
@@ -148,7 +151,7 @@ function LiveEventsMap({ events = [] }) {
   // Show error state if map failed to load
   if (mapError) {
     return (
-      <div className="w-full h-96 rounded-2xl overflow-hidden shadow-sm border border-purple-100 relative bg-gray-50 flex items-center justify-center">
+      <div className="w-full rounded-2xl overflow-hidden shadow-sm border border-purple-100 relative bg-gray-50 flex items-center justify-center" style={{ height }}>
         <div className="text-center">
           <div className="text-red-500 mb-2">
             <svg className="h-8 w-8 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -170,7 +173,7 @@ function LiveEventsMap({ events = [] }) {
   // Show no events state if no events with coordinates
   if (eventsWithCoordinates.length === 0) {
     return (
-      <div className="w-full h-96 rounded-2xl overflow-hidden shadow-sm border border-purple-100 relative bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center">
+      <div className="w-full rounded-2xl overflow-hidden shadow-sm border border-purple-100 relative bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center" style={{ height }}>
         <div className="text-center">
           <div className="text-gray-400 mb-2">
             <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -186,37 +189,41 @@ function LiveEventsMap({ events = [] }) {
   }
 
   return (
-    <div className="w-full h-96 rounded-2xl overflow-hidden shadow-sm border border-purple-100 relative">
-      {/* Map Legend */}
-      <div className="absolute top-4 left-4 z-10 bg-white rounded-lg shadow-lg p-3 border border-gray-200">
-        <h3 className="text-sm font-semibold text-gray-900 mb-2">Map Legend</h3>
-        <div className="space-y-2">
-          <div className="flex items-center">
-            <div className="w-4 h-4 bg-blue-500 rounded-full mr-2"></div>
-            <span className="text-xs text-gray-700">Your Location</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-4 h-4 bg-purple-500 rounded mr-2 flex items-center justify-center">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#ffffff"/>
-                <circle cx="12" cy="9" r="2" fill="#7c3aed"/>
-              </svg>
+    <div className="w-full rounded-2xl overflow-hidden shadow-sm border border-purple-100 relative" style={{ height }}>
+      {/* Map Legend (hideable) */}
+      {showLegend && (
+        <div className="absolute top-4 left-4 z-10 bg-white rounded-lg shadow-lg p-3 border border-gray-200">
+          <h3 className="text-sm font-semibold text-gray-900 mb-2">Map Legend</h3>
+          <div className="space-y-2">
+            <div className="flex items-center">
+              <div className="w-4 h-4 bg-blue-500 rounded-full mr-2"></div>
+              <span className="text-xs text-gray-700">Your Location</span>
             </div>
-            <span className="text-xs text-gray-700">Event Venues ({eventsWithCoordinates.length})</span>
+            <div className="flex items-center">
+              <div className="w-4 h-4 bg-purple-500 rounded mr-2 flex items-center justify-center">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#ffffff"/>
+                  <circle cx="12" cy="9" r="2" fill="#7c3aed"/>
+                </svg>
+              </div>
+              <span className="text-xs text-gray-700">Event Venues ({eventsWithCoordinates.length})</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Location Button */}
-      <button
-        onClick={getUserLocation}
-        className="absolute top-4 right-4 z-10 bg-white rounded-lg shadow-lg p-2 border border-gray-200 hover:bg-gray-50 transition-colors duration-200"
-        title="Get my location"
-      >
+      {!compact && (
+        <button
+          onClick={getUserLocation}
+          className="absolute top-4 right-4 z-10 bg-white rounded-lg shadow-lg p-2 border border-gray-200 hover:bg-gray-50 transition-colors duration-200"
+          title="Get my location"
+        >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#3b82f6"/>
         </svg>
-      </button>
+        </button>
+      )}
 
       {!isLoaded ? (
         // Loading state
@@ -226,11 +233,11 @@ function LiveEventsMap({ events = [] }) {
             <p className="text-gray-600">Loading map...</p>
           </div>
         </div>
-      ) : hasValidApiKey ? (
+      ) : (hasValidApiKey && typeof window !== 'undefined' && window.google && window.google.maps) ? (
         <GoogleMap
           mapContainerStyle={containerStyle}
           center={center}
-          zoom={optimalZoom}
+          zoom={Math.max(0, optimalZoom + zoomDelta)}
           onLoad={onLoad}
           onUnmount={onUnmount}
           options={{
@@ -251,155 +258,151 @@ function LiveEventsMap({ events = [] }) {
                 stylers: [{ color: '#e8eaf6' }]
               }
             ],
-            disableDefaultUI: false,
-            zoomControl: true,
+            disableDefaultUI: compact ? true : false,
+            zoomControl: compact ? false : true,
             streetViewControl: false,
-            mapTypeControl: false,
-            fullscreenControl: true,
+            mapTypeControl: compact ? false : false,
+            fullscreenControl: compact ? false : true,
+            gestureHandling: compact ? 'none' : 'auto',
           }}
         >
-          {/* User Location Marker */}
-          {userLocation && (
-            <Marker
-              position={userLocation}
-              title="Your Location"
-              icon={{
-                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                  <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="8" cy="8" r="6" fill="#3b82f6" stroke="#ffffff" stroke-width="2"/>
-                  </svg>
-                `),
-                scaledSize: new window.google.maps.Size(16, 16),
-                anchor: new window.google.maps.Point(8, 8)
-              }}
-            />
-          )}
+            {/* User Location Marker */}
+            {userLocation && (
+              <Marker
+                position={userLocation}
+                title="Your Location"
+                icon={{
+                  url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                    <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="8" cy="8" r="6" fill="#3b82f6" stroke="#ffffff" stroke-width="2"/>
+                    </svg>
+                  `),
+                  scaledSize: new window.google.maps.Size(16, 16),
+                  anchor: new window.google.maps.Point(8, 8)
+                }}
+              />
+            )}
 
-          {/* Event Markers */}
-          {eventsWithCoordinates.map((event) => (
-            <Marker
-              key={event.id}
-              position={{ 
-                lat: parseFloat(event.venue.latitude), 
-                lng: parseFloat(event.venue.longitude) 
-              }}
-              title={event.name}
-              onClick={() => setSelectedEvent(event)}
-              onMouseOver={() => {
-                // Clear any existing timeout
-                if (hoverTimeout) {
-                  clearTimeout(hoverTimeout);
-                }
-                // Set hover event after a short delay
-                const timeout = setTimeout(() => {
-                  setHoveredEvent(event);
-                }, 300); // 300ms delay
-                setHoverTimeout(timeout);
-              }}
-              onMouseOut={() => {
-                // Clear timeout and hide hover
-                if (hoverTimeout) {
-                  clearTimeout(hoverTimeout);
-                }
-                setHoveredEvent(null);
-              }}
-              icon={{
-                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                  <svg width="40" height="40" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                      <filter id="glow">
-                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-                        <feMerge> 
-                          <feMergeNode in="coloredBlur"/>
-                          <feMergeNode in="SourceGraphic"/>
-                        </feMerge>
-                      </filter>
-                    </defs>
-                    <circle cx="12" cy="12" r="8" fill="#7c3aed" opacity="0.3" filter="url(#glow)">
-                      <animate attributeName="r" values="8;12;8" dur="2s" repeatCount="indefinite"/>
-                      <animate attributeName="opacity" values="0.3;0.1;0.3" dur="2s" repeatCount="indefinite"/>
-                    </circle>
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#7c3aed" stroke="#ffffff" stroke-width="1"/>
-                    <circle cx="12" cy="9" r="2.5" fill="#ffffff"/>
-                  </svg>
-                `),
-                scaledSize: new window.google.maps.Size(40, 40),
-                anchor: new window.google.maps.Point(12, 24)
-              }}
-            />
-          ))}
+            {/* Event Markers */}
+            {eventsWithCoordinates.map((event) => (
+              <Marker
+                key={event.id}
+                position={{ 
+                  lat: parseFloat(event.venue.latitude), 
+                  lng: parseFloat(event.venue.longitude) 
+                }}
+                title={event.name}
+                onClick={compact ? undefined : () => setSelectedEvent(event)}
+                onMouseOver={compact ? undefined : () => {
+                  if (hoverTimeout) {
+                    clearTimeout(hoverTimeout);
+                  }
+                  const timeout = setTimeout(() => {
+                    setHoveredEvent(event);
+                  }, 300);
+                  setHoverTimeout(timeout);
+                }}
+                onMouseOut={compact ? undefined : () => {
+                  if (hoverTimeout) {
+                    clearTimeout(hoverTimeout);
+                  }
+                  setHoveredEvent(null);
+                }}
+                icon={window.google ? {
+                  url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                    <svg width="${compact ? 40 : 48}" height="${compact ? 40 : 48}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <defs>
+                        <filter id="glow">
+                          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                          <feMerge> 
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                          </feMerge>
+                        </filter>
+                      </defs>
+                      <circle cx="12" cy="12" r="10" fill="#7c3aed" opacity="0.3" filter="url(#glow)">
+                        <animate attributeName="r" values="10;14;10" dur="2s" repeatCount="indefinite"/>
+                        <animate attributeName="opacity" values="0.3;0.1;0.3" dur="2s" repeatCount="indefinite"/>
+                      </circle>
+                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#7c3aed" stroke="#ffffff" stroke-width="1"/>
+                      <circle cx="12" cy="9" r="2.5" fill="#ffffff"/>
+                    </svg>
+                  `),
+                  scaledSize: new window.google.maps.Size(compact ? 40 : 48, compact ? 40 : 48),
+                  anchor: new window.google.maps.Point(compact ? 20 : 16, compact ? 36 : 32)
+                } : undefined}
+              />
+            ))}
 
-
-
-          {/* Info Window for Selected Event (Click) */}
-          {selectedEvent && (
-            <InfoWindow
-              position={{ 
-                lat: parseFloat(selectedEvent.venue.latitude), 
-                lng: parseFloat(selectedEvent.venue.longitude) 
-              }}
-              onCloseClick={() => setSelectedEvent(null)}
-            >
-              <div className="p-4 max-w-xs">
-                <h3 className="font-bold text-gray-900 mb-3 text-lg">{selectedEvent.name}</h3>
-                <div className="space-y-2 text-sm text-gray-600">
-                  <div className="flex items-center">
-                    <MapPinIcon className="h-4 w-4 text-purple-500 mr-2 flex-shrink-0" />
-                    <span className="truncate">{selectedEvent.venue.name}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <CalendarDaysIcon className="h-4 w-4 text-purple-500 mr-2 flex-shrink-0" />
-                    <span>{formatEventDate(selectedEvent.date)}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <ClockIcon className="h-4 w-4 text-purple-500 mr-2 flex-shrink-0" />
-                    <span>{selectedEvent.time || new Date(selectedEvent.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                  </div>
-                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-200">
-                    <span className="font-semibold text-purple-600 text-lg">R{selectedEvent.price || 0}</span>
-                    <a 
-                      href={`/events/${selectedEvent.id}`}
-                      className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 hover:scale-105 shadow-md"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.location.href = `/events/${selectedEvent.id}`;
-                      }}
-                    >
-                      View Details
-                    </a>
+            {/* Info Window for Selected Event (Click) */}
+            {!compact && selectedEvent && (
+              <InfoWindow
+                position={{ 
+                  lat: parseFloat(selectedEvent.venue.latitude), 
+                  lng: parseFloat(selectedEvent.venue.longitude) 
+                }}
+                onCloseClick={() => setSelectedEvent(null)}
+              >
+                <div className="p-4 max-w-xs">
+                  <h3 className="font-bold text-gray-900 mb-3 text-lg">{selectedEvent.name}</h3>
+                  <div className="space-y-2 text-sm text-gray-600">
+                    <div className="flex items-center">
+                      <MapPinIcon className="h-4 w-4 text-purple-500 mr-2 flex-shrink-0" />
+                      <span className="truncate">{selectedEvent.venue.name}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <CalendarDaysIcon className="h-4 w-4 text-purple-500 mr-2 flex-shrink-0" />
+                      <span>{formatEventDate(selectedEvent.date)}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <ClockIcon className="h-4 w-4 text-purple-500 mr-2 flex-shrink-0" />
+                      <span>{selectedEvent.time || new Date(selectedEvent.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-200">
+                      <span className="font-semibold text-purple-600 text-lg">R{selectedEvent.price || 0}</span>
+                      <a 
+                        href={`${APP_BASE_PATH}/events/${selectedEvent.id}`}
+                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 hover:scale-105 shadow-md"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.location.href = `${APP_BASE_PATH}/events/${selectedEvent.id}`;
+                        }}
+                      >
+                        View Details
+                      </a>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </InfoWindow>
-          )}
+              </InfoWindow>
+            )}
 
-          {/* Info Window for Hovered Event */}
-          {hoveredEvent && !selectedEvent && (
-            <InfoWindow
-              position={{ 
-                lat: parseFloat(hoveredEvent.venue.latitude), 
-                lng: parseFloat(hoveredEvent.venue.longitude) 
-              }}
-            >
-              <div className="p-3 max-w-xs">
-                <h3 className="font-bold text-gray-900 mb-2 text-base">{hoveredEvent.name}</h3>
-                <div className="space-y-1 text-sm text-gray-600">
-                  <div className="flex items-center">
-                    <MapPinIcon className="h-4 w-4 text-purple-500 mr-2 flex-shrink-0" />
-                    <span className="truncate">{hoveredEvent.venue.name}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <CalendarDaysIcon className="h-4 w-4 text-purple-500 mr-2 flex-shrink-0" />
-                    <span>{formatEventDate(hoveredEvent.date)}</span>
-                  </div>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="font-semibold text-purple-600">R{hoveredEvent.price || 0}</span>
-                    <span className="text-xs text-gray-500">Click for details</span>
+            {/* Info Window for Hovered Event */}
+            {!compact && hoveredEvent && !selectedEvent && (
+              <InfoWindow
+                position={{ 
+                  lat: parseFloat(hoveredEvent.venue.latitude), 
+                  lng: parseFloat(hoveredEvent.venue.longitude) 
+                }}
+              >
+                <div className="p-3 max-w-xs">
+                  <h3 className="font-bold text-gray-900 mb-2 text-base">{hoveredEvent.name}</h3>
+                  <div className="space-y-1 text-sm text-gray-600">
+                    <div className="flex items-center">
+                      <MapPinIcon className="h-4 w-4 text-purple-500 mr-2 flex-shrink-0" />
+                      <span className="truncate">{hoveredEvent.venue.name}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <CalendarDaysIcon className="h-4 w-4 text-purple-500 mr-2 flex-shrink-0" />
+                      <span>{formatEventDate(hoveredEvent.date)}</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="font-semibold text-purple-600">R{hoveredEvent.price || 0}</span>
+                      <span className="text-xs text-gray-500">Click for details</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </InfoWindow>
-          )}
+              </InfoWindow>
+            )}
         </GoogleMap>
       ) : (
         // Fallback when API key is missing
@@ -409,7 +412,7 @@ function LiveEventsMap({ events = [] }) {
               <MapPinIcon className="h-8 w-8 text-white" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Map Unavailable</h3>
-            <p className="text-gray-600 mb-4">Google Maps API key is required to display the map.</p>
+            <p className="text-gray-600 mb-4">Google Maps is not ready yet. Please refresh or try again shortly.</p>
             {eventsWithCoordinates.length > 0 && (
               <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 border border-purple-200">
                 <h4 className="font-medium text-gray-900 mb-2">Events with Venues:</h4>
