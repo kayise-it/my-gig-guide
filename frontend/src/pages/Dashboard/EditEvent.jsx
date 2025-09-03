@@ -515,6 +515,8 @@ const EditEvent = () => {
                   onVenueSelect={(venueId) => {
                     setFormData(prev => ({ ...prev, venue_id: venueId }));
                   }}
+                  userRole="user"
+                  userId={userId}
                 />
               </div>
 
