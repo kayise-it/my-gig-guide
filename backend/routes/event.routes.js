@@ -48,9 +48,9 @@ router.post('/create_event', verifyToken, upload.any(), async (req, res) => {
                 message: "Owner ID is required"
             });
         }
-        if (!req.body.owner_type || !['artist', 'organiser'].includes(req.body.owner_type)) {
+        if (!req.body.owner_type || !['artist', 'organiser', 'user'].includes(req.body.owner_type)) {
             return res.status(400).json({
-                message: "Owner type must be either 'artist' or 'organiser'"
+                message: "Owner type must be either 'artist', 'organiser', or 'user'"
             });
         }
 
@@ -68,6 +68,14 @@ router.post('/create_event', verifyToken, upload.any(), async (req, res) => {
             if (!ownerData) {
                 return res.status(400).json({
                     message: "Organiser not found"
+                });
+            }
+        } else if (req.body.owner_type === 'user') {
+            // For user-created events, owner_id should be the user's ID
+            ownerData = await User.findByPk(req.body.owner_id);
+            if (!ownerData) {
+                return res.status(400).json({
+                    message: "User not found"
                 });
             }
         }
@@ -105,7 +113,8 @@ router.post('/create_event', verifyToken, upload.any(), async (req, res) => {
         const eventId = createdEvent.id;
         
         // Get or create user folder path
-        const userType = req.body.owner_type === 'artist' ? 'artists' : 'organisers';
+        const userType = req.body.owner_type === 'artist' ? 'artists' : 
+                        req.body.owner_type === 'organiser' ? 'organisers' : 'users';
         let orgFolder = req.body.orgFolder;
         
         if (!orgFolder) {
@@ -329,6 +338,52 @@ router.get('/owner/:ownerType/:ownerId', async (req, res) => {
         res.status(500).json({
             success: false,
             message: error.message || "Error fetching events by owner"
+        });
+    }
+});
+
+// Get events created by a specific user (for user dashboard)
+router.get('/user/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        const events = await Event.findAll({
+            where: {
+                userId: parseInt(userId)
+            },
+            include: [
+                {
+                    model: db.user,
+                    attributes: ["id", "username"],
+                    as: 'creator'
+                },
+                {
+                    model: Artist,
+                    attributes: ["id", "stage_name", "real_name"],
+                    as: 'artistOwner'
+                },
+                {
+                    model: Organiser,
+                    attributes: ["id", "name"],
+                    as: 'organiserOwner'
+                },
+                {
+                    model: db.venue,
+                    attributes: ["id", "name", "address", "latitude", "longitude"],
+                    as: 'venue'
+                }
+            ]
+        });
+
+        res.status(200).json({
+            success: true,
+            events
+        });
+    } catch (error) {
+        console.error("Error fetching events by user:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message || "Error fetching events by user"
         });
     }
 });

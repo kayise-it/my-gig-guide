@@ -5,10 +5,10 @@ module.exports = (sequelize, DataTypes) => {
     userId: { type: DataTypes.INTEGER, allowNull: true },
     owner_id: { type: DataTypes.INTEGER, allowNull: false },
     owner_type: { 
-      type: DataTypes.ENUM('artist', 'organiser'), 
+      type: DataTypes.ENUM('artist', 'organiser', 'user'), 
       allowNull: false,
       validate: {
-        isIn: [['artist', 'organiser']]
+        isIn: [['artist', 'organiser', 'user']]
       }
     },
     description: DataTypes.TEXT,

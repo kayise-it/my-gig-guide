@@ -37,7 +37,7 @@ export default function Dashboard() {
     try {
       const token = localStorage.getItem('token');
       // Use existing backend endpoint pattern
-      const response = await axios.get(`${API_BASE_URL}/api/events/owner/user/${currentUser.id}`, {
+              const response = await axios.get(`${API_BASE_URL}/api/events/user/${currentUser.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
