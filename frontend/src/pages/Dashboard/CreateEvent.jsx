@@ -20,6 +20,7 @@ import DynamicEventButton from '../../components/Includes/DynamicEventButton';
 import DashboardBreadCrumb from '../../components/Includes/DashboardBreadCrumb';
 import PageHeader from '../../components/Includes/PageHeader';
 import API_BASE_URL from '../../api/config';
+import ArtistSelector from '../../components/Events/ArtistSelector';
 import { useAuth } from '../../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { useVenueModal } from "../../components/Venue/VenueModalContext";
@@ -53,6 +54,7 @@ const CreateEvent = () => {
     ticket_url: '',
     poster: '',
     booked_artists: '',
+    selected_artists: [],
     category: '',
     capacity: '',
     gallery: [],
@@ -70,6 +72,7 @@ const CreateEvent = () => {
   const [organiserSettings, setGuiderSettings] = useState({});
   const [user, setUser] = useState(null);
   const [orgFolder, setOrgFolder] = useState('');
+  const [userFolder, setUserFolder] = useState('');
   const [selectedPosterFile, setSelectedPosterFile] = useState(null);
   const [selectedGalleryFiles, setSelectedGalleryFiles] = useState([]);
   const [posterPreview, setPosterPreview] = useState('');
@@ -271,7 +274,7 @@ const CreateEvent = () => {
     };
 
     initializeComponent();
-  }, [id, token, currentUser, organiserId, artistId]);
+  }, [id, token, currentUser]);
 
   const fetchEventDetails = async () => {
     try {
@@ -380,6 +383,12 @@ const CreateEvent = () => {
       formDataToSend.append('capacity', formData.capacity || '');
       
       // Do not send orgFolder; backend derives correct folder from profile settings
+
+      // Attach selected artist IDs
+      if (Array.isArray(formData.selected_artists) && formData.selected_artists.length > 0) {
+        const ids = formData.selected_artists.map(a => a.id);
+        formDataToSend.append('artist_ids', JSON.stringify(ids));
+      }
 
       // Add poster file if selected
       if (selectedPosterFile) {
@@ -512,8 +521,9 @@ const CreateEvent = () => {
                 </label>
                 <VenueSelector
                   selectedVenueId={formData.venue_id}
-                  onVenueSelect={(venueId) => {
-                    setFormData(prev => ({ ...prev, venue_id: venueId }));
+                  onVenueSelect={(venue) => {
+                    const normalizedVenueId = typeof venue === 'object' && venue !== null ? venue.id : venue;
+                    setFormData(prev => ({ ...prev, venue_id: normalizedVenueId }));
                   }}
                   userRole="user"
                   userId={userId}
@@ -558,21 +568,12 @@ const CreateEvent = () => {
               </div>
 
               <div>
-                <label htmlFor="booked_artists" className="block text-sm font-semibold text-gray-900 mb-2">
-                  Booked Artists
-                </label>
-                <input
-                  type="text"
-                  name="booked_artists"
-                  id="booked_artists"
-                  value={formData.booked_artists}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                  placeholder="Enter artist names separated by commas"
+                <ArtistSelector
+                  label="Booked Artists"
+                  value={formData.selected_artists}
+                  onChange={(artists) => setFormData(prev => ({ ...prev, selected_artists: artists }))}
                 />
-                <p className="mt-1 text-sm text-gray-600">
-                  List the artists performing at this event (e.g., "John Doe, Jane Smith")
-                </p>
+                <p className="mt-1 text-sm text-gray-600">Search and add multiple artists.</p>
               </div>
             </div>
           </div>

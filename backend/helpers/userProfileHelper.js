@@ -142,6 +142,23 @@ async function createOrUpdateUserProfileSettings({
   userId,
   transaction = null
 }) {
+  // HARD GUARD: For users (role 6), check if they already have settings in user.settings
+  if (role === '6' || role === 6) {
+    const User = db.user;
+    const user = await User.findByPk(userId);
+    if (user && user.settings && user.settings.trim() !== '') {
+      try {
+        const existingSettings = JSON.parse(user.settings);
+        if (existingSettings.folder_name && existingSettings.path) {
+          console.log(`🚫 HARD GUARD: User ${userId} already has settings, refusing to create new folder:`, existingSettings.folder_name);
+          return existingSettings; // Return existing settings instead of creating new ones
+        }
+      } catch (error) {
+        console.error('Error parsing user.settings in hard guard:', error);
+      }
+    }
+  }
+
   let model, profileData, settings;
 
   // Check if a profile already exists for this user FIRST
@@ -197,8 +214,27 @@ async function createOrUpdateUserProfileSettings({
 
     console.log('Creating new organiser settings:', settings);
 
+  } else if (role === '6' || role === 6) {
+    // User (role 6) - update user.settings directly
+    const User = db.user;
+    settings = {
+      setting_name: name || username,
+      userType: 'users',
+      path: '../frontend/public/users/',
+      folder_name: folderName
+    };
+    
+    const user = await User.findByPk(userId);
+    if (user) {
+      await user.update({ settings: JSON.stringify(settings) }, transaction ? { transaction } : {});
+      console.log(`Updated user.settings for userId ${userId}:`, settings.folder_name);
+    } else {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+    
+    return settings;
   } else {
-    // Not artist or organiser, do nothing
+    // Not artist, organiser, or user, do nothing
     return null;
   }
 

@@ -1,170 +1,89 @@
-import React, { useState, useEffect } from 'react';
-import { MagnifyingGlassIcon, XMarkIcon, UserIcon } from '@heroicons/react/24/outline';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import API_BASE_URL from '../../api/config';
 
-const ArtistSelector = ({ 
-  selectedArtists = [], 
-  onArtistsChange, 
-  label = "Select Artists",
-  placeholder = "Search for artists...",
-  className = ""
-}) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
+const Chip = ({ label, onRemove }) => (
+  <span className="inline-flex items-center gap-1 bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-sm">
+    <span>{label}</span>
+    <button type="button" onClick={onRemove} className="hover:text-indigo-900">×</button>
+  </span>
+);
 
-  // Search for artists
-  const searchArtists = async (query) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      return;
-    }
+export default function ArtistSelector({ value = [], onChange, placeholder = 'Search artists…', label = 'Artists', className = '' }) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
 
-    setIsSearching(true);
-    try {
-      const response = await axios.get(`${API_BASE_URL}/api/artists/search?q=${encodeURIComponent(query)}`);
-      setSearchResults(response.data.filter(artist => 
-        !selectedArtists.some(selected => selected.id === artist.id)
-      ));
-    } catch (error) {
-      console.error('Error searching artists:', error);
-      setSearchResults([]);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  // Handle search input changes
-  const handleSearchChange = (e) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-    
-    if (value.trim()) {
-      searchArtists(value);
-      setShowDropdown(true);
-    } else {
-      setSearchResults([]);
-      setShowDropdown(false);
-    }
-  };
-
-  // Select an artist
-  const selectArtist = (artist) => {
-    const newSelectedArtists = [...selectedArtists, artist];
-    onArtistsChange(newSelectedArtists);
-    setSearchTerm('');
-    setSearchResults([]);
-    setShowDropdown(false);
-  };
-
-  // Remove an artist
-  const removeArtist = (artistId) => {
-    const newSelectedArtists = selectedArtists.filter(artist => artist.id !== artistId);
-    onArtistsChange(newSelectedArtists);
-  };
-
-  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (!event.target.closest('.artist-selector')) {
-        setShowDropdown(false);
-      }
+    const handler = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) setOpen(false);
     };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  useEffect(() => {
+    const run = async () => {
+      const q = query.trim();
+      if (!q) { setResults([]); return; }
+      try {
+        const { data } = await axios.get(`${API_BASE_URL}/api/artists/search`, { params: { q } });
+        const picked = new Set(value.map(a => a.id));
+        setResults(data.filter(a => !picked.has(a.id)));
+      } catch (e) {
+        setResults([]);
+      }
+    };
+    const id = setTimeout(run, 250);
+    return () => clearTimeout(id);
+  }, [query, value]);
+
+  const add = (artist) => {
+    const next = [...value, artist];
+    onChange?.(next);
+    setQuery('');
+    setResults([]);
+    setOpen(false);
+  };
+
+  const remove = (id) => onChange?.(value.filter(a => a.id !== id));
+
   return (
-    <div className={`artist-selector ${className}`}>
-      <label className="block text-sm font-semibold text-gray-900 mb-2">
-        {label}
-      </label>
-      
-      {/* Selected Artists Display */}
-      {selectedArtists.length > 0 && (
-        <div className="mb-3 flex flex-wrap gap-2">
-          {selectedArtists.map((artist) => (
-            <div
-              key={artist.id}
-              className="inline-flex items-center gap-2 bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium"
+    <div className={`w-full ${className}`} ref={containerRef}>
+      {label && <label className="block text-sm font-semibold text-gray-900 mb-2">{label}</label>}
+
+      <div className="flex flex-wrap gap-2 mb-2">
+        {value.map(a => (
+          <Chip key={a.id} label={a.stage_name || a.real_name || `Artist #${a.id}`} onRemove={() => remove(a.id)} />
+        ))}
+      </div>
+
+      <input
+        type="text"
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        value={query}
+        onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        placeholder={placeholder}
+      />
+
+      {open && results.length > 0 && (
+        <div className="mt-1 max-h-56 overflow-auto border border-gray-200 rounded-lg bg-white shadow">
+          {results.map(r => (
+            <button
+              key={r.id}
+              type="button"
+              className="w-full text-left px-3 py-2 hover:bg-gray-50"
+              onClick={() => add(r)}
             >
-              <UserIcon className="h-4 w-4" />
-              <span>{artist.stage_name || artist.real_name || artist.username}</span>
-              <button
-                type="button"
-                onClick={() => removeArtist(artist.id)}
-                className="text-purple-600 hover:text-purple-800 transition-colors"
-              >
-                <XMarkIcon className="h-4 w-4" />
-              </button>
-            </div>
+              <div className="font-medium">{r.stage_name || r.real_name || `Artist #${r.id}`}</div>
+              {r.real_name && r.stage_name && <div className="text-xs text-gray-500">{r.real_name}</div>}
+            </button>
           ))}
         </div>
       )}
-
-      {/* Search Input */}
-      <div className="relative">
-        <div className="relative">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={handleSearchChange}
-            placeholder={placeholder}
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-          />
-        </div>
-
-        {/* Search Results Dropdown */}
-        {showDropdown && (searchResults.length > 0 || isSearching) && (
-          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-            {isSearching ? (
-              <div className="p-4 text-center text-gray-500">
-                Searching...
-              </div>
-            ) : (
-              <div>
-                {searchResults.map((artist) => (
-                  <button
-                    key={artist.id}
-                    type="button"
-                    onClick={() => selectArtist(artist)}
-                    className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                        <UserIcon className="h-5 w-5 text-purple-600" />
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-900">
-                          {artist.stage_name || artist.real_name || 'Unknown Artist'}
-                        </div>
-                        {artist.genre && (
-                          <div className="text-sm text-gray-500">{artist.genre}</div>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Help Text */}
-      <p className="mt-2 text-sm text-gray-600">
-        Search and select artists to perform at your event. Artists will be notified of their selection.
-      </p>
     </div>
   );
-};
-
-export default ArtistSelector;
-
-
-
-
+}
+ 

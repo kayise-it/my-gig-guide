@@ -9,7 +9,6 @@ import './utils/consoleErrorFixer'; // Import error fixer utility
 import AdminDashboard from "./pages/AdminDashboard";
 import Dashboard from "./pages/Dashboard/Dashboard";
 import UserCreateEvent from "./pages/Dashboard/CreateEvent";
-import UserViewEvent from "./pages/Dashboard/ViewEvent";
 import UserEditEvent from "./pages/Dashboard/EditEvent";
 
 /* Public Pages */
@@ -84,7 +83,7 @@ function App() {
         {/* User Dashboard Routes */}
         <Route path="/user/dashboard" element={<PrivateRoute><Layout><Dashboard /></Layout></PrivateRoute>} />
         <Route path="/user/dashboard/create-event" element={<PrivateRoute><Layout><UserCreateEvent /></Layout></PrivateRoute>} />
-        <Route path="/user/dashboard/event/:id" element={<PrivateRoute><Layout><UserViewEvent /></Layout></PrivateRoute>} />
+        <Route path="/user/dashboard/event/:id" element={<PrivateRoute><Layout><ShowEvent /></Layout></PrivateRoute>} />
         <Route path="/user/dashboard/edit-event/:id" element={<PrivateRoute><Layout><UserEditEvent /></Layout></PrivateRoute>} />
         <Route path="/admin" element={<PrivateRoute requiredRole="admin"><Layout><AdminDashboard /></Layout></PrivateRoute>} />
         <Route path="/organiser/dashboard" element={<PrivateRoute requiredRole="organiser"><Layout><OrganiserDashboard /></Layout></PrivateRoute>} />

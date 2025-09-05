@@ -25,6 +25,7 @@ import {
 } from '@heroicons/react/24/outline';
 import HeroSection from '../../components/UI/HeroSection';
 import RatingSystem from '../../components/UI/RatingSystem';
+import SimilarArtists from '../../components/Artist/SimilarArtists';
 
 
 export default function ShowArtist() {
@@ -415,6 +416,9 @@ export default function ShowArtist() {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Similar Artists */}
+                            <SimilarArtists artistId={artist_id} />
                         </div>
 
                         {/* Sidebar */}

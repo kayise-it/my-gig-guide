@@ -108,9 +108,9 @@ exports.createVenue = async (req, res) => {
     // Allow unclaimed venues (no owner required) or venues with owners
     if (req.body.owner_id && req.body.owner_type) {
       // If owner_id is provided, owner_type must be valid
-      if (!['artist', 'organiser'].includes(req.body.owner_type)) {
+      if (!['artist', 'organiser', 'user'].includes(req.body.owner_type)) {
         return res.status(400).json({
-          message: "Owner type must be either 'artist' or 'organiser'"
+          message: "Owner type must be either 'artist', 'organiser', or 'user'"
         });
       }
       
@@ -130,24 +130,9 @@ exports.createVenue = async (req, res) => {
             message: "Organiser not found"
           });
         }
-      }
-    }
-
-    // Validate that the owner exists
-    let ownerData;
-    if (req.body.owner_type === 'artist') {
-      ownerData = await Artist.findByPk(req.body.owner_id);
-      if (!ownerData) {
-        return res.status(400).json({
-          message: "Artist not found"
-        });
-      }
-    } else if (req.body.owner_type === 'organiser') {
-      ownerData = await Organiser.findByPk(req.body.owner_id);
-      if (!ownerData) {
-        return res.status(400).json({
-          message: "Organiser not found"
-        });
+      } else if (req.body.owner_type === 'user') {
+        // For users, we don't need to validate ownerData since they don't have separate profiles
+        ownerData = null;
       }
     }
 
@@ -162,18 +147,38 @@ exports.createVenue = async (req, res) => {
     
     if (req.body.owner_type && req.body.owner_id) {
       // Venue has an owner
-      role = req.body.owner_type === 'artist' ? 3 : 4;
-      folderName = `${role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
-      settings = await createOrUpdateUserProfileSettings({
-        role: role,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        contact_email: user.contact_email,
-        phone_number: user.phone_number,
-        folderName,
-        userId: user.id
-      });
+      role = req.body.owner_type === 'artist' ? 3 : (req.body.owner_type === 'organiser' ? 4 : 6);
+      
+      // Check for existing user settings first
+      if (user.settings && user.settings.trim() !== '') {
+        try {
+          settings = JSON.parse(user.settings);
+          if (settings.folder_name && settings.path) {
+            console.log('✅ Using existing user settings for venue creation:', settings.folder_name);
+          } else {
+            settings = null;
+          }
+        } catch (parseError) {
+          console.error('❌ Error parsing user settings:', parseError.message);
+          settings = null;
+        }
+      }
+      
+      // Only create new settings if none exist
+      if (!settings) {
+        console.log('🔄 No existing settings found, creating new settings for venue creation');
+        folderName = `${role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
+        settings = await createOrUpdateUserProfileSettings({
+          role: role,
+          name: user.name,
+          username: user.username,
+          email: user.email,
+          contact_email: user.contact_email,
+          phone_number: user.phone_number,
+          folderName,
+          userId: user.id
+        });
+      }
       
       // Create folder structure if it doesn't exist
       await createFolderStructure(settings);
@@ -211,7 +216,7 @@ exports.createVenue = async (req, res) => {
     
     if (req.body.owner_type && req.body.owner_id) {
       // Venue has an owner - use owner-specific path
-      const userType = req.body.owner_type === 'artist' ? 'artists' : 'organisers';
+      const userType = req.body.owner_type === 'artist' ? 'artists' : (req.body.owner_type === 'organiser' ? 'organisers' : 'users');
       venuesPath = path.join(projectRoot, "frontend", "public", userType, settings.folder_name, "venues");
     } else {
       // Unclaimed venue - use generic path
@@ -257,10 +262,10 @@ exports.createVenue = async (req, res) => {
       // Generate public path
       let mainPicturePath;
       if (req.body.owner_type && req.body.owner_id) {
-        const userType = req.body.owner_type === 'artist' ? 'artists' : 'organisers';
-        mainPicturePath = `/${userType}/${settings.folder_name}/venues/${venueFolderName}/${fileName}`;
+        const userType = req.body.owner_type === 'artist' ? 'artists' : (req.body.owner_type === 'organiser' ? 'organisers' : 'users');
+        mainPicturePath = `/uploads/${userType}/${settings.folder_name}/venues/${venueFolderName}/${fileName}`;
       } else {
-        mainPicturePath = `/unclaimed_venues/venues/${venueFolderName}/${fileName}`;
+        mainPicturePath = `/uploads/unclaimed_venues/venues/${venueFolderName}/${fileName}`;
       }
       
       try { 
@@ -310,9 +315,9 @@ exports.updateVenue = async (req, res) => {
         message: "Owner ID is required"
       });
     }
-    if (!req.body.owner_type || !['artist', 'organiser'].includes(req.body.owner_type)) {
+    if (!req.body.owner_type || !['artist', 'organiser', 'user'].includes(req.body.owner_type)) {
       return res.status(400).json({
-        message: "Owner type must be either 'artist' or 'organiser'"
+        message: "Owner type must be either 'artist', 'organiser', or 'user'"
       });
     }
 
@@ -332,6 +337,9 @@ exports.updateVenue = async (req, res) => {
           message: "Organiser not found"
         });
       }
+    } else if (req.body.owner_type === 'user') {
+      // For users, we don't need to validate ownerData since they don't have separate profiles
+      ownerData = null;
     }
 
     // Get user record
@@ -340,20 +348,42 @@ exports.updateVenue = async (req, res) => {
       return res.status(400).json({ message: 'User not found' });
     }
 
-    // Get or create settings - function will handle existing settings automatically
-    const role = req.body.owner_type === 'artist' ? 3 : 4;
-    const folderName = `${role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
-    const settings = await createOrUpdateUserProfileSettings({
-      role: role,
-      name: user.name,
-      username: user.username,
-      email: user.email,
-      contact_email: user.contact_email,
-      phone_number: user.phone_number,
-      folderName,
-      userId: user.id
-    });
-
+    // Get or create settings - check for existing user settings first
+    let role, folderName, settings;
+    
+    role = req.body.owner_type === 'artist' ? 3 : (req.body.owner_type === 'organiser' ? 4 : 6);
+    
+    // Check for existing user settings first
+    if (user.settings && user.settings.trim() !== '') {
+      try {
+        settings = JSON.parse(user.settings);
+        if (settings.folder_name && settings.path) {
+          console.log('✅ Using existing user settings for venue update:', settings.folder_name);
+        } else {
+          settings = null;
+        }
+      } catch (parseError) {
+        console.error('❌ Error parsing user settings:', parseError.message);
+        settings = null;
+      }
+    }
+    
+    // Only create new settings if none exist
+    if (!settings) {
+      console.log('🔄 No existing settings found, creating new settings for venue update');
+      folderName = `${role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
+      settings = await createOrUpdateUserProfileSettings({
+        role: role,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        contact_email: user.contact_email,
+        phone_number: user.phone_number,
+        folderName,
+        userId: user.id
+      });
+    }
+    
     // Create folder structure if it doesn't exist
     await createFolderStructure(settings);
 
@@ -379,7 +409,8 @@ exports.updateVenue = async (req, res) => {
     if (req.file) {
       // 🎯 SIMPLE, WORKING PATH: Create venues INSIDE my-gig-guide folder
       const projectRoot = path.resolve(__dirname, "../../");
-      const venuesPath = path.join(projectRoot, "frontend", "public", "artists", settings.folder_name, "venues");
+      const userType = req.body.owner_type === 'artist' ? 'artists' : (req.body.owner_type === 'organiser' ? 'organisers' : 'users');
+      const venuesPath = path.join(projectRoot, "frontend", "public", userType, settings.folder_name, "venues");
       
       console.log('🎯 SIMPLE PATH LOGIC (UPDATE):');
       console.log('  Project root:', projectRoot);
@@ -413,8 +444,8 @@ exports.updateVenue = async (req, res) => {
       console.log('✅ Saved venue image:', filePath);
       
       // 🔧 Generate public path using settings (maintains user's folder structure)
-      const userType = req.body.owner_type === 'artist' ? 'artists' : 'organisers';
-      const mainPicturePath = `/${userType}/${settings.folder_name}/venues/${venueFolderName}/${fileName}`;
+      const userType = req.body.owner_type === 'artist' ? 'artists' : (req.body.owner_type === 'organiser' ? 'organisers' : 'users');
+      const mainPicturePath = `/uploads/${userType}/${settings.folder_name}/venues/${venueFolderName}/${fileName}`;
       
       try { 
         await existingVenue.update({ main_picture: mainPicturePath }); 
@@ -465,14 +496,29 @@ exports.uploadVenueGallery = async (req, res) => {
     let settings = null;
     let isNewSettings = false;
 
-    // Try to get existing settings first
-    if (ownerData.settings && ownerData.settings.trim() !== '') {
+    // Check user.settings first for users (owner_type='user')
+    if (venue.owner_type === 'user' && user.settings && user.settings.trim() !== '') {
+      try {
+        settings = JSON.parse(user.settings);
+        if (settings.folder_name && settings.path) {
+          console.log('✅ Using existing user.settings for venue gallery:', settings.folder_name);
+        } else {
+          settings = null;
+        }
+      } catch (parseError) {
+        console.error('❌ Error parsing user.settings:', parseError.message);
+        settings = null;
+      }
+    }
+    
+    // Try to get existing settings from ownerData (for artists/organisers)
+    if (!settings && ownerData.settings && ownerData.settings.trim() !== '') {
       try {
         settings = JSON.parse(ownerData.settings);
         
         // Validate that settings have required fields
         if (settings.folder_name && settings.path) {
-          console.log('✅ Using existing settings:', {
+          console.log('✅ Using existing ownerData settings:', {
             folder_name: settings.folder_name,
             path: settings.path
           });
@@ -480,7 +526,7 @@ exports.uploadVenueGallery = async (req, res) => {
           throw new Error('Settings missing required fields');
         }
       } catch (parseError) {
-        console.error('❌ Error parsing existing settings:', parseError.message);
+        console.error('❌ Error parsing existing ownerData settings:', parseError.message);
         console.log('🔄 Will create new settings...');
         settings = null;
       }
@@ -488,7 +534,7 @@ exports.uploadVenueGallery = async (req, res) => {
 
     // Create new settings if none exist or if parsing failed
     if (!settings) {
-      const role = venue.owner_type === 'artist' ? 3 : 4;
+      const role = venue.owner_type === 'artist' ? 3 : (venue.owner_type === 'organiser' ? 4 : 6);
       const folderName = `${role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
       
       console.log('🆕 Creating new settings with folder:', folderName);
@@ -513,7 +559,7 @@ exports.uploadVenueGallery = async (req, res) => {
 
     // STEP 5: Build the complete folder path for venue gallery
     const repoRoot = path.resolve(__dirname, "../../");
-    const userType = venue.owner_type === 'artist' ? 'artists' : 'organisers';
+    const userType = venue.owner_type === 'artist' ? 'artists' : (venue.owner_type === 'organiser' ? 'organisers' : 'users');
     
     // Use the settings.folder_name (either existing or newly created)
     const folderPath = path.join(repoRoot, 'frontend', 'public', userType, settings.folder_name);
@@ -588,8 +634,8 @@ exports.uploadVenueGallery = async (req, res) => {
         fs.writeFileSync(filePath, buffer);
 
         // Generate public URL using the correct folder structure
-        const userType = venue.owner_type === 'artist' ? 'artists' : 'organisers';
-        const publicUrl = `/${userType}/${settings.folder_name}/venues/${venueFolderName}/gallery/${fileName}`;
+        const userType = venue.owner_type === 'artist' ? 'artists' : (venue.owner_type === 'organiser' ? 'organisers' : 'users');
+        const publicUrl = `/uploads/${userType}/${settings.folder_name}/venues/${venueFolderName}/gallery/${fileName}`;
         
         currentGallery.push(publicUrl);
         uploadedFiles.push({

@@ -70,6 +70,7 @@ const EditEvent = () => {
   const [organiserSettings, setGuiderSettings] = useState({});
   const [user, setUser] = useState(null);
   const [orgFolder, setOrgFolder] = useState('');
+  const [userFolder, setUserFolder] = useState('');
   const [selectedPosterFile, setSelectedPosterFile] = useState(null);
   const [selectedGalleryFiles, setSelectedGalleryFiles] = useState([]);
   const [posterPreview, setPosterPreview] = useState('');
@@ -512,8 +513,9 @@ const EditEvent = () => {
                 </label>
                 <VenueSelector
                   selectedVenueId={formData.venue_id}
-                  onVenueSelect={(venueId) => {
-                    setFormData(prev => ({ ...prev, venue_id: venueId }));
+                  onVenueSelect={(venue) => {
+                    const normalizedVenueId = typeof venue === 'object' && venue !== null ? venue.id : venue;
+                    setFormData(prev => ({ ...prev, venue_id: normalizedVenueId }));
                   }}
                   userRole="user"
                   userId={userId}

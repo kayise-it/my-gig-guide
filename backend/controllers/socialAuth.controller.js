@@ -52,7 +52,7 @@ const createUserProfile = async (user, role, name, email, phone_number) => {
     
     const settings = {
       setting_name: name || user.username,
-      path: "../frontend/public/organiser/",
+      path: "../frontend/public/organisers/",
       folder_name: folderName
     };
 

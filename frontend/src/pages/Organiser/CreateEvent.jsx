@@ -36,10 +36,10 @@ const CreateEvent = () => {
   const [loading, setLoading] = useState(true);
   const { currentUser } = useAuth();
   const { openVenueModal } = useVenueModal();
-  const artistId = currentUser.artist_id || location.state?.artistId;
-  const organiserId = currentUser.organiser_id || location.state?.organiserId;
   const { id } = useParams(); // Get event ID from URL if it exists
   const userId = JSON.parse(localStorage.getItem('user')).id;
+  const artistId = currentUser?.artist_id || location.state?.artistId;
+  const organiserId = currentUser?.organiser_id || location.state?.organiserId || userId;
   
   // Determine user role and specific ID
   let userRole = '';
@@ -51,13 +51,17 @@ const CreateEvent = () => {
   } else if (currentUser?.aclInfo?.acl_name === 'organiser') {
     userRole = 'organisers';
     specificUserId = organiserId;
+  } else if (currentUser?.aclInfo?.acl_name === 'user') {
+    userRole = 'users';
+    specificUserId = userId;
   }
   
   const [formData, setFormData] = useState({
     userId: userId,
     owner_id: currentUser?.aclInfo?.acl_name === 'organiser' ? organiserId : 
-              currentUser?.aclInfo?.acl_name === 'artist' ? artistId : null,
-    owner_type: currentUser?.aclInfo?.acl_name || '',
+              currentUser?.aclInfo?.acl_name === 'artist' ? artistId : 
+              currentUser?.aclInfo?.acl_name === 'user' ? userId : null,
+    owner_type: currentUser?.aclInfo?.acl_name === 'user' ? 'user' : currentUser?.aclInfo?.acl_name || '',
     venue_id: '',
     name: '',
     description: '',
@@ -270,12 +274,15 @@ const CreateEvent = () => {
           await fetchEventDetails();
         }
 
-        // Set organiser folder path
+        // Set folder path based on user role
         const username = fetchedUser?.username || storedUser?.username || currentUser?.username;
         if (currentUser?.aclInfo?.acl_name === 'organiser' && organiserId && username) {
           setOrgFolder(`public/organiser/${organiserId}_${username}`);
         } else if (currentUser?.aclInfo?.acl_name === 'artist' && artistId && username) {
           setOrgFolder(`public/artists/${artistId}_${username}`);
+        } else if (currentUser?.aclInfo?.acl_name === 'user' && userId && username) {
+          // For regular users, create a user folder structure
+          setOrgFolder(`public/users/${userId}_${username}`);
         }
 
       } catch (error) {
@@ -552,7 +559,7 @@ const CreateEvent = () => {
                 
                 {/* Create New Venue Link */}
                 <div className="mt-4 text-center">
-                  <Link
+                  <Link 
                     to={`/${userRole}/dashboard/venue/new`}
                     className="inline-flex items-center space-x-2 text-sm text-purple-600 hover:text-purple-700 font-medium"
                   >

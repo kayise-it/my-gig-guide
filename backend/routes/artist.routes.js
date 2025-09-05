@@ -61,7 +61,7 @@ router.post('/upload-poster', upload.single('poster'), async (req, res) => {
 
     fs.writeFileSync(fullPath, req.file.buffer);
 
-    const relativePath = path.join('/artists', path.basename(orgFolder), 'event_poster', fileName);
+    const relativePath = path.join('/uploads/artists', path.basename(orgFolder), 'event_poster', fileName);
 
     res.status(200).json({
       message: 'Poster uploaded',
@@ -166,6 +166,28 @@ router.delete('/remove-poster', async (req, res) => {
 
 /* Public Routes */
 router.get('/', artistController.artists);
+// Search artists by query (stage_name or real_name)
+router.get('/search', async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim();
+    if (!q) return res.json([]);
+
+    const { Op } = require('sequelize');
+    const results = await Artist.findAll({
+      where: {
+        [Op.or]: [
+          { stage_name: { [Op.like]: `%${q}%` } },
+          { real_name: { [Op.like]: `%${q}%` } }
+        ]
+      },
+      attributes: ['id', 'stage_name', 'real_name']
+    });
+    res.json(results);
+  } catch (err) {
+    console.error('Artist search failed:', err);
+    res.status(500).json({ message: 'Artist search failed' });
+  }
+});
 router.get('/:id', artistController.userOrganisation);
 
 router.put('/edit/:id', verifyToken, artistController.updateArtist);

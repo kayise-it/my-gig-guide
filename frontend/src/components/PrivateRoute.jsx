@@ -6,7 +6,7 @@ export default function PrivateRoute({ children, requiredRole }) {
   const { isAuthenticated, role, isLoading } = useContext(AuthContext);
 
   const roleMap = {
-    1: 'admin',
+    1: 'superuser',
     3: 'artist',
     4: 'organiser'
   };
@@ -15,7 +15,8 @@ export default function PrivateRoute({ children, requiredRole }) {
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
-  if (requiredRole && roleMap[role] !== requiredRole) {
+  // Superuser has access to all protected routes
+  if (requiredRole && roleMap[role] !== requiredRole && roleMap[role] !== 'superuser') {
     console.log(`Unauthorized - User role: ${roleMap[role]}, Required: ${requiredRole}`);
     return <Navigate to="/" replace />;
   }

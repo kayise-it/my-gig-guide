@@ -108,18 +108,75 @@ router.post('/create_event', verifyToken, upload.any(), async (req, res) => {
 
         const createdEvent = await Event.create(event);
 
+        // If artist_ids provided, create join rows in event_artists
+        if (req.body.artist_ids) {
+            let artistIds = [];
+            try {
+                artistIds = Array.isArray(req.body.artist_ids)
+                  ? req.body.artist_ids
+                  : JSON.parse(req.body.artist_ids);
+            } catch (e) {
+                artistIds = [];
+            }
+            if (Array.isArray(artistIds) && artistIds.length > 0) {
+                const cleanedIds = [...new Set(artistIds.map(id => parseInt(id)).filter(n => Number.isInteger(n)))];
+                if (cleanedIds.length > 0) {
+                    await db.event_artist.bulkCreate(
+                        cleanedIds.map(aid => ({ event_id: createdEvent.id, artist_id: aid })),
+                        { ignoreDuplicates: true }
+                    );
+                }
+            }
+        }
+
         // Generate event folder name
         const eventFolderName = req.body.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
         const eventId = createdEvent.id;
         
-        // Get or create user folder path
+        // Get or create user folder path using existing settings
         const userType = req.body.owner_type === 'artist' ? 'artists' : 
                         req.body.owner_type === 'organiser' ? 'organisers' : 'users';
         let orgFolder = req.body.orgFolder;
         
         if (!orgFolder) {
-            // Generate folder path if not provided, using events subfolder
-            orgFolder = getUserFolderPath(user, ownerData, userType, 'events');
+            // Check for existing settings first
+            let settings = null;
+            
+            // For users (role 6), check user.settings first
+            if (req.body.owner_type === 'user' && user && user.settings && user.settings.trim() !== '') {
+                try {
+                    settings = JSON.parse(user.settings);
+                    if (settings.folder_name && settings.path) {
+                        console.log('✅ Using existing user settings for event creation:', settings.folder_name);
+                        // Use existing folder structure
+                        const repoRoot = path.resolve(__dirname, "../../");
+                        orgFolder = path.join(repoRoot, 'frontend', 'public', userType, settings.folder_name, 'events');
+                    }
+                } catch (parseError) {
+                    console.error('❌ Error parsing user settings:', parseError.message);
+                }
+            }
+            
+            // For artists/organisers, check ownerData.settings
+            if (!settings && ownerData && ownerData.settings && ownerData.settings.trim() !== '') {
+                try {
+                    settings = JSON.parse(ownerData.settings);
+                    if (settings.folder_name && settings.path) {
+                        console.log('✅ Using existing owner settings for event creation:', settings.folder_name);
+                        // Use existing folder structure
+                        const repoRoot = path.resolve(__dirname, "../../");
+                        orgFolder = path.join(repoRoot, 'frontend', 'public', userType, settings.folder_name, 'events');
+                    }
+                } catch (parseError) {
+                    console.error('❌ Error parsing owner settings:', parseError.message);
+                }
+            }
+            
+            // Fallback to creating new settings if none exist
+            if (!settings) {
+                console.log('🔄 No existing settings found, creating new folder structure');
+                orgFolder = getUserFolderPath(user, ownerData, userType, 'events');
+            }
         }
         
         if (orgFolder) {
@@ -154,7 +211,7 @@ router.post('/create_event', verifyToken, upload.any(), async (req, res) => {
                     // Construct the correct web path for the database
                     // Extract the folder name from the orgFolder path
                     const folderName = path.basename(path.dirname(orgFolder)); // Get the artist folder name (e.g., "3_Thando_8146")
-                    posterPath = `/${userType}/${folderName}/events/${eventId}_${eventFolderName}/event_poster/${posterFileName}`;
+                    posterPath = `/uploads/${userType}/${folderName}/events/${eventId}_${eventFolderName}/event_poster/${posterFileName}`;
                 }
 
                 // Handle gallery uploads
@@ -169,7 +226,7 @@ router.post('/create_event', verifyToken, upload.any(), async (req, res) => {
                     
                     // Construct the correct web path for the database
                     const folderName = path.basename(path.dirname(orgFolder)); // Get the artist folder name (e.g., "3_Thando_8146")
-                    const galleryPath = `/${userType}/${folderName}/events/${eventId}_${eventFolderName}/gallery/${galleryFileName}`;
+                    const galleryPath = `/uploads/${userType}/${folderName}/events/${eventId}_${eventFolderName}/gallery/${galleryFileName}`;
                     galleryPaths.push(galleryPath);
                 }
             }
@@ -218,7 +275,8 @@ router.put('/edit/:id', verifyToken, upload.any(), async (req, res) => {
         event.capacity = req.body.capacity ? parseInt(req.body.capacity) : event.capacity;
 
         // Handle file uploads if provided
-        const userType = req.body.owner_type === 'artist' ? 'artists' : 'organisers';
+        const userType = req.body.owner_type === 'artist' ? 'artists' : 
+                        req.body.owner_type === 'organiser' ? 'organisers' : 'users';
         let orgFolder = req.body.orgFolder;
         
         if (orgFolder && req.files && req.files.length > 0) {
@@ -249,7 +307,7 @@ router.put('/edit/:id', verifyToken, upload.any(), async (req, res) => {
                 
                 // Construct the correct web path for the database
                 const folderName = path.basename(path.dirname(orgFolder)); // Get the artist folder name (e.g., "3_Thando_8146")
-                event.poster = `/${userType}/${folderName}/events/${event.id}_${eventFolderName}/event_poster/${posterFileName}`;
+                event.poster = `/uploads/${userType}/${folderName}/events/${event.id}_${eventFolderName}/event_poster/${posterFileName}`;
             }
 
             // Handle new gallery uploads
@@ -268,7 +326,7 @@ router.put('/edit/:id', verifyToken, upload.any(), async (req, res) => {
                     
                     // Construct the correct web path for the database
                     const folderName = path.basename(path.dirname(orgFolder)); // Get the artist folder name (e.g., "3_Thando_8146")
-                    const galleryPath = `/${userType}/${folderName}/events/${event.id}_${eventFolderName}/gallery/${galleryFileName}`;
+                    const galleryPath = `/uploads/${userType}/${folderName}/events/${event.id}_${eventFolderName}/gallery/${galleryFileName}`;
                     newGalleryPaths.push(galleryPath);
                 }
 
@@ -298,10 +356,10 @@ router.get('/owner/:ownerType/:ownerId', async (req, res) => {
     try {
         const { ownerType, ownerId } = req.params;
         
-        if (!['artist', 'organiser'].includes(ownerType)) {
+        if (!['artist', 'organiser', 'user'].includes(ownerType)) {
             return res.status(400).json({
                 success: false,
-                message: "Owner type must be either 'artist' or 'organiser'"
+                message: "Owner type must be either 'artist', 'organiser', or 'user'"
             });
         }
 
@@ -409,6 +467,13 @@ router.get('/:id', async (req, res) => {
                     model: Organiser,
                     attributes: ["id", "name"],
                     as: 'organiserOwner'
+                },
+                // Include booked artists (many-to-many)
+                {
+                    model: Artist,
+                    as: 'artists',
+                    attributes: ['id', 'stage_name', 'real_name'],
+                    through: { attributes: [] }
                 },
                 {
                     model: db.venue,
@@ -537,18 +602,54 @@ router.post('/:id/gallery', verifyToken, upload.array('gallery', 10), async (req
         const ownerData = event.owner_type === 'artist' ? await Artist.findByPk(event.owner_id) : await Organiser.findByPk(event.owner_id);
 
         // Get or create settings - function will handle existing settings automatically
-        const role = event.owner_type === 'artist' ? 3 : 4;
-        const folderName = `${role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
-        const settings = await createOrUpdateUserProfileSettings({
-            role: role,
-            name: user.name,
-            username: user.username,
-            email: user.email,
-            contact_email: user.contact_email,
-            phone_number: user.phone_number,
-            folderName,
-            userId: user.id
-        });
+        // Check for existing settings first instead of creating new ones
+        let settings = null;
+        const roleMap = { artist: 3, organiser: 4, user: 6 };
+        const role = roleMap[event.owner_type];
+        
+        // For users (role 6), check user.settings first
+        if (event.owner_type === 'user' && user.settings && user.settings.trim() !== '') {
+            try {
+                settings = JSON.parse(user.settings);
+                if (settings.folder_name && settings.path) {
+                    console.log('✅ Using existing user settings for gallery upload:', settings.folder_name);
+                } else {
+                    settings = null;
+                }
+            } catch (parseError) {
+                console.error('❌ Error parsing user settings:', parseError.message);
+            }
+        }
+        
+        // For artists/organisers, check ownerData.settings
+        if (!settings && ownerData && ownerData.settings && ownerData.settings.trim() !== '') {
+            try {
+                settings = JSON.parse(ownerData.settings);
+                if (settings.folder_name && settings.path) {
+                    console.log('✅ Using existing owner settings for gallery upload:', settings.folder_name);
+                } else {
+                    settings = null;
+                }
+            } catch (parseError) {
+                console.error('❌ Error parsing owner settings:', parseError.message);
+            }
+        }
+        
+        // Only create new settings if none exist
+        if (!settings) {
+            console.log('🔄 No existing settings found, creating new settings for gallery upload');
+            const folderName = `${role}_${user.username}_${Math.floor(Math.random() * 9000 + 1000)}`;
+            settings = await createOrUpdateUserProfileSettings({
+                role: role,
+                name: user.name,
+                username: user.username,
+                email: user.email,
+                contact_email: user.contact_email,
+                phone_number: user.phone_number,
+                folderName,
+                userId: user.id
+            });
+        }
 
         // Create folder structure if it doesn't exist
         await createFolderStructure(settings);
@@ -597,9 +698,9 @@ router.post('/:id/gallery', verifyToken, upload.array('gallery', 10), async (req
             // Write file to disk
             fs.writeFileSync(filePath, file.buffer);
 
-            // Generate public URL (same pattern as venue gallery)
+            // Generate public URL with correct /uploads/ prefix
             const userType = event.owner_type === 'artist' ? 'artists' : 'organisers';
-            const publicUrl = `/${userType}/${settings.folder_name}/events/${eventFolderName}/gallery/${fileName}`;
+            const publicUrl = `/uploads/${userType}/${settings.folder_name}/events/${eventFolderName}/gallery/${fileName}`;
             uploadedImages.push(publicUrl);
         }
 
@@ -728,3 +829,19 @@ router.delete('/:id/gallery', verifyToken, async (req, res) => {
 });
 
 module.exports = router;
+ 
+// Get artists linked to an event
+router.get('/:id/artists', async (req, res) => {
+    try {
+        const event = await Event.findByPk(req.params.id, {
+            include: [{ model: Artist, as: 'artists', attributes: ['id', 'stage_name', 'real_name'], through: { attributes: [] } }]
+        });
+        if (!event) {
+            return res.status(404).json({ success: false, message: 'Event not found' });
+        }
+        res.json({ success: true, artists: event.artists || [] });
+    } catch (e) {
+        console.error('Error fetching event artists:', e);
+        res.status(500).json({ success: false, message: 'Failed to fetch artists' });
+    }
+});

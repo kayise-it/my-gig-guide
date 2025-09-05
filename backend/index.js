@@ -38,12 +38,14 @@ app.use('/uploads', express.static(path.join(__dirname, '../frontend/public')));
 app.use('/artists', express.static(path.join(__dirname, '../frontend/public/artists')));
 app.use('/organisers', express.static(path.join(__dirname, '../frontend/public/organisers')));
 app.use('/venues', express.static(path.join(__dirname, '../frontend/public/venues')));
+app.use('/users', express.static(path.join(__dirname, '../frontend/public/users')));
 
 // Debug static file paths
 console.log('Static file paths:');
 console.log('Artists:', path.join(__dirname, '../frontend/public/artists'));
 console.log('Organisers:', path.join(__dirname, '../frontend/public/organisers'));
 console.log('Venues:', path.join(__dirname, '../frontend/public/venues'));
+console.log('Users:', path.join(__dirname, '../frontend/public/users'));
 
 // ✅ Register routes after middleware is defined
 app.get('/api', (req, res) => {

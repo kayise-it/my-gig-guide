@@ -96,56 +96,32 @@ db.initializeData = async () => {
       console.log("✅ ACL trust roles inserted");
     }
 
-    // STEP 2: THEN create user
-    const [admin, created] = await db.user.findOrCreate({
-      where: { email: "thandov.hlophe@gmail.com" },
+    // STEP 2: Create or ensure Superadmin (Owner)
+    const [superadmin, superadminCreated] = await db.user.findOrCreate({
+      where: { username: "Thando" },
       defaults: {
         username: "Thando",
-        password: await bcrypt.hash("thandov.hlophe@gmail.com", 12),
-        role: 3, // ✅ Now role 3 actually exists
+        email: "owner@mygigguide.local",
+        password: await bcrypt.hash("Gu3ssWh@t", 12),
+        role: 1, // superuser
       },
     });
 
-    if (created) {
-      console.log("✅ Admin user created");
-      await db.artist.create({
-        userId: admin.id,
-        stage_name: 'Thando Vibes',
-        real_name: 'Thando Hlophe',
-        genre: 'Afro Soul',
-        bio: 'An emerging voice in Afro Soul from Mpumalanga.',
-        phone_number: '0721234567',
-        instagram: 'https://instagram.com/thandovibes',
-        facebook: 'https://facebook.com/thandovibes',
-        twitter: 'https://twitter.com/thandovibes',
-        profile_picture: '/images/artists/thando.jpg',
-      });
-
-      console.log("✅ Dummy artist added");
-
+    if (superadminCreated) {
+      console.log("✅ Superadmin user 'Thando' created (role: superuser)");
     } else {
-      console.log("ℹ️ Admin user already exists");
-    }
-
-    // Dummy artist profile
-    const artistExists = await db.artist.findOne({ where: { userId: admin.id } });
-
-    if (!artistExists) {
-      await db.artist.create({
-        userId: admin.id,
-        stage_name: 'Thando Vibes',
-        real_name: 'Thando Hlophe',
-        genre: 'Afro Soul',
-        bio: 'An emerging voice in Afro Soul from Mpumalanga.',
-        phone_number: '0721234567',
-        instagram: 'https://instagram.com/thandovibes',
-        facebook: 'https://facebook.com/thandovibes',
-        twitter: 'https://twitter.com/thandovibes',
-        profile_picture: '/images/artists/thando.jpg',
-      });
-      console.log("✅ Dummy artist added successfully.");
-    } else {
-      console.log("ℹ️ Dummy artist already exists.");
+      // Ensure credentials/role are correct if user already exists
+      const updates = {};
+      if (superadmin.role !== 1) updates.role = 1;
+      // Only reset password if not set
+      if (!superadmin.password) updates.password = await bcrypt.hash("Gu3ssWh@t", 12);
+      if (!superadmin.email) updates.email = "owner@mygigguide.local";
+      if (Object.keys(updates).length > 0) {
+        await superadmin.update(updates);
+        console.log("🔄 Superadmin 'Thando' updated to correct role/credentials");
+      } else {
+        console.log("ℹ️ Superadmin 'Thando' already exists");
+      }
     }
   } catch (error) {
     console.error("❌ Error during initial setup:", error);

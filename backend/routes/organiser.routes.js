@@ -92,7 +92,7 @@ router.post('/upload-poster', upload.single('poster'), async (req, res) => {
 
     fs.writeFileSync(fullPath, req.file.buffer);
 
-    const relativePath = path.join('/organiser', path.basename(orgFolder), 'event_poster', fileName);
+    const relativePath = path.join('/uploads/organisers', path.basename(orgFolder), 'event_poster', fileName);
 
     res.status(200).json({
       message: 'Poster uploaded',
