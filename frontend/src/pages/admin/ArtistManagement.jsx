@@ -140,11 +140,15 @@ const ArtistManagement = () => {
     e.preventDefault();
     
     try {
+      const payload = { ...formData };
+      if (!payload.userId) {
+        delete payload.userId;
+      }
       const response = editingArtist
-        ? await axios.put(`${API_BASE_URL}/api/admin/artists/${editingArtist.id}`, formData, {
+        ? await axios.put(`${API_BASE_URL}/api/admin/artists/${editingArtist.id}`, payload, {
             headers: getAuthHeaders()
           })
-        : await axios.post(`${API_BASE_URL}/api/admin/artists`, formData, {
+        : await axios.post(`${API_BASE_URL}/api/admin/artists`, payload, {
             headers: getAuthHeaders()
           });
 
