@@ -20,6 +20,7 @@ const ArtistManagement = () => {
   const [formData, setFormData] = useState({
     userId: '',
     stage_name: '',
+    contact_email: '',
     real_name: '',
     genre: '',
     bio: '',
@@ -90,6 +91,7 @@ const ArtistManagement = () => {
     setFormData({
       userId: '',
       stage_name: '',
+      contact_email: '',
       real_name: '',
       genre: '',
       bio: '',
@@ -103,6 +105,7 @@ const ArtistManagement = () => {
     setFormData({
       userId: artist.userId,
       stage_name: artist.stage_name,
+      contact_email: artist.contact_email || '',
       real_name: artist.real_name,
       genre: artist.genre,
       bio: artist.bio,
@@ -196,15 +199,21 @@ const ArtistManagement = () => {
   const formFields = [
     {
       name: 'userId',
-      label: 'User',
+      label: 'User (optional; leave blank to auto-create by Contact Email)',
       type: 'select',
-      required: true,
-      options: users.map(user => ({ value: user.id, label: `${user.username} (${user.email})` }))
+      required: false,
+      options: [{ value: '', label: 'Auto-create from Contact Email' }, ...users.map(user => ({ value: user.id, label: `${user.username} (${user.email})` }))]
     },
     {
       name: 'stage_name',
       label: 'Stage Name',
       type: 'text',
+      required: true
+    },
+    {
+      name: 'contact_email',
+      label: 'Contact Email',
+      type: 'email',
       required: true
     },
     {

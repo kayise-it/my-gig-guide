@@ -505,9 +505,79 @@ exports.getArtist = async (req, res) => {
 // Create artist
 exports.createArtist = async (req, res) => {
   try {
-    const artistData = req.body;
-    const artist = await db.artist.create(artistData);
-    
+    const artistData = req.body || {};
+    const { userId, stage_name, contact_email, phone_number } = artistData;
+
+    // Helper to slugify names
+    const slugify = (text) =>
+      (text || '')
+        .toString()
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9_\-]/g, '')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '');
+
+    let resolvedUserId = userId;
+
+    // If userId not provided, try to find or create a user by contact_email
+    if (!resolvedUserId) {
+      if (!contact_email) {
+        return res.status(400).json({
+          success: false,
+          message: 'Either userId or contact_email is required to create an artist'
+        });
+      }
+
+      const existingUser = await db.user.findOne({ where: { email: contact_email } });
+      if (existingUser) {
+        resolvedUserId = existingUser.id;
+      } else {
+        const generatedUsername = `${slugify(stage_name) || 'artist'}_${Math.floor(Math.random() * 9000 + 1000)}`;
+        const tempPassword = Math.random().toString(36).slice(-10);
+        const hashedPassword = await bcrypt.hash(tempPassword, 12);
+        const newUser = await db.user.create({
+          username: generatedUsername,
+          email: contact_email,
+          password: hashedPassword,
+          full_name: stage_name || generatedUsername,
+          role: 5,
+        });
+        resolvedUserId = newUser.id;
+      }
+    }
+
+    const folderName = `5_${slugify(stage_name) || 'artist'}_${Math.floor(Math.random() * 9000 + 1000)}`;
+    const settings = {
+      setting_name: stage_name || 'artist',
+      path: 'frontend/public/artists',
+      folder_name: folderName,
+    };
+
+    const artist = await db.artist.create({
+      userId: resolvedUserId,
+      stage_name: stage_name || 'New Artist',
+      contact_email,
+      phone_number: phone_number || null,
+      settings: JSON.stringify(settings),
+    });
+
+    // Create folder structure (best-effort)
+    try {
+      const { createFolderStructure } = require('../helpers/createFolderStructure');
+      await createFolderStructure(settings);
+      const subfolders = ['events', 'venues', 'profile', 'gallery'];
+      for (const subfolder of subfolders) {
+        await createFolderStructure({
+          path: `${settings.path}/${folderName}`,
+          folder_name: subfolder,
+        });
+      }
+    } catch (folderErr) {
+      console.warn('Artist folder structure creation failed (non-fatal):', folderErr.message);
+    }
+
     const artistWithUser = await db.artist.findByPk(artist.id, {
       include: [{
         model: db.user,
@@ -515,7 +585,7 @@ exports.createArtist = async (req, res) => {
         attributes: ['id', 'username', 'email', 'createdAt']
       }]
     });
-    
+
     res.status(201).json({
       success: true,
       artist: artistWithUser
