@@ -507,7 +507,10 @@ exports.createArtist = async (req, res) => {
   try {
     const artistData = req.body || {};
     // Accept common alias field names from various frontends
-    const incomingUserId = (artistData.userId ?? artistData.user_id ?? '').toString().trim() || undefined;
+    // Only accept a valid positive integer as userId; otherwise treat as undefined
+    const rawUserId = artistData.userId ?? artistData.user_id;
+    const parsedUserId = Number.parseInt(rawUserId, 10);
+    const incomingUserId = Number.isFinite(parsedUserId) && parsedUserId > 0 ? parsedUserId : undefined;
     const stage_name = artistData.stage_name || artistData.stageName || artistData.name;
     const contact_email = artistData.contact_email || artistData.contactEmail || artistData.email;
     const phone_number = artistData.phone_number || artistData.phoneNumber;
