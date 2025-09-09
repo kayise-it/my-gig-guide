@@ -634,9 +634,86 @@ exports.getOrganiser = async (req, res) => {
 // Create organiser
 exports.createOrganiser = async (req, res) => {
   try {
-    const organiserData = req.body;
-    const organiser = await db.organiser.create(organiserData);
-    
+    const organiserData = req.body || {};
+    const { userId, name, contact_email, phone_number } = organiserData;
+
+    // Helper to slugify names
+    const slugify = (text) =>
+      (text || '')
+        .toString()
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9_\-]/g, '')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '');
+
+    let resolvedUserId = userId;
+
+    // If userId not provided, try to find or create a user by contact_email
+    if (!resolvedUserId) {
+      if (!contact_email) {
+        return res.status(400).json({
+          success: false,
+          message: 'Either userId or contact_email is required to create an organiser'
+        });
+      }
+
+      // Find existing user by email
+      const existingUser = await db.user.findOne({ where: { email: contact_email } });
+
+      if (existingUser) {
+        resolvedUserId = existingUser.id;
+      } else {
+        // Create a new user with role=4 (organiser)
+        const generatedUsername = `${slugify(name) || 'organiser'}_${Math.floor(Math.random() * 9000 + 1000)}`;
+        const tempPassword = Math.random().toString(36).slice(-10);
+        const hashedPassword = await bcrypt.hash(tempPassword, 12);
+
+        const newUser = await db.user.create({
+          username: generatedUsername,
+          email: contact_email,
+          password: hashedPassword,
+          full_name: name || generatedUsername,
+          role: 4,
+        });
+
+        resolvedUserId = newUser.id;
+      }
+    }
+
+    // Ensure organiser settings and folder structure similar to registration flow
+    const folderName = `4_${slugify(name) || 'organiser'}_${Math.floor(Math.random() * 9000 + 1000)}`;
+    const settings = {
+      setting_name: name || 'organiser',
+      path: 'frontend/public/organisers',
+      folder_name: folderName,
+    };
+
+    // Create organiser
+    const organiser = await db.organiser.create({
+      userId: resolvedUserId,
+      name: name || 'New Organiser',
+      contact_email,
+      phone_number: phone_number || null,
+      settings: JSON.stringify(settings),
+    });
+
+    // Create folder structure (best-effort)
+    try {
+      const { createFolderStructure } = require('../helpers/createFolderStructure');
+      await createFolderStructure(settings);
+      const subfolders = ['events', 'venues', 'profile'];
+      for (const subfolder of subfolders) {
+        await createFolderStructure({
+          path: `${settings.path}/${folderName}`,
+          folder_name: subfolder,
+        });
+      }
+    } catch (folderErr) {
+      console.warn('Organiser folder structure creation failed (non-fatal):', folderErr.message);
+    }
+
     const organiserWithUser = await db.organiser.findByPk(organiser.id, {
       include: [{
         model: db.user,
@@ -644,7 +721,7 @@ exports.createOrganiser = async (req, res) => {
         attributes: ['id', 'username', 'email', 'createdAt']
       }]
     });
-    
+
     res.status(201).json({
       success: true,
       organiser: organiserWithUser

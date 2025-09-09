@@ -193,10 +193,10 @@ const OrganiserManagement = () => {
   const formFields = [
     {
       name: 'userId',
-      label: 'User',
+      label: 'User (optional; leave blank to auto-create by email)',
       type: 'select',
-      required: true,
-      options: users.map(user => ({ value: user.id, label: `${user.username} (${user.email})` }))
+      required: false,
+      options: [{ value: '', label: 'Auto-create from Contact Email' }, ...users.map(user => ({ value: user.id, label: `${user.username} (${user.email})` }))]
     },
     {
       name: 'name',
