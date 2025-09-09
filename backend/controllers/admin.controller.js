@@ -530,12 +530,11 @@ exports.createArtist = async (req, res) => {
 
     // If userId not provided, try to find or create a user by contact_email
     if (!resolvedUserId) {
-      const normalizedEmail = (contact_email || '').toString().trim();
+      let normalizedEmail = (contact_email || '').toString().trim();
+      // If email is missing, synthesize a unique placeholder so we can create the user
       if (!normalizedEmail) {
-        return res.status(400).json({
-          success: false,
-          message: 'Either userId or contact_email is required to create an artist'
-        });
+        const base = (stage_name || 'artist').toString().trim();
+        normalizedEmail = `${slugify(base)}_${Date.now()}_${Math.floor(Math.random()*9999)}@auto.local`;
       }
 
       const existingUser = await db.user.findOne({ where: { email: normalizedEmail } });
