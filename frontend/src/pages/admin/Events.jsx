@@ -3,6 +3,8 @@ import AdminLayout from '../../components/admin/AdminLayout';
 import DataTable from '../../components/admin/DataTable';
 import AdminModal from '../../components/admin/AdminModal';
 import useAdminAPI from '../../hooks/useAdminAPI';
+import OwnerSelector from '../../components/OwnerSelector';
+import AdminVenueSelector from '../../components/AdminVenueSelector';
 
 const Events = () => {
   const { events: eventAPI, loading, error } = useAdminAPI();
@@ -19,7 +21,8 @@ const Events = () => {
     time: '',
     location: '',
     venue_id: '',
-    user_id: '',
+    owner_type: 'user',
+    owner_id: '',
     status: 'scheduled'
   });
 
@@ -81,7 +84,12 @@ const Events = () => {
     {
       header: 'Created',
       key: 'createdAt',
-      render: (value) => new Date(value).toLocaleDateString()
+      render: (value) => (
+        <div className="text-sm text-gray-900">
+          {new Date(value).toLocaleDateString()}
+          <div className="text-xs text-gray-500">{new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+        </div>
+      )
     }
   ];
 
@@ -89,7 +97,7 @@ const Events = () => {
     try {
       const response = await eventAPI.list({
         page,
-        limit: 10,
+        limit: 25,
         search: searchTerm
       });
       
@@ -124,7 +132,8 @@ const Events = () => {
       time: '',
       location: '',
       venue_id: '',
-      user_id: '',
+      owner_type: 'user',
+      owner_id: '',
       status: 'scheduled'
     });
     setIsModalOpen(true);
@@ -139,7 +148,8 @@ const Events = () => {
       time: event.time,
       location: event.location,
       venue_id: event.venue_id,
-      user_id: event.user_id,
+      owner_type: event.owner_type || 'user',
+      owner_id: event.owner_id || '',
       status: event.status
     });
     setIsModalOpen(true);
@@ -159,10 +169,12 @@ const Events = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const payload = { ...formData };
+      if (!payload.owner_type) payload.owner_type = 'user';
       if (editingEvent) {
-        await eventAPI.update(editingEvent.id, formData);
+        await eventAPI.update(editingEvent.id, payload);
       } else {
-        await eventAPI.create(formData);
+        await eventAPI.create(payload);
       }
       setIsModalOpen(false);
       fetchEvents(currentPage, search);
@@ -190,7 +202,7 @@ const Events = () => {
           </div>
           <button
             onClick={handleCreate}
-            className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium"
           >
             Add New Event
           </button>
@@ -226,6 +238,18 @@ const Events = () => {
           loading={loading}
         >
           <div className="space-y-4">
+            {/* Owner selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Owner</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                <button type="button" onClick={() => setFormData(prev => ({ ...prev, owner_type: 'artist' }))} className={`px-3 py-2 rounded-lg border ${formData.owner_type === 'artist' ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-gray-200 hover:border-gray-300 text-gray-700'}`}>Artist</button>
+                <button type="button" onClick={() => setFormData(prev => ({ ...prev, owner_type: 'organiser' }))} className={`px-3 py-2 rounded-lg border ${formData.owner_type === 'organiser' ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-gray-200 hover:border-gray-300 text-gray-700'}`}>Organiser</button>
+                <button type="button" onClick={() => setFormData(prev => ({ ...prev, owner_type: 'user' }))} className={`px-3 py-2 rounded-lg border ${formData.owner_type === 'user' ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-gray-200 hover:border-gray-300 text-gray-700'}`}>User</button>
+                <button type="button" disabled className={`px-3 py-2 rounded-lg border border-gray-200 text-gray-400 cursor-not-allowed`}>Unclaimed</button>
+              </div>
+              <OwnerSelector ownerType={formData.owner_type} value={formData.owner_id} onSelect={(id) => setFormData(prev => ({ ...prev, owner_id: id }))} />
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700">Event Name</label>
               <input
@@ -234,7 +258,7 @@ const Events = () => {
                 value={formData.name}
                 onChange={handleInputChange}
                 required
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500"
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
               />
             </div>
 
@@ -247,7 +271,7 @@ const Events = () => {
                   value={formData.date}
                   onChange={handleInputChange}
                   required
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500"
+                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
                 />
               </div>
 
@@ -258,7 +282,7 @@ const Events = () => {
                   name="time"
                   value={formData.time}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500"
+                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
                 />
               </div>
             </div>
@@ -271,33 +295,12 @@ const Events = () => {
                 value={formData.location}
                 onChange={handleInputChange}
                 required
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500"
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Venue ID</label>
-                <input
-                  type="number"
-                  name="venue_id"
-                  value={formData.venue_id}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">User ID</label>
-                <input
-                  type="number"
-                  name="user_id"
-                  value={formData.user_id}
-                  onChange={handleInputChange}
-                  required
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500"
-                />
-              </div>
+            <div>
+              <AdminVenueSelector value={formData.venue_id} onSelect={(id) => setFormData(prev => ({ ...prev, venue_id: id }))} />
             </div>
 
             <div>
@@ -306,7 +309,7 @@ const Events = () => {
                 name="status"
                 value={formData.status}
                 onChange={handleInputChange}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500"
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
               >
                 {statusOptions.map(option => (
                   <option key={option.value} value={option.value}>

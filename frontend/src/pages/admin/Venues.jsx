@@ -15,10 +15,6 @@ const Venues = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVenue, setEditingVenue] = useState(null);
-  // User search state for replacing legacy user_id field
-  const [userQuery, setUserQuery] = useState('');
-  const [userOptions, setUserOptions] = useState([]);
-  const [isSearchingUsers, setIsSearchingUsers] = useState(false);
   const { isLoaded, loadError } = useGoogleMaps();
   const autocompleteRef = useRef(null);
   const onPlaceChanged = () => {
@@ -42,7 +38,6 @@ const Venues = () => {
     capacity: '',
     amenities: '',
     contact_info: '',
-    user_id: '',
     owner_type: 'unclaimed',
     owner_id: '',
     latitude: '',
@@ -91,7 +86,12 @@ const Venues = () => {
     {
       header: 'Created',
       key: 'createdAt',
-      render: (value) => new Date(value).toLocaleDateString()
+      render: (value) => (
+        <div className="text-sm text-gray-900">
+          {new Date(value).toLocaleDateString()} 
+          <div className="text-xs text-gray-500">{new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+        </div>
+      )
     }
   ];
 
@@ -99,7 +99,7 @@ const Venues = () => {
     try {
       const response = await venueAPI.list({
         page,
-        limit: 10,
+        limit: 25,
         search: searchTerm
       });
       
@@ -141,8 +141,6 @@ const Venues = () => {
       latitude: '',
       longitude: ''
     });
-    setUserQuery('');
-    setUserOptions([]);
     setIsModalOpen(true);
   };
 
@@ -162,8 +160,6 @@ const Venues = () => {
       latitude: venue.latitude || '',
       longitude: venue.longitude || ''
     });
-    setUserQuery('');
-    setUserOptions([]);
     setIsModalOpen(true);
   };
 
@@ -187,6 +183,8 @@ const Venues = () => {
         delete payload.owner_id;
         payload.owner_type = null;
       }
+      // Ensure no stray creator user id is sent
+      delete payload.user_id;
       // Coerce coordinates to numbers if present
       if (payload.latitude !== '') payload.latitude = Number(payload.latitude);
       if (payload.longitude !== '') payload.longitude = Number(payload.longitude);
@@ -214,46 +212,14 @@ const Venues = () => {
     <button
       type="button"
       onClick={() => setFormData(prev => ({ ...prev, owner_type: type }))}
-      className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg border transition ${formData.owner_type === type ? 'border-yellow-600 bg-yellow-50 text-yellow-700' : 'border-gray-200 hover:border-gray-300 text-gray-700'}`}
+      className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg border transition ${formData.owner_type === type ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-gray-200 hover:border-gray-300 text-gray-700'}`}
     >
       {icon}
       <span className="text-sm font-medium">{label}</span>
     </button>
   );
 
-  // Debounced user search (simple)
-  useEffect(() => {
-    let active = true;
-    const controller = new AbortController();
-    const run = async () => {
-      const q = userQuery.trim();
-      if (q.length < 2) { setUserOptions([]); return; }
-      try {
-        setIsSearchingUsers(true);
-        // Reuse venueAPI's base client via useAdminAPI by calling users list endpoint
-        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/admin/users?limit=7&page=1&search=${encodeURIComponent(q)}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('majesty_token') || ''}` },
-          signal: controller.signal
-        });
-        const data = await res.json();
-        if (!active) return;
-        if (data && data.success) {
-          const options = (data.users || []).map(u => ({ id: u.id, label: `${u.username || u.email} · ${u.email}` }));
-          setUserOptions(options);
-        } else {
-          setUserOptions([]);
-        }
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          setUserOptions([]);
-        }
-      } finally {
-        if (active) setIsSearchingUsers(false);
-      }
-    };
-    const t = setTimeout(run, 300);
-    return () => { active = false; controller.abort(); clearTimeout(t); };
-  }, [userQuery]);
+  // (Removed) Creator user search: replaced by OwnerSelector
 
   return (
     <AdminLayout>
@@ -266,7 +232,7 @@ const Venues = () => {
           </div>
           <button
             onClick={handleCreate}
-            className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium"
           >
             Add New Venue
           </button>
@@ -388,35 +354,7 @@ const Venues = () => {
               />
             </div>
 
-            {/* User picker (replaces legacy user_id) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Creator User <span className="text-gray-500 text-sm">(Optional)</span></label>
-              <input
-                type="text"
-                value={userQuery}
-                onChange={(e) => setUserQuery(e.target.value)}
-                placeholder="Search by username or email..."
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500"
-              />
-              {userOptions.length > 0 && (
-                <div className="mt-2 max-h-48 overflow-auto border border-gray-200 rounded-md divide-y bg-white shadow-sm">
-                  {userOptions.map(opt => (
-                    <button
-                      type="button"
-                      key={opt.id}
-                      onClick={() => { setFormData(prev => ({ ...prev, user_id: opt.id })); setUserQuery(opt.label); setUserOptions([]); }}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${formData.user_id === opt.id ? 'bg-yellow-50' : ''}`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {isSearchingUsers && <div className="text-xs text-gray-500 mt-1">Searching...</div>}
-              {formData.user_id && (
-                <p className="text-xs text-gray-600 mt-1">Selected user ID: {formData.user_id}</p>
-              )}
-            </div>
+            {/* Creator user removed - owner assignment handled by OwnerSelector */}
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Contact Info</label>
