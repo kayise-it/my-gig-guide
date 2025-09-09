@@ -16,6 +16,8 @@ const venueRoutes = require('./routes/venue.routes');
 const favoriteRoutes = require('./routes/favorites.routes');
 const ratingRoutes = require('./routes/rating.routes');
 const aclRoutes = require('./routes/acl_trust.routes.js');
+const majestyRoutes = require('./routes/majesty.routes');
+const adminRoutes = require('./routes/admin.routes');
 const healthRoutes = require('./routes/health.routes');
 
 const app = express();
@@ -27,7 +29,6 @@ app.use(cors({
     'http://62.72.18.206',
     'http://62.72.18.206:5173',
     'http://62.72.18.206:5174',
-    'https://my-gig-guide-backend.onrender.com'
   ], // frontend URLs
   credentials: true
 }));
@@ -64,6 +65,8 @@ app.use('/api/venue', venueRoutes);     // Events routes
 app.use('/api/favorites', favoriteRoutes);     // Favorite routes
 app.use('/api/ratings', ratingRoutes);         // Rating routes
 app.use('/api/notifications', require('./routes/notification.routes')); // Notification routes
+app.use('/api/majesty', majestyRoutes);        // Majesty routes
+app.use('/api/admin', adminRoutes);            // Admin routes
 app.use('/api/', aclRoutes);          // ACL routes
 app.use('/api', healthRoutes);        // Health check routes
 

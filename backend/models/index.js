@@ -23,6 +23,8 @@ db.organiser = require("./organiser.model.js")(sequelize, DataTypes);
 db.venue = require("./venue.model.js")(sequelize, DataTypes);
 db.event = require("./event.model.js")(sequelize, DataTypes);
 db.event_artist = require("./event_artist.model.js")(sequelize, DataTypes);
+// Majesty owner model
+db.majesty = require("./majesty.model.js")(sequelize, DataTypes);
 // Favorite models (separate tables for better performance and integrity)
 db.user_artist_favorite = require("./user_artist_favorite.model.js")(sequelize, DataTypes);
 db.user_event_favorite = require("./user_event_favorite.model.js")(sequelize, DataTypes);
@@ -96,32 +98,78 @@ db.initializeData = async () => {
       console.log("✅ ACL trust roles inserted");
     }
 
-    // STEP 2: Create or ensure Superadmin (Owner)
-    const [superadmin, superadminCreated] = await db.user.findOrCreate({
-      where: { username: "Thando" },
+    // STEP 2: Ensure Majesty owner exists
+    try {
+      const [owner, ownerCreated] = await db.majesty.findOrCreate({
+        where: { username: "Thando" },
+        defaults: {
+          username: "Thando",
+          email: "owner@mygigguide.local",
+          password: await bcrypt.hash("Gu3ssWh@t", 12),
+          full_name: "Thando Hlophe",
+          title: "Owner",
+          is_active: true,
+        }
+      });
+      if (ownerCreated) {
+        console.log("✅ Majesty owner created (Thando)");
+      } else {
+        console.log("ℹ️ Majesty owner already exists");
+      }
+    } catch (e) {
+      console.log("⚠️ Could not create Majesty owner:", e.message);
+    }
+
+    // STEP 3: THEN create user
+    const [admin, created] = await db.user.findOrCreate({
+      where: { email: "thandov.hlophe@gmail.com" },
       defaults: {
         username: "Thando",
-        email: "owner@mygigguide.local",
-        password: await bcrypt.hash("Gu3ssWh@t", 12),
-        role: 1, // superuser
+        password: await bcrypt.hash("thandov.hlophe@gmail.com", 12),
+        role: 3, // ✅ Now role 3 actually exists
       },
     });
 
-    if (superadminCreated) {
-      console.log("✅ Superadmin user 'Thando' created (role: superuser)");
+    if (created) {
+      console.log("✅ Admin user created");
+      await db.artist.create({
+        userId: admin.id,
+        stage_name: 'Thando Vibes',
+        real_name: 'Thando Hlophe',
+        genre: 'Afro Soul',
+        bio: 'An emerging voice in Afro Soul from Mpumalanga.',
+        phone_number: '0721234567',
+        instagram: 'https://instagram.com/thandovibes',
+        facebook: 'https://facebook.com/thandovibes',
+        twitter: 'https://twitter.com/thandovibes',
+        profile_picture: '/images/artists/thando.jpg',
+      });
+
+      console.log("✅ Dummy artist added");
+
     } else {
-      // Ensure credentials/role are correct if user already exists
-      const updates = {};
-      if (superadmin.role !== 1) updates.role = 1;
-      // Only reset password if not set
-      if (!superadmin.password) updates.password = await bcrypt.hash("Gu3ssWh@t", 12);
-      if (!superadmin.email) updates.email = "owner@mygigguide.local";
-      if (Object.keys(updates).length > 0) {
-        await superadmin.update(updates);
-        console.log("🔄 Superadmin 'Thando' updated to correct role/credentials");
-      } else {
-        console.log("ℹ️ Superadmin 'Thando' already exists");
-      }
+      console.log("ℹ️ Admin user already exists");
+    }
+
+    // Dummy artist profile
+    const artistExists = await db.artist.findOne({ where: { userId: admin.id } });
+
+    if (!artistExists) {
+      await db.artist.create({
+        userId: admin.id,
+        stage_name: 'Thando Vibes',
+        real_name: 'Thando Hlophe',
+        genre: 'Afro Soul',
+        bio: 'An emerging voice in Afro Soul from Mpumalanga.',
+        phone_number: '0721234567',
+        instagram: 'https://instagram.com/thandovibes',
+        facebook: 'https://facebook.com/thandovibes',
+        twitter: 'https://twitter.com/thandovibes',
+        profile_picture: '/images/artists/thando.jpg',
+      });
+      console.log("✅ Dummy artist added successfully.");
+    } else {
+      console.log("ℹ️ Dummy artist already exists.");
     }
   } catch (error) {
     console.error("❌ Error during initial setup:", error);

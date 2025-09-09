@@ -16,7 +16,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // In your backend (Node.js/Express example)
 router.post('/upload-gallery', upload.array('gallery', 10), async (req, res) => {
-  const { orgFolder } = req.body;
+  const { orgFolder, userId } = req.body;
 
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: 'No files uploaded' });
@@ -27,6 +27,23 @@ router.post('/upload-gallery', upload.array('gallery', 10), async (req, res) => 
   }
 
   try {
+    // Optional hard guard: if userId is provided, ensure organiser.settings exists and prefer it
+    if (userId) {
+      const organiser = await Organiser.findOne({ where: { userId } });
+      if (!organiser || !organiser.settings || organiser.settings.trim() === '') {
+        return res.status(409).json({ error: 'Organiser settings missing for user. Initialize profile settings before uploading.' });
+      }
+      try {
+        const organiserSettings = JSON.parse(organiser.settings);
+        if (!organiserSettings.folder_name || !organiserSettings.path) {
+          return res.status(409).json({ error: 'Invalid organiser settings. Initialize profile settings before uploading.' });
+        }
+        const baseFolder = path.resolve(__dirname, '..', organiserSettings.path, organiserSettings.folder_name);
+        req.body.orgFolder = baseFolder;
+      } catch (_) {
+        return res.status(409).json({ error: 'Corrupt organiser settings JSON. Initialize profile settings before uploading.' });
+      }
+    }
     // Sanitize the folder name
     const safeOrgFolder = orgFolder.replace(/\.\./g, '');
 
@@ -66,13 +83,30 @@ router.post('/upload-gallery', upload.array('gallery', 10), async (req, res) => 
   }
 });
 router.post('/upload-poster', upload.single('poster'), async (req, res) => {
-  const { orgFolder, setting_name = "poster" } = req.body;
+  const { orgFolder, userId, setting_name = "poster" } = req.body;
 
   if (!req.file || !orgFolder) {
     return res.status(400).json({ error: 'Missing file or orgFolder' });
   }
 
   try {
+    // Optional hard guard: if userId is provided, ensure organiser.settings exists and prefer it
+    if (userId) {
+      const organiser = await Organiser.findOne({ where: { userId } });
+      if (!organiser || !organiser.settings || organiser.settings.trim() === '') {
+        return res.status(409).json({ error: 'Organiser settings missing for user. Initialize profile settings before uploading.' });
+      }
+      try {
+        const organiserSettings = JSON.parse(organiser.settings);
+        if (!organiserSettings.folder_name || !organiserSettings.path) {
+          return res.status(409).json({ error: 'Invalid organiser settings. Initialize profile settings before uploading.' });
+        }
+        const baseFolder = path.resolve(__dirname, '..', organiserSettings.path, organiserSettings.folder_name);
+        req.body.orgFolder = baseFolder;
+      } catch (_) {
+        return res.status(409).json({ error: 'Corrupt organiser settings JSON. Initialize profile settings before uploading.' });
+      }
+    }
     // Create event_poster folder within the user's directory
     const resolvedPath = path.resolve(__dirname, '..', orgFolder);
     const eventPosterPath = path.join(resolvedPath, 'event_poster');

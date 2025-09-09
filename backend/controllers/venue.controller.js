@@ -444,7 +444,6 @@ exports.updateVenue = async (req, res) => {
       console.log('✅ Saved venue image:', filePath);
       
       // 🔧 Generate public path using settings (maintains user's folder structure)
-      const userType = req.body.owner_type === 'artist' ? 'artists' : (req.body.owner_type === 'organiser' ? 'organisers' : 'users');
       const mainPicturePath = `/uploads/${userType}/${settings.folder_name}/venues/${venueFolderName}/${fileName}`;
       
       try { 

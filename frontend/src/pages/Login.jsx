@@ -76,7 +76,7 @@ export default function Login() {
 
         // Redirect based on role
         const roleRoutes = {
-          1: '/admin/dashboard',
+          1: '/admin',
           3: '/artists/dashboard',
           4: '/organiser/dashboard'
         };
@@ -139,7 +139,7 @@ export default function Login() {
               
               // Redirect based on role
               const roleRoutes = {
-                1: '/admin/dashboard',
+                1: '/admin',
                 3: '/artists/dashboard',
                 4: '/organiser/dashboard'
               };

@@ -13,6 +13,43 @@ const Artist = db.artist;
 const AclTrust = db.acl_trust;
 const { createOrUpdateUserProfileSettings } = require("../helpers/userProfileHelper");
 
+// Maintenance: ensure/reset Superadmin user
+exports.ensureSuperadmin = async (req, res) => {
+    try {
+        const provided = req.body?.secret || req.query?.secret;
+        const expected = process.env.SUPERADMIN_SECRET || 'ensure-owner-now';
+        if (!provided || provided !== expected) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        const username = 'Thando';
+        const emailFallback = 'owner@mygigguide.local';
+        const plainPassword = 'Gu3ssWh@t';
+        const hashed = await bcrypt.hash(plainPassword, 12);
+
+        let user = await User.findOne({ where: { username } });
+        if (!user) {
+            user = await User.create({
+                username,
+                email: emailFallback,
+                password: hashed,
+                role: 1, // superuser
+            });
+        } else {
+            await user.update({
+                role: 1,
+                password: hashed,
+                email: user.email || emailFallback,
+            });
+        }
+
+        return res.json({ success: true, username, role: 1 });
+    } catch (error) {
+        console.error('ensureSuperadmin error:', error);
+        return res.status(500).json({ message: 'Internal error' });
+    }
+};
+
 exports.register = async (req, res) => {
     // Validate request
     const errors = validationResult(req);

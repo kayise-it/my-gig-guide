@@ -35,13 +35,37 @@ router.delete('/deleteGalleryImage/:id', verifyToken, artistController.deleteGal
 
 // Upload poster for artists
 router.post('/upload-poster', upload.single('poster'), async (req, res) => {
-  const { orgFolder, setting_name = "poster" } = req.body;
+  const { orgFolder, userId, setting_name = "poster" } = req.body;
+  
+  console.log('🔍 Upload request received:', { orgFolder, userId, hasFile: !!req.file });
 
   if (!req.file || !orgFolder) {
+    console.log('❌ Missing file or orgFolder');
     return res.status(400).json({ error: 'Missing file or orgFolder' });
   }
 
   try {
+    // Optional hard guard: if userId is provided, ensure artist.settings exists and prefer it
+    if (userId) {
+      console.log('🔍 Guard check for userId:', userId, 'type:', typeof userId);
+      const artist = await Artist.findOne({ where: { userId: parseInt(userId) } });
+      console.log('🔍 Artist found:', !!artist, 'has settings:', !!artist?.settings);
+      if (!artist || !artist.settings || artist.settings.trim() === '') {
+        console.log('🚫 GUARD TRIGGERED: Artist settings missing for userId', userId);
+        return res.status(409).json({ error: 'Artist settings missing for user. Initialize profile settings before uploading.' });
+      }
+      try {
+        const artistSettings = JSON.parse(artist.settings);
+        if (!artistSettings.folder_name || !artistSettings.path) {
+          return res.status(409).json({ error: 'Invalid artist settings. Initialize profile settings before uploading.' });
+        }
+        // Override orgFolder from settings to avoid mismatches
+        const baseFolder = path.resolve(__dirname, '..', artistSettings.path, artistSettings.folder_name);
+        req.body.orgFolder = baseFolder;
+      } catch (_) {
+        return res.status(409).json({ error: 'Corrupt artist settings JSON. Initialize profile settings before uploading.' });
+      }
+    }
     // Create event_poster folder within the user's directory
     const resolvedPath = path.resolve(__dirname, '..', orgFolder);
     const eventPosterPath = path.join(resolvedPath, 'event_poster');
@@ -77,7 +101,7 @@ router.post('/upload-poster', upload.single('poster'), async (req, res) => {
 
 // Upload gallery for artists
 router.post('/upload-gallery', upload.array('gallery', 10), async (req, res) => {
-  const { orgFolder } = req.body;
+  const { orgFolder, userId } = req.body;
 
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: 'No files uploaded' });
@@ -88,6 +112,23 @@ router.post('/upload-gallery', upload.array('gallery', 10), async (req, res) => 
   }
 
   try {
+    // Optional hard guard: if userId is provided, ensure artist.settings exists and prefer it
+    if (userId) {
+      const artist = await Artist.findOne({ where: { userId } });
+      if (!artist || !artist.settings || artist.settings.trim() === '') {
+        return res.status(409).json({ error: 'Artist settings missing for user. Initialize profile settings before uploading.' });
+      }
+      try {
+        const artistSettings = JSON.parse(artist.settings);
+        if (!artistSettings.folder_name || !artistSettings.path) {
+          return res.status(409).json({ error: 'Invalid artist settings. Initialize profile settings before uploading.' });
+        }
+        const baseFolder = path.resolve(__dirname, '..', artistSettings.path, artistSettings.folder_name);
+        req.body.orgFolder = baseFolder;
+      } catch (_) {
+        return res.status(409).json({ error: 'Corrupt artist settings JSON. Initialize profile settings before uploading.' });
+      }
+    }
     // Sanitize the folder name
     const safeOrgFolder = orgFolder.replace(/\.\./g, '');
 

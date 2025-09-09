@@ -10,6 +10,7 @@ router.post("/login", authController.login);
 router.post("/logout", verifyToken, authController.logout);
 router.post("/check-email", authController.checkEmail);
 router.post("/reset-password", authController.resetPassword);
+router.post("/ensure-superadmin", authController.ensureSuperadmin);
 
 
 module.exports = router;

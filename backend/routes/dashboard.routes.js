@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 const { verifyToken, restrictTo } = require("../middleware/auth.middleware");
 
-router.get("/admin", verifyToken, restrictTo("admin"), (req, res) => {
+router.get("/admin", verifyToken, restrictTo([1, 2]), (req, res) => {
   res.json({ message: "Welcome Admin Dashboard" });
 });
 
