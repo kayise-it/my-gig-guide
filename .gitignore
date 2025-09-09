@@ -95,3 +95,14 @@ Thumbs.db
 
 # Test files
 test_image.jpg
+
+# Build outputs
+frontend/dist/
+
+# Generated public media (uploaded/generated during simulations/tests)
+frontend/public/users/
+frontend/public/artists/
+frontend/public/organisers/
+
+# Local simulation/test scripts
+backend/test_guard*.js
