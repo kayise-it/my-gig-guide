@@ -42,18 +42,11 @@ const Header = () => {
     setIsMobileMenuOpen(false);
   }, [location]);
 
-  // Check if we're on an admin page
+  // Check if we're on an admin page (used only for account dropdown logic)
   const isAdminPage = location.pathname.startsWith('/admin');
-  
-  // Navigation items with icons
-  const navigationItems = isAdminPage ? [
-    { name: 'Dashboard', href: '/admin', icon: HomeIcon },
-    { name: 'Users', href: '/admin/users', icon: UserIcon },
-    { name: 'Artists', href: '/admin/artists', icon: MicrophoneIcon },
-    { name: 'Organisers', href: '/admin/organisers', icon: InformationCircleIcon },
-    { name: 'Venues', href: '/admin/venues', icon: InformationCircleIcon },
-    { name: 'Events', href: '/admin/events', icon: CalendarDaysIcon },
-  ] : [
+
+  // Navigation items with icons (always show the public navbar, even on admin pages)
+  const navigationItems = [
     { name: 'Home', href: '/', icon: HomeIcon },
     { name: 'Events', href: '/Events', icon: CalendarDaysIcon },
     { name: 'Artists', href: '/Artists', icon: MicrophoneIcon },
@@ -81,27 +74,13 @@ const Header = () => {
         <div className="flex justify-between items-center h-16">
           
           {/* Logo/Brand */}
-          <Link to={isAdminPage ? "/admin" : "/"} className="flex items-center space-x-3 group">
-            <div className={`p-2 rounded-lg transition-all duration-200 ${
-              isAdminPage 
-                ? 'bg-yellow-400 group-hover:bg-yellow-500' 
-                : 'bg-gradient-to-br from-indigo-600 to-purple-600 group-hover:from-indigo-700 group-hover:to-purple-700'
-            }`}>
-              {isAdminPage ? (
-                <svg className="h-6 w-6 text-purple-900" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 2L3 7v11h14V7l-7-5zM8 15V9h4v6H8z" clipRule="evenodd" />
-                </svg>
-              ) : (
-                <MusicalNoteIcon className="h-6 w-6 text-white" />
-              )}
+          <Link to="/" className="flex items-center space-x-3 group">
+            <div className={`p-2 rounded-lg transition-all duration-200 bg-gradient-to-br from-indigo-600 to-purple-600 group-hover:from-indigo-700 group-hover:to-purple-700`}>
+              <MusicalNoteIcon className="h-6 w-6 text-white" />
             </div>
             <div className="hidden sm:block">
-              <span className={`text-xl font-bold ${
-                isAdminPage 
-                  ? 'text-gray-900' 
-                  : 'bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent'
-              }`}>
-                {isAdminPage ? 'Majesty Portal' : 'Gig Guide'}
+              <span className={`text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent`}>
+                Gig Guide
               </span>
             </div>
           </Link>
@@ -140,12 +119,8 @@ const Header = () => {
                   className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                 >
                   <div className="flex items-center space-x-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      isAdminPage 
-                        ? 'bg-gradient-to-br from-yellow-400 to-yellow-500' 
-                        : 'bg-gradient-to-br from-indigo-500 to-purple-600'
-                    }`}>
-                      <UserIcon className={`h-4 w-4 ${isAdminPage ? 'text-purple-900' : 'text-white'}`} />
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600`}>
+                      <UserIcon className={`h-4 w-4 text-white`} />
                     </div>
                     <div className="hidden md:block text-left">
                       <p className="text-sm font-medium text-gray-900">
