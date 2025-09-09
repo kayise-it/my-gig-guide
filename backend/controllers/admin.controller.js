@@ -506,7 +506,11 @@ exports.getArtist = async (req, res) => {
 exports.createArtist = async (req, res) => {
   try {
     const artistData = req.body || {};
-    const { userId, stage_name, contact_email, phone_number } = artistData;
+    // Accept common alias field names from various frontends
+    const incomingUserId = (artistData.userId ?? artistData.user_id ?? '').toString().trim() || undefined;
+    const stage_name = artistData.stage_name || artistData.stageName || artistData.name;
+    const contact_email = artistData.contact_email || artistData.contactEmail || artistData.email;
+    const phone_number = artistData.phone_number || artistData.phoneNumber;
 
     // Helper to slugify names
     const slugify = (text) =>
@@ -519,18 +523,19 @@ exports.createArtist = async (req, res) => {
         .replace(/_+/g, '_')
         .replace(/^_+|_+$/g, '');
 
-    let resolvedUserId = userId;
+    let resolvedUserId = incomingUserId;
 
     // If userId not provided, try to find or create a user by contact_email
     if (!resolvedUserId) {
-      if (!contact_email) {
+      const normalizedEmail = (contact_email || '').toString().trim();
+      if (!normalizedEmail) {
         return res.status(400).json({
           success: false,
           message: 'Either userId or contact_email is required to create an artist'
         });
       }
 
-      const existingUser = await db.user.findOne({ where: { email: contact_email } });
+      const existingUser = await db.user.findOne({ where: { email: normalizedEmail } });
       if (existingUser) {
         resolvedUserId = existingUser.id;
       } else {
@@ -539,7 +544,7 @@ exports.createArtist = async (req, res) => {
         const hashedPassword = await bcrypt.hash(tempPassword, 12);
         const newUser = await db.user.create({
           username: generatedUsername,
-          email: contact_email,
+          email: normalizedEmail,
           password: hashedPassword,
           full_name: stage_name || generatedUsername,
           role: 3,
@@ -558,7 +563,7 @@ exports.createArtist = async (req, res) => {
     const artist = await db.artist.create({
       userId: resolvedUserId,
       stage_name: stage_name || 'New Artist',
-      contact_email,
+      contact_email: (contact_email || '').toString().trim() || null,
       phone_number: phone_number || null,
       settings: JSON.stringify(settings),
     });
@@ -705,7 +710,11 @@ exports.getOrganiser = async (req, res) => {
 exports.createOrganiser = async (req, res) => {
   try {
     const organiserData = req.body || {};
-    const { userId, name, contact_email, phone_number } = organiserData;
+    // Accept common alias field names from various frontends
+    const incomingUserId = organiserData.userId || organiserData.user_id;
+    const name = organiserData.name;
+    const contact_email = organiserData.contact_email || organiserData.contactEmail || organiserData.email;
+    const phone_number = organiserData.phone_number || organiserData.phoneNumber;
 
     // Helper to slugify names
     const slugify = (text) =>
@@ -718,7 +727,7 @@ exports.createOrganiser = async (req, res) => {
         .replace(/_+/g, '_')
         .replace(/^_+|_+$/g, '');
 
-    let resolvedUserId = userId;
+    let resolvedUserId = incomingUserId;
 
     // If userId not provided, try to find or create a user by contact_email
     if (!resolvedUserId) {
