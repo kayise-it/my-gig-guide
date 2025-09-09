@@ -542,7 +542,7 @@ exports.createArtist = async (req, res) => {
           email: contact_email,
           password: hashedPassword,
           full_name: stage_name || generatedUsername,
-          role: 5,
+          role: 3,
         });
         resolvedUserId = newUser.id;
       }
