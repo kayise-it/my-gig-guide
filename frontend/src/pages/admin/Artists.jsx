@@ -19,7 +19,7 @@ const Artists = () => {
     bio: '',
     website: '',
     social_media: '',
-    user_id: ''
+    contact_email: ''
   });
 
   const columns = [
@@ -98,7 +98,7 @@ const Artists = () => {
       bio: '',
       website: '',
       social_media: '',
-      user_id: ''
+      contact_email: ''
     });
     setIsModalOpen(true);
   };
@@ -112,7 +112,7 @@ const Artists = () => {
       bio: artist.bio,
       website: artist.website,
       social_media: artist.social_media,
-      user_id: artist.user_id
+      contact_email: artist.contact_email || ''
     });
     setIsModalOpen(true);
   };
@@ -131,10 +131,13 @@ const Artists = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const payload = { ...formData };
+      // Remove any legacy user_id to allow backend auto-link/create by contact_email
+      delete payload.user_id;
       if (editingArtist) {
-        await artistAPI.update(editingArtist.id, formData);
+        await artistAPI.update(editingArtist.id, payload);
       } else {
-        await artistAPI.create(formData);
+        await artistAPI.create(payload);
       }
       setIsModalOpen(false);
       fetchArtists(currentPage, search);
@@ -233,11 +236,11 @@ const Artists = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">User ID</label>
+              <label className="block text-sm font-medium text-gray-700">Contact Email</label>
               <input
-                type="number"
-                name="user_id"
-                value={formData.user_id}
+                type="email"
+                name="contact_email"
+                value={formData.contact_email}
                 onChange={handleInputChange}
                 required
                 className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500"
