@@ -565,9 +565,16 @@ exports.createArtist = async (req, res) => {
     const artist = await db.artist.create({
       userId: resolvedUserId,
       stage_name: stage_name || 'New Artist',
-      contact_email: (contact_email || '').toString().trim() || null,
+      real_name: artistData.real_name || null,
+      genre: artistData.genre || null,
+      bio: artistData.bio || null,
       phone_number: phone_number || null,
+      instagram: artistData.instagram || null,
+      facebook: artistData.facebook || null,
+      twitter: artistData.twitter || null,
+      profile_picture: artistData.profile_picture || null,
       settings: JSON.stringify(settings),
+      gallery: artistData.gallery ? JSON.stringify(artistData.gallery) : null,
     });
 
     // Create folder structure (best-effort)
@@ -717,6 +724,9 @@ exports.createOrganiser = async (req, res) => {
     const name = organiserData.name;
     const contact_email = organiserData.contact_email || organiserData.contactEmail || organiserData.email;
     const phone_number = organiserData.phone_number || organiserData.phoneNumber;
+    // Optional person details used to seed the linked user account
+    const firstName = organiserData.first_name || organiserData.firstName || organiserData.firstname;
+    const surname = organiserData.surname || organiserData.last_name || organiserData.lastName;
 
     // Helper to slugify names
     const slugify = (text) =>
@@ -747,15 +757,15 @@ exports.createOrganiser = async (req, res) => {
         resolvedUserId = existingUser.id;
       } else {
         // Create a new user with role=4 (organiser)
-        const generatedUsername = `${slugify(name) || 'organiser'}_${Math.floor(Math.random() * 9000 + 1000)}`;
-        const tempPassword = Math.random().toString(36).slice(-10);
-        const hashedPassword = await bcrypt.hash(tempPassword, 12);
+        const baseUsername = [firstName, surname].filter(Boolean).join(' ') || name || 'organiser';
+        const generatedUsername = `${slugify(baseUsername)}_${Math.floor(Math.random() * 9000 + 1000)}`;
+        const defaultPassword = 'P@ssW0rd!!';
+        const hashedPassword = await bcrypt.hash(defaultPassword, 12);
 
         const newUser = await db.user.create({
           username: generatedUsername,
           email: contact_email,
           password: hashedPassword,
-          full_name: name || generatedUsername,
           role: 4,
         });
 
@@ -777,6 +787,9 @@ exports.createOrganiser = async (req, res) => {
       name: name || 'New Organiser',
       contact_email,
       phone_number: phone_number || null,
+      website: organiserData.website || null,
+      logo: organiserData.logo || null,
+      gallery: organiserData.gallery || null,
       settings: JSON.stringify(settings),
     });
 
@@ -922,7 +935,14 @@ exports.getVenue = async (req, res) => {
 exports.createVenue = async (req, res) => {
   try {
     const venueData = req.body;
-    const venue = await db.venue.create(venueData);
+    const allowedOwnerTypes = ['artist', 'organiser', 'user'];
+    const payload = { ...venueData };
+    // Normalize unclaimed or invalid owner types to NULLs for DB compatibility
+    if (!payload.owner_type || payload.owner_type === 'unclaimed' || !allowedOwnerTypes.includes(payload.owner_type)) {
+      payload.owner_type = null;
+      payload.owner_id = null;
+    }
+    const venue = await db.venue.create(payload);
     
     const venueWithUser = await db.venue.findByPk(venue.id, {
       include: [{

@@ -3,6 +3,7 @@ import AdminLayout from '../../components/admin/AdminLayout';
 import DataTable from '../../components/admin/DataTable';
 import AdminModal from '../../components/admin/AdminModal';
 import useAdminAPI from '../../hooks/useAdminAPI';
+import toast from 'react-hot-toast';
 
 const Users = () => {
   const { users: userAPI, loading, error } = useAdminAPI();
@@ -128,9 +129,11 @@ const Users = () => {
     if (window.confirm(`Are you sure you want to delete user "${user.username}"?`)) {
       try {
         await userAPI.delete(user.id);
+        toast.success('User deleted successfully!');
         fetchUsers(currentPage, search);
       } catch (err) {
         console.error('Error deleting user:', err);
+        toast.error(err.message || 'Failed to delete user');
       }
     }
   };
@@ -140,13 +143,16 @@ const Users = () => {
     try {
       if (editingUser) {
         await userAPI.update(editingUser.id, formData);
+        toast.success('User updated successfully!');
       } else {
         await userAPI.create(formData);
+        toast.success('User created successfully!');
       }
       setIsModalOpen(false);
       fetchUsers(currentPage, search);
     } catch (err) {
       console.error('Error saving user:', err);
+      toast.error(err.message || 'Failed to save user');
     }
   };
 

@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import DataTable from '../../components/admin/DataTable';
 import AdminModal from '../../components/admin/AdminModal';
 import useAdminAPI from '../../hooks/useAdminAPI';
+import { Autocomplete } from '@react-google-maps/api';
+import { useGoogleMaps } from '../../context/GoogleMapsContext';
+import OwnerSelector from '../../components/OwnerSelector';
 
 const Venues = () => {
   const { venues: venueAPI, loading, error } = useAdminAPI();
@@ -12,6 +15,25 @@ const Venues = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVenue, setEditingVenue] = useState(null);
+  // User search state for replacing legacy user_id field
+  const [userQuery, setUserQuery] = useState('');
+  const [userOptions, setUserOptions] = useState([]);
+  const [isSearchingUsers, setIsSearchingUsers] = useState(false);
+  const { isLoaded, loadError } = useGoogleMaps();
+  const autocompleteRef = useRef(null);
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      const address = place?.formatted_address;
+      const location = place?.geometry?.location;
+      setFormData(prev => ({
+        ...prev,
+        address: address || prev.address,
+        latitude: location?.lat ? location.lat() : prev.latitude,
+        longitude: location?.lng ? location.lng() : prev.longitude,
+      }));
+    }
+  };
   const [formData, setFormData] = useState({
     name: '',
     location: '',
@@ -20,7 +42,11 @@ const Venues = () => {
     capacity: '',
     amenities: '',
     contact_info: '',
-    user_id: ''
+    user_id: '',
+    owner_type: 'unclaimed',
+    owner_id: '',
+    latitude: '',
+    longitude: ''
   });
 
   const columns = [
@@ -109,8 +135,14 @@ const Venues = () => {
       capacity: '',
       amenities: '',
       contact_info: '',
-      user_id: ''
+      user_id: '',
+      owner_type: 'unclaimed',
+      owner_id: '',
+      latitude: '',
+      longitude: ''
     });
+    setUserQuery('');
+    setUserOptions([]);
     setIsModalOpen(true);
   };
 
@@ -124,8 +156,14 @@ const Venues = () => {
       capacity: venue.capacity,
       amenities: venue.amenities,
       contact_info: venue.contact_info,
-      user_id: venue.user_id
+      user_id: venue.user_id,
+      owner_type: venue.owner_type || 'unclaimed',
+      owner_id: venue.owner_id || '',
+      latitude: venue.latitude || '',
+      longitude: venue.longitude || ''
     });
+    setUserQuery('');
+    setUserOptions([]);
     setIsModalOpen(true);
   };
 
@@ -143,10 +181,19 @@ const Venues = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const payload = { ...formData };
+      // When unclaimed, clear owner fields
+      if (!payload.owner_type || payload.owner_type === 'unclaimed') {
+        delete payload.owner_id;
+        payload.owner_type = null;
+      }
+      // Coerce coordinates to numbers if present
+      if (payload.latitude !== '') payload.latitude = Number(payload.latitude);
+      if (payload.longitude !== '') payload.longitude = Number(payload.longitude);
       if (editingVenue) {
-        await venueAPI.update(editingVenue.id, formData);
+        await venueAPI.update(editingVenue.id, payload);
       } else {
-        await venueAPI.create(formData);
+        await venueAPI.create(payload);
       }
       setIsModalOpen(false);
       fetchVenues(currentPage, search);
@@ -162,6 +209,51 @@ const Venues = () => {
       [name]: value
     }));
   };
+
+  const OwnerTypeButton = ({ type, label, icon }) => (
+    <button
+      type="button"
+      onClick={() => setFormData(prev => ({ ...prev, owner_type: type }))}
+      className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg border transition ${formData.owner_type === type ? 'border-yellow-600 bg-yellow-50 text-yellow-700' : 'border-gray-200 hover:border-gray-300 text-gray-700'}`}
+    >
+      {icon}
+      <span className="text-sm font-medium">{label}</span>
+    </button>
+  );
+
+  // Debounced user search (simple)
+  useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+    const run = async () => {
+      const q = userQuery.trim();
+      if (q.length < 2) { setUserOptions([]); return; }
+      try {
+        setIsSearchingUsers(true);
+        // Reuse venueAPI's base client via useAdminAPI by calling users list endpoint
+        const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/admin/users?limit=7&page=1&search=${encodeURIComponent(q)}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('majesty_token') || ''}` },
+          signal: controller.signal
+        });
+        const data = await res.json();
+        if (!active) return;
+        if (data && data.success) {
+          const options = (data.users || []).map(u => ({ id: u.id, label: `${u.username || u.email} · ${u.email}` }));
+          setUserOptions(options);
+        } else {
+          setUserOptions([]);
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          setUserOptions([]);
+        }
+      } finally {
+        if (active) setIsSearchingUsers(false);
+      }
+    };
+    const t = setTimeout(run, 300);
+    return () => { active = false; controller.abort(); clearTimeout(t); };
+  }, [userQuery]);
 
   return (
     <AdminLayout>
@@ -210,6 +302,26 @@ const Venues = () => {
           loading={loading}
         >
           <div className="space-y-4">
+            {/* Owner type selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Owner</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <OwnerTypeButton type="artist" label="Artist" icon={<span>🎤</span>} />
+                <OwnerTypeButton type="organiser" label="Organiser" icon={<span>🏢</span>} />
+                <OwnerTypeButton type="user" label="User" icon={<span>👤</span>} />
+                <OwnerTypeButton type="unclaimed" label="Unclaimed" icon={<span>🗂️</span>} />
+              </div>
+              {formData.owner_type !== 'unclaimed' && (
+                <div className="mt-3">
+                  <OwnerSelector
+                    ownerType={formData.owner_type}
+                    value={formData.owner_id}
+                    onSelect={(id) => setFormData(prev => ({ ...prev, owner_id: id }))}
+                  />
+                </div>
+              )}
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700">Venue Name</label>
               <input
@@ -236,14 +348,33 @@ const Venues = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Address</label>
-              <textarea
-                name="address"
-                value={formData.address}
-                onChange={handleInputChange}
-                rows={2}
-                required
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500"
-              />
+              {loadError && (
+                <div className="text-red-500 text-sm mb-2">Google Maps failed to load. Please refresh.</div>
+              )}
+              {isLoaded ? (
+                <Autocomplete onLoad={(auto) => (autocompleteRef.current = auto)} onPlaceChanged={onPlaceChanged}>
+                  <input
+                    type="text"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    placeholder="Start typing address..."
+                    required
+                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500"
+                  />
+                </Autocomplete>
+              ) : (
+                <input
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  placeholder="Loading Google Maps..."
+                  required
+                  disabled
+                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500"
+                />
+              )}
             </div>
 
             <div>
@@ -257,16 +388,34 @@ const Venues = () => {
               />
             </div>
 
+            {/* User picker (replaces legacy user_id) */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">User ID</label>
+              <label className="block text-sm font-medium text-gray-700">Creator User <span className="text-gray-500 text-sm">(Optional)</span></label>
               <input
-                type="number"
-                name="user_id"
-                value={formData.user_id}
-                onChange={handleInputChange}
-                required
+                type="text"
+                value={userQuery}
+                onChange={(e) => setUserQuery(e.target.value)}
+                placeholder="Search by username or email..."
                 className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500"
               />
+              {userOptions.length > 0 && (
+                <div className="mt-2 max-h-48 overflow-auto border border-gray-200 rounded-md divide-y bg-white shadow-sm">
+                  {userOptions.map(opt => (
+                    <button
+                      type="button"
+                      key={opt.id}
+                      onClick={() => { setFormData(prev => ({ ...prev, user_id: opt.id })); setUserQuery(opt.label); setUserOptions([]); }}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${formData.user_id === opt.id ? 'bg-yellow-50' : ''}`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {isSearchingUsers && <div className="text-xs text-gray-500 mt-1">Searching...</div>}
+              {formData.user_id && (
+                <p className="text-xs text-gray-600 mt-1">Selected user ID: {formData.user_id}</p>
+              )}
             </div>
 
             <div>
@@ -309,3 +458,5 @@ const Venues = () => {
 };
 
 export default Venues;
+
+

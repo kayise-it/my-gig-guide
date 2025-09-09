@@ -3,6 +3,7 @@ import AdminLayout from '../../components/admin/AdminLayout';
 import DataTable from '../../components/admin/DataTable';
 import AdminModal from '../../components/admin/AdminModal';
 import useAdminAPI from '../../hooks/useAdminAPI';
+import toast from 'react-hot-toast';
 
 const Organisers = () => {
   const { organisers: organiserAPI, loading, error } = useAdminAPI();
@@ -13,12 +14,13 @@ const Organisers = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOrganiser, setEditingOrganiser] = useState(null);
   const [formData, setFormData] = useState({
+    first_name: '',
+    surname: '',
     name: '',
     contact_email: '',
-    contact_phone: '',
-    address: '',
-    description: '',
+    phone_number: '',
     website: '',
+    logo: '',
     user_id: ''
   });
 
@@ -93,6 +95,8 @@ const Organisers = () => {
   const handleCreate = () => {
     setEditingOrganiser(null);
     setFormData({
+      first_name: '',
+      surname: '',
       name: '',
       contact_email: '',
       contact_phone: '',
@@ -107,12 +111,13 @@ const Organisers = () => {
   const handleEdit = (organiser) => {
     setEditingOrganiser(organiser);
     setFormData({
+      first_name: organiser.first_name || '',
+      surname: organiser.surname || '',
       name: organiser.name,
       contact_email: organiser.contact_email,
-      contact_phone: organiser.contact_phone,
-      address: organiser.address,
-      description: organiser.description,
+      phone_number: organiser.phone_number,
       website: organiser.website,
+      logo: organiser.logo,
       user_id: organiser.user_id
     });
     setIsModalOpen(true);
@@ -122,9 +127,11 @@ const Organisers = () => {
     if (window.confirm(`Are you sure you want to delete organiser "${organiser.name}"?`)) {
       try {
         await organiserAPI.delete(organiser.id);
+        toast.success('Organiser deleted successfully!');
         fetchOrganisers(currentPage, search);
       } catch (err) {
         console.error('Error deleting organiser:', err);
+        toast.error(err.message || 'Failed to delete organiser');
       }
     }
   };
@@ -134,13 +141,16 @@ const Organisers = () => {
     try {
       if (editingOrganiser) {
         await organiserAPI.update(editingOrganiser.id, formData);
+        toast.success('Organiser updated successfully!');
       } else {
         await organiserAPI.create(formData);
+        toast.success('Organiser created successfully!');
       }
       setIsModalOpen(false);
       fetchOrganisers(currentPage, search);
     } catch (err) {
       console.error('Error saving organiser:', err);
+      toast.error(err.message || 'Failed to save organiser');
     }
   };
 
@@ -199,6 +209,28 @@ const Organisers = () => {
           loading={loading}
         >
           <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">First Name</label>
+                <input
+                  type="text"
+                  name="first_name"
+                  value={formData.first_name}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Surname</label>
+                <input
+                  type="text"
+                  name="surname"
+                  value={formData.surname}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500"
+                />
+              </div>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Organisation Name</label>
               <input
@@ -227,32 +259,9 @@ const Organisers = () => {
               <label className="block text-sm font-medium text-gray-700">Contact Phone</label>
               <input
                 type="tel"
-                name="contact_phone"
-                value={formData.contact_phone}
+                name="phone_number"
+                value={formData.phone_number}
                 onChange={handleInputChange}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">User ID</label>
-              <input
-                type="number"
-                name="user_id"
-                value={formData.user_id}
-                onChange={handleInputChange}
-                required
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Address</label>
-              <textarea
-                name="address"
-                value={formData.address}
-                onChange={handleInputChange}
-                rows={2}
                 className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500"
               />
             </div>
@@ -269,12 +278,12 @@ const Organisers = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Description</label>
-              <textarea
-                name="description"
-                value={formData.description}
+              <label className="block text-sm font-medium text-gray-700">Logo URL</label>
+              <input
+                type="url"
+                name="logo"
+                value={formData.logo}
                 onChange={handleInputChange}
-                rows={3}
                 className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500"
               />
             </div>
@@ -286,3 +295,4 @@ const Organisers = () => {
 };
 
 export default Organisers;
+

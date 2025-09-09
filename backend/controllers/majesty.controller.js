@@ -185,3 +185,5 @@ exports.createMajesty = async (req, res) => {
     });
   }
 };
+
+

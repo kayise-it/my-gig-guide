@@ -96,3 +96,5 @@ module.exports = {
     await queryInterface.dropTable('majesty');
   }
 };
+
+

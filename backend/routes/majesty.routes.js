@@ -16,3 +16,5 @@ router.put("/change-password", verifyMajestyToken, majestyController.changePassw
 router.post("/create", majestyController.createMajesty);
 
 module.exports = router;
+
+

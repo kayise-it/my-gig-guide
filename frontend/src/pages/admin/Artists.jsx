@@ -3,6 +3,7 @@ import AdminLayout from '../../components/admin/AdminLayout';
 import DataTable from '../../components/admin/DataTable';
 import AdminModal from '../../components/admin/AdminModal';
 import useAdminAPI from '../../hooks/useAdminAPI';
+import toast from 'react-hot-toast';
 
 const Artists = () => {
   const { artists: artistAPI, loading, error } = useAdminAPI();
@@ -136,13 +137,16 @@ const Artists = () => {
       delete payload.user_id;
       if (editingArtist) {
         await artistAPI.update(editingArtist.id, payload);
+        toast.success('Artist updated successfully!');
       } else {
         await artistAPI.create(payload);
+        toast.success('Artist created successfully!');
       }
       setIsModalOpen(false);
       fetchArtists(currentPage, search);
     } catch (err) {
       console.error('Error saving artist:', err);
+      toast.error(err.message || 'Failed to save artist');
     }
   };
 
