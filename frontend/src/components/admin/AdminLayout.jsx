@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Layout from "../Layout";
+import {
+  HomeIcon,
+  UsersIcon,
+  MusicalNoteIcon,
+  BuildingOfficeIcon,
+  MapPinIcon,
+  CalendarIcon,
+  ChartBarIcon,
+} from '@heroicons/react/24/outline';
 
 const AdminLayout = ({ children }) => {
   const [majesty, setMajesty] = useState(null);
@@ -25,13 +34,14 @@ const AdminLayout = ({ children }) => {
   };
 
   const navigationItems = [
-    { id: 'dashboard', label: 'Dashboard', path: '/admin', icon: '🏠' },
-    { id: 'users', label: 'Users', path: '/admin/users', icon: '👥' },
-    { id: 'artists', label: 'Artists', path: '/admin/artists', icon: '🎭' },
-    { id: 'organisers', label: 'Organisers', path: '/admin/organisers', icon: '🏢' },
-    { id: 'venues', label: 'Venues', path: '/admin/venues', icon: '📍' },
-    { id: 'events', label: 'Events', path: '/admin/events', icon: '🎪' },
-    { id: 'analytics', label: 'Analytics', path: '/admin/analytics', icon: '📊' },
+    { id: 'dashboard', label: 'Dashboard', path: '/admin', icon: HomeIcon },
+    { id: 'users', label: 'Users', path: '/admin/users', icon: UsersIcon },
+    { id: 'artists', label: 'Artists', path: '/admin/artists', icon: MusicalNoteIcon },
+    { id: 'organisers', label: 'Organisers', path: '/admin/organisers', icon: BuildingOfficeIcon },
+    { id: 'venues', label: 'Venues', path: '/admin/venues', icon: MapPinIcon },
+    { id: 'events', label: 'Events', path: '/admin/events', icon: CalendarIcon },
+    { id: 'analytics', label: 'Analytics', path: '/admin/analytics', icon: ChartBarIcon },
+    { id: 'paid-features', label: 'Paid Features', path: '/admin/paid-features', icon: ChartBarIcon },
   ];
 
   return (
@@ -51,20 +61,23 @@ const AdminLayout = ({ children }) => {
               </button>
             </div>
             <nav className="space-y-2">
-              {navigationItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => navigate(item.path)}
-                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors duration-200 ${
-                    isActiveRoute(item.path)
-                      ? 'bg-gray-100 text-gray-900'
-                      : 'text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="mr-2">{item.icon}</span>
-                  {item.label}
-                </button>
-              ))}
+              {navigationItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => navigate(item.path)}
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors duration-200 ${
+                      isActiveRoute(item.path)
+                        ? 'bg-gray-100 text-gray-900'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Icon className="inline-block h-5 w-5 mr-2 text-primary-600" aria-hidden="true" />
+                    {item.label}
+                  </button>
+                );
+              })}
             </nav>
           </aside>
 

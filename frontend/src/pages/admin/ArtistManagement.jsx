@@ -257,7 +257,7 @@ const ArtistManagement = () => {
             </div>
             <button
               onClick={handleCreate}
-              className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium"
             >
               Add New Artist
             </button>

@@ -278,7 +278,7 @@ const UsersManagement = () => {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md text-sm font-medium"
+              className="px-4 py-2 bg-indigo-600  hover:bg-indigo-700 text-white rounded-md text-sm font-medium"
             >
               {editingUser ? 'Update' : 'Create'}
             </button>

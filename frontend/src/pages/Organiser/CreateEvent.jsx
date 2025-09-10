@@ -1,9 +1,9 @@
 // file: frontend/src/pages/guider/dashboard/events/CreateEvent.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { 
-  ArrowLeftIcon, 
-  PhotoIcon, 
+import {
+  ArrowLeftIcon,
+  PhotoIcon,
   CheckIcon,
   CalendarDaysIcon,
   MapPinIcon,
@@ -27,6 +27,7 @@ import SimplePosterUpload from '../../components/Events/SimplePosterUpload';
 import SimpleGalleryUpload from '../../components/Events/SimpleGalleryUpload';
 import { venueService } from '../../api/venueService';
 import { eventService } from '../../api/eventService.js';
+import ArtistDropdownSelector from '../../components/Artist/ArtistDropdownSelector';
 import VenueSelector from '../../components/Venue/VenueSelector';
 import { notificationService } from '../../services/notificationService';
 
@@ -40,11 +41,11 @@ const CreateEvent = () => {
   const userId = JSON.parse(localStorage.getItem('user')).id;
   const artistId = currentUser?.artist_id || location.state?.artistId;
   const organiserId = currentUser?.organiser_id || location.state?.organiserId || userId;
-  
+
   // Determine user role and specific ID
   let userRole = '';
   let specificUserId = null;
-  
+
   if (currentUser?.aclInfo?.acl_name === 'artist') {
     userRole = 'artists';
     specificUserId = artistId;
@@ -55,12 +56,12 @@ const CreateEvent = () => {
     userRole = 'users';
     specificUserId = userId;
   }
-  
+
   const [formData, setFormData] = useState({
     userId: userId,
-    owner_id: currentUser?.aclInfo?.acl_name === 'organiser' ? organiserId : 
-              currentUser?.aclInfo?.acl_name === 'artist' ? artistId : 
-              currentUser?.aclInfo?.acl_name === 'user' ? userId : null,
+    owner_id: currentUser?.aclInfo?.acl_name === 'organiser' ? organiserId :
+      currentUser?.aclInfo?.acl_name === 'artist' ? artistId :
+        currentUser?.aclInfo?.acl_name === 'user' ? userId : null,
     owner_type: currentUser?.aclInfo?.acl_name === 'user' ? 'user' : currentUser?.aclInfo?.acl_name || '',
     venue_id: '',
     name: '',
@@ -144,30 +145,30 @@ const CreateEvent = () => {
 
   // Step configuration
   const steps = [
-    { 
-      number: 1, 
-      title: 'Basic Info', 
+    {
+      number: 1,
+      title: 'Basic Info',
       description: 'Event name, date & time',
       icon: CalendarDaysIcon,
       fields: ['name', 'date', 'time']
     },
-    { 
-      number: 2, 
-      title: 'Venue & Details', 
+    {
+      number: 2,
+      title: 'Venue & Details',
       description: 'Location and event details',
       icon: MapPinIcon,
       fields: ['venue_id', 'description', 'category']
     },
-    { 
-      number: 3, 
-      title: 'Pricing & Tickets', 
+    {
+      number: 3,
+      title: 'Pricing & Tickets',
       description: 'Price, capacity & ticketing',
       icon: TicketIcon,
       fields: ['price', 'capacity', 'ticket_url']
     },
-    { 
-      number: 4, 
-      title: 'Media', 
+    {
+      number: 4,
+      title: 'Media',
       description: 'Poster and gallery images',
       icon: CameraIcon,
       fields: ['poster', 'gallery']
@@ -212,7 +213,7 @@ const CreateEvent = () => {
   const validateCurrentStep = () => {
     const currentStepData = steps[currentStep - 1];
     const stepErrors = {};
-    
+
     currentStepData.fields.forEach(field => {
       if (field === 'name' && !formData.name.trim()) {
         stepErrors.name = 'Event name is required';
@@ -225,7 +226,7 @@ const CreateEvent = () => {
         const selectedDate = new Date(formData.date);
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
-        
+
         if (selectedDate < today) {
           stepErrors.date = 'Event date cannot be in the past';
         }
@@ -255,7 +256,7 @@ const CreateEvent = () => {
     const initializeComponent = async () => {
       try {
         setLoading(true);
-        
+
         // Fetch user data
         const storedUser = JSON.parse(localStorage.getItem('user'));
         let fetchedUser = null;
@@ -301,7 +302,7 @@ const CreateEvent = () => {
       const response = await axios.get(`${API_BASE_URL}/api/events/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       const eventData = response.data.event;
       setFormData({
         userId: eventData.userId,
@@ -320,7 +321,7 @@ const CreateEvent = () => {
         capacity: eventData.capacity || '',
         gallery: eventData.gallery ? eventData.gallery.split(',') : [],
       });
-      
+
       if (eventData.poster) {
         setPosterPreview(`${API_BASE_URL}${eventData.poster}`);
       }
@@ -350,18 +351,18 @@ const CreateEvent = () => {
     if (!formData.time) newErrors.time = 'Event time is required';
     if (!formData.owner_id) newErrors.owner_id = 'Owner ID is required';
     if (!formData.owner_type) newErrors.owner_type = 'Owner type is required';
-    
+
     // Validate that event date is not in the past
     if (formData.date) {
       const selectedDate = new Date(formData.date);
       const today = new Date();
       today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
-      
+
       if (selectedDate < today) {
         newErrors.date = 'Event date cannot be in the past';
       }
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -386,7 +387,7 @@ const CreateEvent = () => {
     try {
       // Create FormData for file upload
       const formDataToSend = new FormData();
-      
+
       // Add basic event data
       formDataToSend.append('userId', formData.userId);
       formDataToSend.append('owner_id', formData.owner_id);
@@ -401,7 +402,7 @@ const CreateEvent = () => {
       formDataToSend.append('booked_artists', formData.booked_artists || '');
       formDataToSend.append('category', formData.category || '');
       formDataToSend.append('capacity', formData.capacity || '');
-      
+
       // Do not send orgFolder; backend derives correct folder from profile settings
 
       // Add poster file if selected
@@ -528,7 +529,7 @@ const CreateEvent = () => {
               <p className="text-gray-600">Choose your venue and add event details</p>
             </div>
 
-                        <div className="space-y-6">
+            <div className="space-y-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-900 mb-4">
                   Select Venue
@@ -546,7 +547,7 @@ const CreateEvent = () => {
                       // Show immediate feedback to user
                       const { venue, owner } = notificationData;
                       alert(`You've selected ${venue.name}, which is owned by ${owner.name}. They will be notified about your event booking request.`);
-                      
+
                       // Send notification to venue owner
                       await notificationService.notifyVenueOwner(notificationData);
                       console.log('Venue owner notification sent successfully');
@@ -556,10 +557,10 @@ const CreateEvent = () => {
                     }
                   }}
                 />
-                
+
                 {/* Create New Venue Link */}
                 <div className="mt-4 text-center">
-                  <Link 
+                  <Link
                     to={`/${userRole}/dashboard/venue/new`}
                     className="inline-flex items-center space-x-2 text-sm text-purple-600 hover:text-purple-700 font-medium"
                   >
@@ -607,17 +608,11 @@ const CreateEvent = () => {
               </div>
 
               <div>
-                <label htmlFor="booked_artists" className="block text-sm font-semibold text-gray-900 mb-2">
-                  Booked Artists
-                </label>
-                <input
-                  type="text"
-                  name="booked_artists"
-                  id="booked_artists"
-                  value={formData.booked_artists}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                  placeholder="Enter artist names separated by commas"
+                <ArtistDropdownSelector
+                  label="Booked Artists"
+                  value={formData.selected_artists}
+                  onChange={(artists) => setFormData(prev => ({ ...prev, selected_artists: artists }))}
+                  allowMultiple
                 />
                 <p className="mt-1 text-sm text-gray-600">
                   List the artists performing at this event (e.g., "John Doe, Jane Smith")
@@ -775,49 +770,48 @@ const CreateEvent = () => {
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
             <h2 className="text-lg font-semibold text-gray-900 mb-6">Create Your Event</h2>
             <div className="flex items-center justify-between">
-            {steps.map((step, index) => {
-              const Icon = step.icon;
-              const isActive = currentStep === step.number;
-              const isCompleted = completedSteps.has(step.number) || isStepCompleted(step.number);
-              const isAccessible = step.number <= currentStep || isCompleted;
+              {steps.map((step, index) => {
+                const Icon = step.icon;
+                const isActive = currentStep === step.number;
+                const isCompleted = completedSteps.has(step.number) || isStepCompleted(step.number);
+                const isAccessible = step.number <= currentStep || isCompleted;
 
-              return (
-                <div key={step.number} className="flex items-center">
-                  <button
-                    onClick={() => isAccessible && goToStep(step.number)}
-                    disabled={!isAccessible}
-                    className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-300 ${
-                      isActive
-                        ? 'border-indigo-600 bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg'
-                        : isCompleted
-                        ? 'border-purple-500 bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
-                        : isAccessible
-                        ? 'border-gray-300 bg-white text-gray-600 hover:border-indigo-300 hover:shadow-md'
-                        : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
-                    }`}
-                  >
-                    {isCompleted && !isActive ? (
-                      <CheckIcon className="h-5 w-5" />
-                    ) : (
-                      <Icon className="h-5 w-5" />
-                    )}
-                  </button>
-                  
-                  <div className="ml-3 hidden sm:block">
-                    <p className={`text-sm font-medium ${isActive ? 'text-indigo-600' : isCompleted ? 'text-purple-600' : 'text-gray-600'}`}>
-                      {step.title}
-                    </p>
-                    <p className="text-xs text-gray-500">{step.description}</p>
-                  </div>
+                return (
+                  <div key={step.number} className="flex items-center">
+                    <button
+                      onClick={() => isAccessible && goToStep(step.number)}
+                      disabled={!isAccessible}
+                      className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-300 ${isActive
+                          ? 'border-indigo-600 bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg'
+                          : isCompleted
+                            ? 'border-purple-500 bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                            : isAccessible
+                              ? 'border-gray-300 bg-white text-gray-600 hover:border-indigo-300 hover:shadow-md'
+                              : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                        }`}
+                    >
+                      {isCompleted && !isActive ? (
+                        <CheckIcon className="h-5 w-5" />
+                      ) : (
+                        <Icon className="h-5 w-5" />
+                      )}
+                    </button>
 
-                  {index < steps.length - 1 && (
-                    <div className="flex-1 ml-4 mr-4 hidden sm:block">
-                      <div className={`h-1 rounded-full ${isCompleted ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-gray-200'}`} />
+                    <div className="ml-3 hidden sm:block">
+                      <p className={`text-sm font-medium ${isActive ? 'text-indigo-600' : isCompleted ? 'text-purple-600' : 'text-gray-600'}`}>
+                        {step.title}
+                      </p>
+                      <p className="text-xs text-gray-500">{step.description}</p>
                     </div>
-                  )}
-                </div>
-              );
-            })}
+
+                    {index < steps.length - 1 && (
+                      <div className="flex-1 ml-4 mr-4 hidden sm:block">
+                        <div className={`h-1 rounded-full ${isCompleted ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-gray-200'}`} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -826,7 +820,7 @@ const CreateEvent = () => {
         <div role="form" onKeyDown={handleFormKeyDown} className="bg-white rounded-2xl shadow-xl p-8">
           <input type="hidden" name="artist_id" value={artistId} />
           <input type="hidden" name="organiser_id" value={organiserId} />
-          
+
           {renderStepContent()}
 
           {/* Navigation Buttons */}
@@ -835,11 +829,10 @@ const CreateEvent = () => {
               type="button"
               onClick={prevStep}
               disabled={currentStep === 1}
-              className={`flex items-center px-6 py-3 rounded-xl font-medium transition-all ${
-                currentStep === 1
+              className={`flex items-center px-6 py-3 rounded-xl font-medium transition-all ${currentStep === 1
                   ? 'text-gray-400 cursor-not-allowed'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
+                }`}
             >
               <ArrowLeftIcon className="h-4 w-4 mr-2" />
               Previous
@@ -853,7 +846,7 @@ const CreateEvent = () => {
               >
                 Cancel
               </button>
-              
+
               {currentStep < steps.length ? (
                 <button
                   type="button"

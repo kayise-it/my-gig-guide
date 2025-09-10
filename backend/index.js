@@ -19,6 +19,7 @@ const aclRoutes = require('./routes/acl_trust.routes.js');
 const majestyRoutes = require('./routes/majesty.routes');
 const adminRoutes = require('./routes/admin.routes');
 const healthRoutes = require('./routes/health.routes');
+const featuresRoutes = require('./routes/features.routes');
 
 const app = express();
 
@@ -69,6 +70,7 @@ app.use('/api/majesty', majestyRoutes);        // Majesty routes
 app.use('/api/admin', adminRoutes);            // Admin routes
 app.use('/api/', aclRoutes);          // ACL routes
 app.use('/api', healthRoutes);        // Health check routes
+app.use('/api/features', featuresRoutes);      // Paid features routes
 
 // Database connection
 db.sequelize.authenticate()

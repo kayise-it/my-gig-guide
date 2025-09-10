@@ -9,6 +9,7 @@
     "start": "node ./backend/index.js",
     "dev": "nodemon ./backend/index.js",
     "frontend": "cd frontend && npm run dev",
-    "backend": "cd backend && npm start"
+    "backend": "cd backend && npm start",
+    "build": "cd frontend && npm run build"
   }
 }

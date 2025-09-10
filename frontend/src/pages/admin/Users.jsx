@@ -175,7 +175,7 @@ const Users = () => {
           </div>
           <button
             onClick={handleCreate}
-            className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+            className="bg-indigo-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md text-sm font-medium"
           >
             Add New User
           </button>

@@ -20,7 +20,7 @@ import DynamicEventButton from '../../components/Includes/DynamicEventButton';
 import DashboardBreadCrumb from '../../components/Includes/DashboardBreadCrumb';
 import PageHeader from '../../components/Includes/PageHeader';
 import API_BASE_URL from '../../api/config';
-import ArtistSelector from '../../components/Events/ArtistSelector';
+import ArtistDropdownSelector from '../../components/Artist/ArtistDropdownSelector';
 import { useAuth } from '../../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { useVenueModal } from "../../components/Venue/VenueModalContext";
@@ -568,10 +568,11 @@ const CreateEvent = () => {
               </div>
 
               <div>
-                <ArtistSelector
+                <ArtistDropdownSelector
                   label="Booked Artists"
                   value={formData.selected_artists}
                   onChange={(artists) => setFormData(prev => ({ ...prev, selected_artists: artists }))}
+                  allowMultiple
                 />
                 <p className="mt-1 text-sm text-gray-600">Search and add multiple artists.</p>
               </div>

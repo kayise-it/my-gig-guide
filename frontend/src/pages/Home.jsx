@@ -12,6 +12,8 @@ import {
   GlobeAltIcon
 } from '@heroicons/react/24/outline';
 import LiveEventsMap from '../components/Map/LiveEventsMap';
+import ArtistsFeaturedWeek from '../components/ArtistsFeaturedWeek';
+import EventsFeaturedWeek from '../components/EventsFeaturedWeek';
 import { fetchUpcomingEvents } from '../services/eventsService';
 
 const Home = () => {
@@ -165,6 +167,14 @@ const Home = () => {
               </Link>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Featured (Paid) Sections */}
+      <section className="py-8 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <ArtistsFeaturedWeek />
+          <EventsFeaturedWeek />
         </div>
       </section>
 

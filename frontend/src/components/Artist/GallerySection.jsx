@@ -1,5 +1,6 @@
 import React from 'react';
 import { PhotoIcon, PlusIcon, EyeIcon } from '@heroicons/react/24/outline';
+import API_BASE_URL from '../../api/config';
 
 const GallerySection = ({ 
   gallery = [], 
@@ -9,7 +10,11 @@ const GallerySection = ({
 }) => {
   const hasImages = Array.isArray(gallery) && gallery.length > 0;
   const displayImages = hasImages ? gallery.slice(0, 6) : [];
-  const getUrl = (img) => encodeURI(typeof img === 'string' ? img : (img?.url || ''));
+  const getUrl = (img) => {
+    const raw = typeof img === 'string' ? img : (img?.url || '');
+    const full = raw.startsWith('http') ? raw : `${API_BASE_URL}${raw}`;
+    return encodeURI(full);
+  };
   const getOriginalPath = (img) => (typeof img === 'string' ? img : (img?.originalPath || img?.url || ''));
   const remainingCount = hasImages ? Math.max(0, gallery.length - 6) : 0;
 

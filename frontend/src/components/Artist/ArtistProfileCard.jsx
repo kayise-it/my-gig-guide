@@ -1,5 +1,6 @@
 //frontend/src/components/Artist/ArtistProfileCard.jsx
 import { UserIcon, MusicalNoteIcon, PencilIcon } from '@heroicons/react/24/outline';
+import API_BASE_URL from '../../api/config';
 import ProfilePictureModal from './ProfilePictureModal';
 
 export default function ArtistProfileCard({ 
@@ -30,12 +31,10 @@ export default function ArtistProfileCard({
       cleanPath = artistData.profile_picture;
     }
     
-    // Automatically detect the current domain and properly encode the URL
-    const baseUrl = window.location.origin;
-    
-    // Properly encode the path to handle spaces and special characters
-    const encodedPath = encodeURIComponent(cleanPath).replace(/%2F/g, '/');
-    profilePictureUrl = `${baseUrl}/${encodedPath}?t=${new Date().getTime()}`;
+    // Build URL using API_BASE_URL so we hit the backend static server (port 3000)
+    const normalizedPath = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
+    const encodedPath = encodeURIComponent(normalizedPath).replace(/%2F/g, '/');
+    profilePictureUrl = `${API_BASE_URL}${encodedPath}?t=${new Date().getTime()}`;
     
     console.log('🔗 Constructed URL:', profilePictureUrl);
   } else {

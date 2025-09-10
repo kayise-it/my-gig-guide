@@ -25,6 +25,9 @@ db.event = require("./event.model.js")(sequelize, DataTypes);
 db.event_artist = require("./event_artist.model.js")(sequelize, DataTypes);
 // Majesty owner model
 db.majesty = require("./majesty.model.js")(sequelize, DataTypes);
+// Paid features
+db.paid_feature = require("./paid_feature.model.js")(sequelize, DataTypes);
+db.purchased_feature = require("./purchased_feature.model.js")(sequelize, DataTypes);
 // Favorite models (separate tables for better performance and integrity)
 db.user_artist_favorite = require("./user_artist_favorite.model.js")(sequelize, DataTypes);
 db.user_event_favorite = require("./user_event_favorite.model.js")(sequelize, DataTypes);

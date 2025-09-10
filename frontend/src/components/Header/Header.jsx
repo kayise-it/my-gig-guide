@@ -42,7 +42,12 @@ const Header = () => {
     setIsMobileMenuOpen(false);
   }, [location]);
 
-  // Check if we're on an admin page (used only for account dropdown logic)
+  // Determine if Majesty (superadmin) is logged in anywhere on the site
+  const majestyDataRaw = typeof window !== 'undefined' ? localStorage.getItem('majesty') : null;
+  const majesty = majestyDataRaw ? JSON.parse(majestyDataRaw) : null;
+  const isMajestyLoggedIn = typeof window !== 'undefined'
+    ? Boolean(localStorage.getItem('majesty_token') && majesty)
+    : false;
   const isAdminPage = location.pathname.startsWith('/admin');
 
   // Navigation items with icons (always show the public navbar, even on admin pages)
@@ -63,6 +68,7 @@ const Header = () => {
   };
 
   const getDashboardLink = () => {
+    if (isMajestyLoggedIn) return '/admin';
     if (currentUser?.artist_id) return '/artists/dashboard';
     if (currentUser?.organiser_id) return '/organiser/dashboard';
     return '/dashboard';
@@ -112,7 +118,7 @@ const Header = () => {
           <div className="flex items-center space-x-4">
             
             {/* User Menu */}
-            {(currentUser || isAdminPage) ? (
+            {(currentUser || isMajestyLoggedIn) ? (
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
@@ -124,10 +130,10 @@ const Header = () => {
                     </div>
                     <div className="hidden md:block text-left">
                       <p className="text-sm font-medium text-gray-900">
-                        {isAdminPage ? (localStorage.getItem('majesty') ? JSON.parse(localStorage.getItem('majesty')).full_name || JSON.parse(localStorage.getItem('majesty')).username : 'Admin') : (currentUser.name || currentUser.username)}
+                        {isMajestyLoggedIn ? (majesty?.full_name || majesty?.username || 'Admin') : (currentUser.name || currentUser.username)}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {isAdminPage ? 'Owner' : <DisplayRoleName role={currentUser.role} />}
+                        {isMajestyLoggedIn ? 'Owner' : <DisplayRoleName role={currentUser.role} />}
                       </p>
                     </div>
                   </div>
@@ -143,37 +149,26 @@ const Header = () => {
                   <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
                     <div className="px-4 py-3 border-b border-gray-100">
                       <p className="text-sm font-medium text-gray-900">
-                        {isAdminPage ? (localStorage.getItem('majesty') ? JSON.parse(localStorage.getItem('majesty')).full_name || JSON.parse(localStorage.getItem('majesty')).username : 'Admin') : (currentUser.name || currentUser.username)}
+                        {isMajestyLoggedIn ? (majesty?.full_name || majesty?.username || 'Admin') : (currentUser.name || currentUser.username)}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {isAdminPage ? 'Owner' : currentUser.email}
+                        {isMajestyLoggedIn ? 'Owner' : currentUser.email}
                       </p>
                     </div>
                     
                     <div className="py-2">
-                      {isAdminPage ? (
-                        <Link
-                          to="/admin"
-                          className="flex items-center space-x-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
-                          onClick={() => setIsUserDropdownOpen(false)}
-                        >
-                          <UserIcon className="h-4 w-4 text-gray-400" />
-                          <span>Admin Dashboard</span>
-                        </Link>
-                      ) : (
-                        <Link
-                          to={getDashboardLink()}
-                          className="flex items-center space-x-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
-                          onClick={() => setIsUserDropdownOpen(false)}
-                        >
-                          <UserIcon className="h-4 w-4 text-gray-400" />
-                          <span>Dashboard</span>
-                        </Link>
-                      )}
+                      <Link
+                        to={getDashboardLink()}
+                        className="flex items-center space-x-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                        onClick={() => setIsUserDropdownOpen(false)}
+                      >
+                        <UserIcon className="h-4 w-4 text-gray-400" />
+                        <span>{isMajestyLoggedIn ? 'Admin Dashboard' : 'Dashboard'}</span>
+                      </Link>
                       
                       <button
                         onClick={() => {
-                          if (isAdminPage) {
+                          if (isMajestyLoggedIn) {
                             localStorage.removeItem('majesty_token');
                             localStorage.removeItem('majesty');
                             window.location.href = '/majesty-login';
@@ -249,19 +244,19 @@ const Header = () => {
               })}
               
               {/* Mobile User Menu */}
-              {(currentUser || isAdminPage) ? (
+              {(currentUser || isMajestyLoggedIn) ? (
                 <div className="pt-4 border-t border-gray-200 mt-4 space-y-2">
                   <Link
-                    to={isAdminPage ? "/admin" : getDashboardLink()}
+                    to={getDashboardLink()}
                     className="flex items-center space-x-3 px-3 py-3 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors duration-200"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <UserIcon className="h-5 w-5" />
-                    <span>{isAdminPage ? 'Admin Dashboard' : 'Dashboard'}</span>
+                    <span>{isMajestyLoggedIn ? 'Admin Dashboard' : 'Dashboard'}</span>
                   </Link>
                   <button
                     onClick={() => {
-                      if (isAdminPage) {
+                      if (isMajestyLoggedIn) {
                         localStorage.removeItem('majesty_token');
                         localStorage.removeItem('majesty');
                         window.location.href = '/majesty-login';

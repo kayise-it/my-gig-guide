@@ -60,6 +60,8 @@ export default function ArtistDashboard() {
   const [artistEvents, setArtistEvents] = useState([]);
   const [artistActiveEvents, setArtistActiveEvents] = useState([]);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [toast, setToast] = useState({ visible: false, message: '', id: 0 });
+  const [progress, setProgress] = useState(0);
 
   const handleSaveModalProfilePicture = async (file) => {
     try {
@@ -69,6 +71,8 @@ export default function ArtistDashboard() {
         updateProfilePicture(result.profile_picture);
         setIsProfileModalOpen(false);
         console.log('✅ Profile picture updated successfully in UI');
+        // Show toast for profile picture update
+        setToast({ visible: true, message: 'Profile picture updated successfully!', id: Date.now() });
       }
     } catch (error) {
       console.error("❌ Failed to upload from modal:", error);
@@ -140,12 +144,8 @@ export default function ArtistDashboard() {
         
         // Show success feedback
         setUploadSuccess(true);
+        setToast({ visible: true, message: 'Gallery images uploaded successfully!', id: Date.now() });
         console.log('Gallery images uploaded successfully!');
-        
-        // Hide success message after 3 seconds
-        setTimeout(() => {
-          setUploadSuccess(false);
-        }, 3000);
       }
     } catch (error) {
       console.error('Error uploading images:', error);
@@ -153,6 +153,19 @@ export default function ArtistDashboard() {
       setUploadingImages(false);
     }
   };
+
+  // Animate toast progress bar and auto-hide
+  React.useEffect(() => {
+    if (!toast.visible) return;
+    // Start from full then shrink to zero
+    setProgress(100);
+    const start = setTimeout(() => setProgress(0), 50);
+    const hide = setTimeout(() => setToast((prev) => ({ ...prev, visible: false })), 3050);
+    return () => {
+      clearTimeout(start);
+      clearTimeout(hide);
+    };
+  }, [toast.id, toast.visible]);
 
   const removePreviewImage = (indexToRemove) => {
     const newFiles = selectedFiles.filter((_, index) => index !== indexToRemove);
@@ -321,8 +334,8 @@ export default function ArtistDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Success Notification */}
-      {(profileUploadSuccess || uploadSuccess) && (
-        <div className="fixed top-4 right-4 z-50 bg-green-50 border border-green-200 rounded-lg p-4 shadow-lg">
+      {toast.visible && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-green-50 border border-green-200 rounded-lg p-4 shadow-lg w-full max-w-xl">
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
@@ -331,9 +344,16 @@ export default function ArtistDashboard() {
             </div>
             <div className="ml-3">
               <p className="text-sm font-medium text-green-800">
-                Gallery images uploaded successfully!
+                {toast.message}
               </p>
             </div>
+          </div>
+          <div className="mt-3 h-1 w-full bg-green-200/60 rounded overflow-hidden">
+            <div
+              key={toast.id}
+              className="h-full bg-green-500"
+              style={{ width: `${progress}%`, transition: 'width 3s linear' }}
+            />
           </div>
         </div>
       )}
@@ -575,7 +595,7 @@ export default function ArtistDashboard() {
 
             {/* Image */}
             <img
-              src={gallery[selectedGalleryImage]?.url}
+              src={(gallery[selectedGalleryImage]?.url || '').startsWith('http') ? gallery[selectedGalleryImage]?.url : `${API_BASE_URL}${gallery[selectedGalleryImage]?.url || ''}`}
               alt={`Gallery ${selectedGalleryImage + 1}`}
               className="max-w-full max-h-full object-contain rounded-lg"
             />

@@ -16,6 +16,7 @@ import AdminOrganisers from "./pages/admin/Organisers";
 import AdminVenues from "./pages/admin/Venues";
 import AdminEvents from "./pages/admin/Events";
 import AdminAnalytics from "./pages/admin/Analytics";
+import AdminPaidFeatures from "./pages/admin/PaidFeatures";
 import Dashboard from "./pages/Dashboard/Dashboard";
 import UserCreateEvent from "./pages/Dashboard/CreateEvent";
 import UserEditEvent from "./pages/Dashboard/EditEvent";
@@ -103,6 +104,7 @@ function App() {
           <Route path="/admin/venues" element={<MajestyRoute><AdminVenues /></MajestyRoute>} />
           <Route path="/admin/events" element={<MajestyRoute><AdminEvents /></MajestyRoute>} />
           <Route path="/admin/analytics" element={<MajestyRoute><AdminAnalytics /></MajestyRoute>} />
+          <Route path="/admin/paid-features" element={<MajestyRoute><AdminPaidFeatures /></MajestyRoute>} />
           <Route path="/organiser/dashboard" element={<PrivateRoute requiredRole="organiser"><Layout><OrganiserDashboard /></Layout></PrivateRoute>} />
           <Route path="/organiser/dashboard/profile" element={<PrivateRoute requiredRole="organiser"><Layout><OrganisationProfile /></Layout></PrivateRoute>} />
 

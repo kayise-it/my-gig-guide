@@ -1,5 +1,6 @@
 // ../components/Artist/ProfilePictureModal.jsx
 import React, { useState, useRef } from 'react';
+import API_BASE_URL from '../../api/config';
 import { XMarkIcon, ArrowPathIcon, CheckIcon } from '@heroicons/react/24/outline';
 
 const ProfilePictureModal = ({ isOpen, onClose, initialImage, onSave, settings }) => {
@@ -54,11 +55,20 @@ const ProfilePictureModal = ({ isOpen, onClose, initialImage, onSave, settings }
         <div className="p-6 flex flex-col items-center">
           <div className="relative mb-6">
             {image ? (
-              <img
-                src={image}
-                alt="Preview"
-                className="w-64 h-64 rounded-full object-cover border-4 border-white shadow-lg"
-              />
+              (() => {
+                const isData = typeof image === 'string' && image.startsWith('data:');
+                const isHttp = typeof image === 'string' && /^https?:\/\//.test(image);
+                const normalized = typeof image === 'string' && !isData && !isHttp
+                  ? `${API_BASE_URL}${image.startsWith('/') ? image : `/${image}`}`
+                  : image;
+                return (
+                  <img
+                    src={normalized}
+                    alt="Preview"
+                    className="w-64 h-64 rounded-full object-cover border-4 border-white shadow-lg"
+                  />
+                );
+              })()
             ) : (
               <div className="w-64 h-64 rounded-full bg-gray-200 flex items-center justify-center">
                 <span className="text-gray-500">No image selected</span>
@@ -78,7 +88,7 @@ const ProfilePictureModal = ({ isOpen, onClose, initialImage, onSave, settings }
             <button
               onClick={() => fileInputRef.current.click()}
               className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 px-4 rounded"
-             n>
+            >
               Upload Photo
             </button>
             {image && (

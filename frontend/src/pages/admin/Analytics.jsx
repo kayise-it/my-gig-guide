@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import useAdminAPI from '../../hooks/useAdminAPI';
+import {
+  UsersIcon,
+  MusicalNoteIcon,
+  BuildingOfficeIcon,
+  MapPinIcon,
+  CalendarIcon,
+  CheckCircleIcon,
+  SparklesIcon,
+} from '@heroicons/react/24/outline';
 
 const Analytics = () => {
   const { stats, loading, error } = useAdminAPI();
@@ -21,7 +30,7 @@ const Analytics = () => {
     fetchAnalytics();
   }, []);
 
-  const StatCard = ({ title, value, icon, color = "blue" }) => {
+  const StatCard = ({ title, value, icon: Icon, color = "blue" }) => {
     const colorClasses = {
       blue: "bg-blue-500",
       green: "bg-green-500",
@@ -36,8 +45,8 @@ const Analytics = () => {
         <div className="p-5">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className={`p-3 rounded-md ${colorClasses[color]}`}>
-                <span className="text-white text-xl">{icon}</span>
+              <div className={`p-2 rounded-md ${colorClasses[color]} bg-opacity-10 border border-transparent` }>
+                <Icon className="h-6 w-6 text-primary-600" aria-hidden="true" />
               </div>
             </div>
             <div className="ml-5 w-0 flex-1">
@@ -85,58 +94,53 @@ const Analytics = () => {
         {/* Stats Grid */}
         {analytics && (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            <StatCard
-              title="Total Users"
-              value={analytics.totalUsers}
-              icon="👥"
-              color="blue"
-            />
+            <StatCard title="Total Users" value={analytics.totalUsers} icon={UsersIcon} color="blue" />
             <StatCard
               title="Total Artists"
               value={analytics.totalArtists}
-              icon="🎭"
+              icon={MusicalNoteIcon}
               color="yellow"
             />
             <StatCard
               title="Total Organisers"
               value={analytics.totalOrganisers}
-              icon="🏢"
+              icon={BuildingOfficeIcon}
               color="green"
             />
             <StatCard
               title="Total Venues"
               value={analytics.totalVenues}
-              icon="📍"
+              icon={MapPinIcon}
               color="purple"
             />
             <StatCard
               title="Total Events"
               value={analytics.totalEvents}
-              icon="🎪"
+              icon={CalendarIcon}
               color="red"
             />
             <StatCard
               title="Active Events"
               value={analytics.activeEvents}
-              icon="✅"
+              icon={CheckCircleIcon}
               color="green"
             />
             <StatCard
               title="Upcoming Events"
               value={analytics.upcomingEvents}
-              icon="📅"
+              icon={CalendarIcon}
               color="indigo"
             />
             <StatCard
               title="Recent Users (7 days)"
               value={analytics.recentUsers}
-              icon="🆕"
+              icon={SparklesIcon}
               color="blue"
             />
             <StatCard
               title="Recent Events (7 days)"
               value={analytics.recentEvents}
-              icon="🆕"
+              icon={SparklesIcon}
               color="yellow"
             />
           </div>

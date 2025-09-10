@@ -1,5 +1,6 @@
 // frontend/src/pages/Events.jsx
 import { useEffect, useState } from 'react';
+import EventsFeaturedWeek from '../components/EventsFeaturedWeek';
 import axios from 'axios';
 import { FaCalendarAlt, FaMapMarkerAlt, FaMusic, FaSearch, FaSpinner } from 'react-icons/fa';
 import { format, parseISO } from 'date-fns';
@@ -68,6 +69,7 @@ export default function Events() {
   
     return (
       <div className="container mx-auto px-4 py-8">
+        <EventsFeaturedWeek />
         <h1 className="text-3xl font-bold text-gray-800 mb-8">Upcoming Events</h1>
         
         {/* Search Bar */}
