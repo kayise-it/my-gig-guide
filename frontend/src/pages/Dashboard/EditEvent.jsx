@@ -28,6 +28,7 @@ import SimpleGalleryUpload from '../../components/Events/SimpleGalleryUpload';
 import { venueService } from '../../api/venueService';
 import { eventService } from '../../api/eventService.js';
 import VenueSelector from '../../components/Venue/VenueSelector';
+import ArtistDropdownSelector from '../../components/Artist/ArtistDropdownSelector';
 // notificationService not used in user edit flow
 
 const EditEvent = () => {
@@ -77,6 +78,7 @@ const EditEvent = () => {
   const [galleryPreviews, setGalleryPreviews] = useState([]);
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState(new Set());
+  const [selectedArtists, setSelectedArtists] = useState([]);
 
   // Get today's date in YYYY-MM-DD format for date input min attribute
   const getTodayDate = () => {
@@ -272,7 +274,7 @@ const EditEvent = () => {
     };
 
     initializeComponent();
-  }, [id, token, currentUser, organiserId, artistId]);
+  }, [id, token, currentUser]);
 
   const fetchEventDetails = async () => {
     try {
@@ -298,6 +300,10 @@ const EditEvent = () => {
         capacity: eventData.capacity || '',
         gallery: eventData.gallery ? eventData.gallery.split(',') : [],
       });
+      // Prefill selected artists if included in response
+      if (Array.isArray(eventData.artists)) {
+        setSelectedArtists(eventData.artists.map(a => ({ id: a.id, stage_name: a.stage_name, real_name: a.real_name })));
+      }
       
       if (eventData.poster) {
         setPosterPreview(`${API_BASE_URL}${eventData.poster}`);
@@ -382,6 +388,12 @@ const EditEvent = () => {
       
       // Do not send orgFolder; backend derives correct folder from profile settings
 
+      // Attach selected artist IDs
+      if (Array.isArray(selectedArtists) && selectedArtists.length > 0) {
+        const ids = selectedArtists.map(a => a.id);
+        formDataToSend.append('artist_ids', JSON.stringify(ids));
+      }
+
       // Add poster file if selected
       if (selectedPosterFile) {
         formDataToSend.append('poster', selectedPosterFile);
@@ -415,7 +427,8 @@ const EditEvent = () => {
         console.log('Event created successfully:', currentUser.aclInfo.acl_name);
       }
 
-      navigate(`/user/dashboard/event/${response.data.eventId}`);
+      const nextId = id || response?.data?.eventId || response?.data?.event?.id;
+      navigate(`/user/dashboard/event/${nextId}`);
     } catch (error) {
       console.error('Event submission error:', error);
       setApiError(error.response?.data?.message || 'Failed to submit event');
@@ -560,21 +573,13 @@ const EditEvent = () => {
               </div>
 
               <div>
-                <label htmlFor="booked_artists" className="block text-sm font-semibold text-gray-900 mb-2">
-                  Booked Artists
-                </label>
-                <input
-                  type="text"
-                  name="booked_artists"
-                  id="booked_artists"
-                  value={formData.booked_artists}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                  placeholder="Enter artist names separated by commas"
+                <ArtistDropdownSelector
+                  label="Booked Artists"
+                  value={selectedArtists}
+                  onChange={setSelectedArtists}
+                  allowMultiple
                 />
-                <p className="mt-1 text-sm text-gray-600">
-                  List the artists performing at this event (e.g., "John Doe, Jane Smith")
-                </p>
+                <p className="mt-1 text-sm text-gray-600">Search and add multiple artists.</p>
               </div>
             </div>
           </div>

@@ -32,7 +32,7 @@ const UsersManagement = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('majesty_token');
+      const token = localStorage.getItem('management_token');
       const response = await fetch('/api/admin/users', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -79,7 +79,7 @@ const UsersManagement = () => {
 
   const handleDelete = async (user) => {
     try {
-      const token = localStorage.getItem('majesty_token');
+      const token = localStorage.getItem('management_token');
       const response = await fetch(`/api/admin/users/${user.id}`, {
         method: 'DELETE',
         headers: {
@@ -101,7 +101,7 @@ const UsersManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('majesty_token');
+      const token = localStorage.getItem('management_token');
       const url = editingUser 
         ? `/api/admin/users/${editingUser.id}`
         : '/api/admin/users';

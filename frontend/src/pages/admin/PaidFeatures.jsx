@@ -4,9 +4,9 @@ import AdminLayout from '../../components/admin/AdminLayout';
 const apiBase = '/api/admin/paid-features';
 
 function useMajestyToken() {
-  const [token, setToken] = useState(localStorage.getItem('majesty_token'));
+  const [token, setToken] = useState(localStorage.getItem('management_token'));
   useEffect(() => {
-    const handler = () => setToken(localStorage.getItem('majesty_token'));
+    const handler = () => setToken(localStorage.getItem('management_token'));
     window.addEventListener('storage', handler);
     return () => window.removeEventListener('storage', handler);
   }, []);

@@ -31,7 +31,7 @@ const ArtistsFeaturedWeek = () => {
       <h3 className="text-lg font-semibold mb-3">Featured Artists This Week</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {items.map((p) => (
-          <a key={p.id} href={`/Artists/${p.owner_id}`} className="block bg-white border rounded-lg p-4 hover:shadow">
+          <a key={p.id} href={`/Artists/${p.userId || p.owner_id || p.id}`} className="block bg-white border rounded-lg p-4 hover:shadow">
             <div className="text-sm text-gray-600">Artist ID #{p.owner_id}</div>
             <div className="text-xs text-gray-500">Until {new Date(p.ends_at).toLocaleDateString()}</div>
           </a>

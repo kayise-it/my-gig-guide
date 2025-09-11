@@ -9,7 +9,7 @@ import './utils/consoleErrorFixer'; // Import error fixer utility
 
 /* Owners */
 import AdminDashboard from "./pages/AdminDashboard";
-import MajestyLogin from "./pages/MajestyLogin";
+import ManagementLogin from "./pages/MajestyLogin";
 import AdminUsers from "./pages/admin/Users";
 import AdminArtists from "./pages/admin/Artists";
 import AdminOrganisers from "./pages/admin/Organisers";
@@ -96,7 +96,11 @@ function App() {
           <Route path="/user/dashboard/create-event" element={<PrivateRoute><Layout><UserCreateEvent /></Layout></PrivateRoute>} />
           <Route path="/user/dashboard/event/:id" element={<PrivateRoute><Layout><ShowEvent /></Layout></PrivateRoute>} />
           <Route path="/user/dashboard/edit-event/:id" element={<PrivateRoute><Layout><UserEditEvent /></Layout></PrivateRoute>} />
-          <Route path="/majesty-login" element={<MajestyLogin />} />
+          <Route path="/artist/dashboard/events/edit/:id" element={<PrivateRoute><Layout><UserEditEvent /></Layout></PrivateRoute>} />
+          <Route path="/organiser/dashboard/events/edit/:id" element={<PrivateRoute><Layout><UserEditEvent /></Layout></PrivateRoute>} />
+          <Route path="/management-login" element={<ManagementLogin />} />
+          {/* Legacy alias for backward compatibility */}
+          <Route path="/majesty-login" element={<ManagementLogin />} />
           <Route path="/admin" element={<MajestyRoute><AdminDashboard /></MajestyRoute>} />
           <Route path="/admin/users" element={<MajestyRoute><AdminUsers /></MajestyRoute>} />
           <Route path="/admin/artists" element={<MajestyRoute><AdminArtists /></MajestyRoute>} />

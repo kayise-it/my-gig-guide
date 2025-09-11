@@ -108,24 +108,33 @@ router.post('/create_event', verifyToken, upload.any(), async (req, res) => {
 
         const createdEvent = await Event.create(event);
 
-        // If artist_ids provided, create join rows in event_artists
-        if (req.body.artist_ids) {
+        // If artist IDs provided (support multiple shapes), create join rows in event_artists
+        {
+            const rawIds =
+              req.body.artist_ids ??
+              req.body['artist_ids[]'] ??
+              req.body.artistIds ??
+              null;
             let artistIds = [];
-            try {
-                artistIds = Array.isArray(req.body.artist_ids)
-                  ? req.body.artist_ids
-                  : JSON.parse(req.body.artist_ids);
-            } catch (e) {
-                artistIds = [];
-            }
-            if (Array.isArray(artistIds) && artistIds.length > 0) {
-                const cleanedIds = [...new Set(artistIds.map(id => parseInt(id)).filter(n => Number.isInteger(n)))];
-                if (cleanedIds.length > 0) {
-                    await db.event_artist.bulkCreate(
-                        cleanedIds.map(aid => ({ event_id: createdEvent.id, artist_id: aid })),
-                        { ignoreDuplicates: true }
-                    );
+            if (rawIds !== null && rawIds !== undefined) {
+                if (Array.isArray(rawIds)) {
+                    artistIds = rawIds;
+                } else if (typeof rawIds === 'string') {
+                    // try JSON parse, else comma-delimited
+                    try {
+                        const parsed = JSON.parse(rawIds);
+                        artistIds = Array.isArray(parsed) ? parsed : rawIds.split(',');
+                    } catch (_) {
+                        artistIds = rawIds.split(',');
+                    }
                 }
+            }
+            const cleanedIds = [...new Set((artistIds || []).map(id => parseInt(id)).filter(Number.isInteger))];
+            if (cleanedIds.length > 0) {
+                await db.event_artist.bulkCreate(
+                  cleanedIds.map(aid => ({ event_id: createdEvent.id, artist_id: aid })),
+                  { ignoreDuplicates: true }
+                );
             }
         }
 
@@ -253,7 +262,7 @@ router.post('/create_event', verifyToken, upload.any(), async (req, res) => {
     }
 });
 
-// Update event with file uploads
+// Update event with file uploads (and sync booked artists)
 router.put('/edit/:id', verifyToken, upload.any(), async (req, res) => {
     try {
         const event = await Event.findByPk(req.params.id);
@@ -273,6 +282,42 @@ router.put('/edit/:id', verifyToken, upload.any(), async (req, res) => {
         event.ticket_url = req.body.ticket_url || event.ticket_url;
         event.category = req.body.category || event.category;
         event.capacity = req.body.capacity ? parseInt(req.body.capacity) : event.capacity;
+
+        // Sync artist links if provided (support multiple shapes)
+        {
+            const rawIds =
+              req.body.artist_ids ??
+              req.body['artist_ids[]'] ??
+              req.body.artistIds ??
+              null;
+            let artistIds = [];
+            if (rawIds !== null && rawIds !== undefined) {
+                console.log('🧩 Received artist ids in PUT:', rawIds, 'type:', typeof rawIds);
+                if (Array.isArray(rawIds)) {
+                    artistIds = rawIds;
+                } else if (typeof rawIds === 'string') {
+                    try {
+                        const parsed = JSON.parse(rawIds);
+                        artistIds = Array.isArray(parsed) ? parsed : rawIds.split(',');
+                    } catch (_) {
+                        artistIds = rawIds.split(',');
+                    }
+                }
+                const cleanedIds = [...new Set((artistIds || []).map(id => parseInt(id)).filter(Number.isInteger))];
+                console.log('🧩 Parsed artist IDs:', cleanedIds);
+                if (cleanedIds.length > 0) {
+                    await db.event_artist.destroy({ where: { event_id: event.id } });
+                    await db.event_artist.bulkCreate(
+                      cleanedIds.map(aid => ({ event_id: event.id, artist_id: aid })),
+                      { ignoreDuplicates: true }
+                    );
+                    console.log('✅ Synced event_artists for event', event.id, 'with', cleanedIds.length, 'artists');
+                } else {
+                    await db.event_artist.destroy({ where: { event_id: event.id } });
+                    console.log('✅ Cleared event_artists links for event', event.id);
+                }
+            }
+        }
 
         // Handle file uploads if provided
         const userType = req.body.owner_type === 'artist' ? 'artists' : 

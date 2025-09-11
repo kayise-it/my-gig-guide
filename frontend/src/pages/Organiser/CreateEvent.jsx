@@ -405,6 +405,12 @@ const CreateEvent = () => {
 
       // Do not send orgFolder; backend derives correct folder from profile settings
 
+      // Attach selected artist IDs for linking in event_artists
+      if (Array.isArray(formData.selected_artists) && formData.selected_artists.length > 0) {
+        const ids = formData.selected_artists.map(a => a.id);
+        formDataToSend.append('artist_ids', JSON.stringify(ids));
+      }
+
       // Add poster file if selected
       if (selectedPosterFile) {
         formDataToSend.append('poster', selectedPosterFile);

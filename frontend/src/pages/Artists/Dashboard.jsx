@@ -62,6 +62,7 @@ export default function ArtistDashboard() {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '', id: 0 });
   const [progress, setProgress] = useState(0);
+  const [editForm, setEditForm] = useState(null);
 
   const handleSaveModalProfilePicture = async (file) => {
     try {
@@ -82,6 +83,30 @@ export default function ArtistDashboard() {
   const handleGalleryUploadSuccess = () => {
     fetchGallery();
   };
+  // Initialize form state when entering edit mode
+  useEffect(() => {
+    if (editMode) {
+      setEditForm({
+        stage_name: artistData?.stage_name || '',
+        real_name: artistData?.real_name || '',
+        genre: artistData?.genre || '',
+        phone_number: artistData?.phone_number || '',
+        bio: artistData?.bio || '',
+        instagram: artistData?.instagram || '',
+        twitter: artistData?.twitter || '',
+        facebook: artistData?.facebook || '',
+      });
+    } else {
+      setEditForm(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editMode]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm((prev) => ({ ...prev, [name]: value }));
+  };
+
 
   const handleFileSelection = (files) => {
     if (!files || files.length === 0) return;
@@ -269,8 +294,8 @@ export default function ArtistDashboard() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.put(
-        `${API_BASE_URL}/api/artists/${userId}`,
-        artistData,
+        `${API_BASE_URL}/api/artists/edit/${userId}`,
+        editForm || artistData,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -378,10 +403,12 @@ export default function ArtistDashboard() {
             {/* Profile Details Section */}
             {editMode ? (
               <ArtistEditForm
-                artistData={artistData}
-    
+                artistData={editForm || {
+                  stage_name: '', real_name: '', genre: '', phone_number: '', bio: '', instagram: '', twitter: '', facebook: ''
+                }}
+                onInputChange={handleInputChange}
                 onSubmit={handleSubmit}
-                onCancel={() => setState(prev => ({ ...prev, editMode: false }))}
+                onCancel={() => setEditMode(false)}
               />
             ) : (
               <ArtistViewProfile artistData={artistData} />

@@ -225,7 +225,7 @@ const ArtistsBlock = ({ eventArtist = null }) => {
 
                                                     {/* Action Button */}
                                                     <Link
-                                                        to={`/artists/${artist.id}`}
+                                                        to={`/artists/${artist.userId || artist.id}`}
                                                         className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white py-3 px-4 rounded-xl font-medium transition-all duration-300 flex items-center justify-center group-hover:scale-105 shadow-md"
                                                     >
                                                         View Profile

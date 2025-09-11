@@ -9,7 +9,7 @@ const useAdminData = () => {
   const [error, setError] = useState(null);
 
   const getAuthHeaders = () => {
-    const token = localStorage.getItem('majesty_token');
+    const token = localStorage.getItem('management_token');
     return {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'

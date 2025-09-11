@@ -7,7 +7,7 @@ const useAdminAPI = () => {
   const [error, setError] = useState(null);
 
   const getAuthHeaders = () => {
-    const token = localStorage.getItem('majesty_token');
+    const token = localStorage.getItem('management_token');
     return {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
@@ -38,15 +38,9 @@ const useAdminAPI = () => {
 
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
-          // Clear token and redirect to Majesty login
-          try {
-            localStorage.removeItem('majesty_token');
-            localStorage.removeItem('majesty');
-          } catch (_) {}
-          // Avoid breaking SSR
-          if (typeof window !== 'undefined') {
-            window.location.href = '/majesty-login';
-          }
+          // Clear token and redirect to Management login
+          localStorage.removeItem('management_token');
+          window.location.href = '/management-login';
         }
         throw new Error(data.message || 'Request failed');
       }

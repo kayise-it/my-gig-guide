@@ -18,11 +18,13 @@ export default function EventBookedArtists({ artists = [] }) {
       <div className="flex flex-wrap gap-2">
         {artists.map(a => {
           const artistId = a.artist_id || a.id;
+          const userId = a.userId || a.user_id; // prefer userId for public profile route
           const name = a.stage_name || a.real_name || a.name || `Artist #${artistId}`;
-          const href = `${APP_BASE_PATH}/Artists/${artistId}`;
+          const profileKey = userId || artistId;
+          const href = `${APP_BASE_PATH}/Artists/${profileKey}`;
           return (
             <Link
-              key={artistId}
+              key={`${artistId}-${profileKey}`}
               to={href}
               className="inline-flex items-center gap-2 bg-purple-100 hover:bg-purple-200 text-purple-800 px-3 py-1 rounded-full text-sm font-medium transition-colors"
             >

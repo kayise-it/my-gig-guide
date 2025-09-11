@@ -1,0 +1,12 @@
+Static file paths:
+Artists: /var/www/my-gig-guide/frontend/public/artists
+Organisers: /var/www/my-gig-guide/frontend/public/organisers
+Venues: /var/www/my-gig-guide/frontend/public/venues
+Users: /var/www/my-gig-guide/frontend/public/users
+Server is running on http://localhost:3000
+Server is also accessible on http://0.0.0.0:3000
+✅ Connected to MySQL database
+✅ Tables synced with database
+ℹ️ Majesty owner already exists
+ℹ️ Admin user already exists
+ℹ️ Dummy artist already exists.

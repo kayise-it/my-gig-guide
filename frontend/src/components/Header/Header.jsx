@@ -43,10 +43,10 @@ const Header = () => {
   }, [location]);
 
   // Determine if Majesty (superadmin) is logged in anywhere on the site
-  const majestyDataRaw = typeof window !== 'undefined' ? localStorage.getItem('majesty') : null;
+  const majestyDataRaw = typeof window !== 'undefined' ? localStorage.getItem('management') : null;
   const majesty = majestyDataRaw ? JSON.parse(majestyDataRaw) : null;
   const isMajestyLoggedIn = typeof window !== 'undefined'
-    ? Boolean(localStorage.getItem('majesty_token') && majesty)
+    ? Boolean(localStorage.getItem('management_token') && majesty)
     : false;
   const isAdminPage = location.pathname.startsWith('/admin');
 
@@ -169,9 +169,9 @@ const Header = () => {
                       <button
                         onClick={() => {
                           if (isMajestyLoggedIn) {
-                            localStorage.removeItem('majesty_token');
-                            localStorage.removeItem('majesty');
-                            window.location.href = '/majesty-login';
+                            localStorage.removeItem('management_token');
+                            localStorage.removeItem('management');
+                            window.location.href = '/management-login';
                           } else {
                             logout();
                           }
@@ -257,9 +257,9 @@ const Header = () => {
                   <button
                     onClick={() => {
                       if (isMajestyLoggedIn) {
-                        localStorage.removeItem('majesty_token');
-                        localStorage.removeItem('majesty');
-                        window.location.href = '/majesty-login';
+                        localStorage.removeItem('management_token');
+                        localStorage.removeItem('management');
+                        window.location.href = '/management-login';
                       } else {
                         logout();
                       }
